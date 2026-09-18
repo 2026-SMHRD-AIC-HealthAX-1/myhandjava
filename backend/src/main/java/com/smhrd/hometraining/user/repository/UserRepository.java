@@ -21,7 +21,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     /** 동 단위 지역 랭킹 — 운동기록 총점(script.js의 totalScore()) 기준. */
     @Query("select u.id as userId, u.nickname as nickname, u.level as level, " +
-            "coalesce(sum(r.score), 0) as totalScore " +
+            "coalesce(max(r.score), 0) as totalScore " +
             "from User u left join ExerciseRecord r on r.user = u " +
             "where u.regionCity = :city and u.regionGu = :gu and u.regionDong = :dong " +
             "group by u.id, u.nickname, u.level order by totalScore desc")
@@ -29,7 +29,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     /** 동 단위 + 종목별 랭킹. */
     @Query("select u.id as userId, u.nickname as nickname, u.level as level, " +
-            "coalesce(sum(r.score), 0) as totalScore " +
+            "coalesce(max(r.score), 0) as totalScore " +
             "from User u left join ExerciseRecord r on r.user = u and r.exerciseType = :exerciseType " +
             "where u.regionCity = :city and u.regionGu = :gu and u.regionDong = :dong " +
             "group by u.id, u.nickname, u.level order by totalScore desc")

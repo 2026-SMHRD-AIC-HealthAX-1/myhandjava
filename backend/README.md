@@ -8,7 +8,8 @@ Java 17 + Spring Boot 3 + Spring Data JPA + Spring Security(JWT) + MySQL 조합�
 
 ## 0. 시작 전에 설치할 것
 
-이 PC에는 **JDK와 MySQL이 아직 설치되어 있지 않습니다** (확인 완료). 두 가지만 설치하면 됩니다.
+실행하려면 **JDK 17 이상**이 필요하고, 실제 데이터를 보존하려면 **MySQL 8.x**가 필요합니다.
+처음 동작을 확인할 때는 MySQL 없이 H2 메모리 DB를 사용할 수 있습니다.
 
 1. **JDK 17 이상** — [Eclipse Temurin](https://adoptium.net/) 에서 17 LTS Windows x64 `.msi` 설치.
    설치 후 새 터미널에서 `java -version` 이 떠야 합니다.
@@ -16,9 +17,8 @@ Java 17 + Spring Boot 3 + Spring Data JPA + Spring Security(JWT) + MySQL 조합�
    "MySQL Installer for Windows" → **Developer Default** 구성으로 설치.
    설치 중 지정하는 **root 비밀번호를 꼭 기억**해두세요.
 
-Maven은 따로 설치할 필요 없습니다 — 이 프로젝트는 Maven Wrapper(`mvnw.cmd`)를 쓰므로 JDK만 있으면
-첫 실행 시 알아서 Maven을 내려받습니다. (`mvnw.cmd`가 없다면 `mvn -N io.takari:maven:wrapper` 로
-생성하거나, Eclipse에 내장된 Maven으로 이 폴더를 "Existing Maven Project"로 열어도 됩니다.)
+Maven은 따로 설치할 필요 없습니다. 이 프로젝트에 포함된 Maven Wrapper(`mvnw.cmd`)가
+첫 실행 시 필요한 Maven을 내려받습니다.
 
 ## 1. DB 준비 (MySQL)
 
@@ -41,18 +41,22 @@ FLUSH PRIVILEGES;
 
 ```
 cd smhrd-hc-backend
-mvnw.cmd spring-boot:run
+.\mvnw.cmd clean package
+java -jar .\target\hometraining-api-0.1.0.jar
 ```
 
 ### 방법 B — MySQL 설치 전에 우선 동작만 확인 (메모리 DB, 설정 불필요)
 
 ```
-mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=h2
+.\mvnw.cmd clean package
+java -jar .\target\hometraining-api-0.1.0.jar --spring.profiles.active=h2
 ```
 
 서버를 껐다 켜면 데이터가 사라지는 임시 DB입니다. 코드가 도는지 빨리 확인할 때만 쓰세요.
 
 기동되면 `http://localhost:8080` 에서 API가 뜹니다.
+
+8080 포트를 다른 프로그램이 사용 중이면 마지막 명령에 `--server.port=18080`을 추가하세요.
 
 ## 3. 빠른 동작 확인 (curl)
 

@@ -10,3 +10,4 @@ target/
 *.log
 .env
 application-secrets.yml
+.claude/settings.local.json

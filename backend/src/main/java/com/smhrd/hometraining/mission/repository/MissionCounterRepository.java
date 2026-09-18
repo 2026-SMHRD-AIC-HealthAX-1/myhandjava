@@ -7,5 +7,9 @@ import java.time.LocalDate;
 import java.util.Optional;
 
 public interface MissionCounterRepository extends JpaRepository<MissionCounter, Long> {
-    Optional<MissionCounter> findByUserIdAndCounterDate(Long userId, LocalDate date);
+    Optional<MissionCounter> findByUserIdAndCounterDateAndExerciseType(
+            Long userId,
+            LocalDate date,
+            String exerciseType
+    );
 }

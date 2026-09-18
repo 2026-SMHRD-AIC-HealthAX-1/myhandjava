@@ -1,67 +1,159 @@
 package com.smhrd.hometraining.user.entity;
 
-import jakarta.persistence.*;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
-
 @Entity
-@Table(name = "users", uniqueConstraints = {
-        @UniqueConstraint(name = "uk_users_login_id", columnNames = "login_id"),
-        @UniqueConstraint(name = "uk_users_nickname", columnNames = "nickname"),
-        @UniqueConstraint(name = "uk_users_email", columnNames = "email")
-})
+@Table(
+        name = "users",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_users_login_id",
+                        columnNames = "login_id"
+                ),
+                @UniqueConstraint(
+                        name = "uk_users_nickname",
+                        columnNames = "nickname"
+                ),
+                @UniqueConstraint(
+                        name = "uk_users_email",
+                        columnNames = "email"
+                )
+        }
+)
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User {
 
-    public enum Gender { MALE, FEMALE }
-    public enum Role { USER, ADMIN }
+    public enum Gender {
+        MALE,
+        FEMALE
+    }
+
+    public enum Role {
+        USER,
+        ADMIN
+    }
+
+    /**
+     * 무료 운동 횟수 계산에 사용하는 대한민국 시간대입니다.
+     */
+    public static final ZoneId KOREA_ZONE_ID =
+            ZoneId.of("Asia/Seoul");
+
+    /**
+     * 하루 무료 운동 횟수입니다.
+     *
+     * 레벨과 관계없이 하루 총 3회로 고정합니다.
+     */
+    public static final int DAILY_FREE_SET_LIMIT = 3;
+
+    /**
+     * 기존 코드와의 호환성을 위해 유지합니다.
+     */
+    public static final int DAILY_SETS_BASE =
+            DAILY_FREE_SET_LIMIT;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "login_id", nullable = false, length = 50)
+    @Column(
+            name = "login_id",
+            nullable = false,
+            length = 50
+    )
     private String loginId;
 
-    @Column(name = "password_hash", nullable = false)
+    @Column(
+            name = "password_hash",
+            nullable = false
+    )
     private String passwordHash;
 
-    @Column(nullable = false, length = 120)
+    @Column(
+            nullable = false,
+            length = 120
+    )
     private String email;
 
-    @Column(nullable = false, length = 30)
+    @Column(
+            nullable = false,
+            length = 30
+    )
     private String nickname;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 10)
+    @Column(
+            nullable = false,
+            length = 10
+    )
     private Gender gender = Gender.MALE;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 10)
+    @Column(
+            name = "grade",
+            nullable = false,
+            length = 20,
+            columnDefinition = "varchar(20) default 'IRON'"
+    )
+    private UserGrade grade = UserGrade.IRON;
+
+    @Enumerated(EnumType.STRING)
+    @Column(
+            nullable = false,
+            length = 10
+    )
     private Role role = Role.USER;
 
-    @Column(name = "avatar_index", nullable = false)
+    @Column(
+            name = "avatar_index",
+            nullable = false
+    )
     private int avatarIndex = 0;
 
-    @Column(name = "region_city", length = 30)
+    @Column(
+            name = "region_city",
+            length = 30
+    )
     private String regionCity;
 
-    @Column(name = "region_gu", length = 30)
+    @Column(
+            name = "region_gu",
+            length = 30
+    )
     private String regionGu;
 
-    @Column(name = "region_dong", length = 30)
+    @Column(
+            name = "region_dong",
+            length = 30
+    )
     private String regionDong;
 
     @Column(nullable = false)
     private int level = 1;
 
-    /** 현재 레벨 안에서의 누적 경험치 (0 ~ EXP_PER_LEVEL 미만) */
+    /**
+     * 현재 레벨 안에서 누적된 경험치입니다.
+     */
     @Column(nullable = false)
     private int exp = 0;
 
@@ -72,69 +164,182 @@ public class User {
     private int streak = 0;
 
     @Column(name = "last_attendance_date")
-    private java.time.LocalDate lastAttendanceDate;
+    private LocalDate lastAttendanceDate;
 
-    @Column(name = "streak_reward_claimed", nullable = false)
+    @Column(
+            name = "streak_reward_claimed",
+            nullable = false
+    )
     private boolean streakRewardClaimed = false;
 
-    @Column(name = "retake_tickets", nullable = false)
+    @Column(
+            name = "retake_tickets",
+            nullable = false
+    )
     private int retakeTickets = 0;
 
-    @Column(name = "nickname_tickets", nullable = false)
+    @Column(
+            name = "nickname_tickets",
+            nullable = false
+    )
     private int nicknameTickets = 2;
 
-    @Column(name = "extra_sets", nullable = false)
+    /**
+     * 기존 상점 및 사용자 응답과의 호환성을 위해 유지합니다.
+     *
+     * 현재 하루 무료 3회 계산에는 사용하지 않습니다.
+     * 추가 세트 상품 정책이 확정되면 별도로 연결합니다.
+     */
+    @Column(
+            name = "extra_sets",
+            nullable = false
+    )
     private int extraSets = 0;
 
-    @Column(name = "sets_used_today", nullable = false)
+    @Column(
+            name = "sets_used_today",
+            nullable = false
+    )
     private int setsUsedToday = 0;
 
     @Column(name = "sets_reset_date")
-    private java.time.LocalDate setsResetDate;
+    private LocalDate setsResetDate;
 
     @Column(length = 200)
     private String bio;
 
-    @Column(name = "profile_public", nullable = false, columnDefinition = "boolean default true")
+    @Column(
+            name = "profile_public",
+            nullable = false,
+            columnDefinition = "boolean default true"
+    )
     private boolean profilePublic = true;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(
+            name = "created_at",
+            nullable = false,
+            updatable = false
+    )
     private LocalDateTime createdAt;
 
+    /**
+     * 새 사용자 저장 전 기본값을 설정합니다.
+     */
     @PrePersist
     void onCreate() {
-        this.createdAt = LocalDateTime.now();
+
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+
+        if (grade == null) {
+            grade = UserGrade.IRON;
+        }
     }
 
-    public static User register(String loginId, String passwordHash, String email, String nickname, Gender gender) {
-        User u = new User();
-        u.loginId = loginId;
-        u.passwordHash = passwordHash;
-        u.email = email;
-        u.nickname = nickname;
-        u.gender = gender;
-        return u;
+    /**
+     * 새로운 일반 회원을 생성합니다.
+     */
+    public static User register(
+            String loginId,
+            String passwordHash,
+            String email,
+            String nickname,
+            Gender gender
+    ) {
+
+        User user = new User();
+
+        user.loginId = loginId;
+        user.passwordHash = passwordHash;
+        user.email = email;
+        user.nickname = nickname;
+        user.gender =
+                gender == null
+                        ? Gender.MALE
+                        : gender;
+
+        /*
+         * 선택한 성별에 맞는 기본 캐릭터를 설정합니다.
+         *
+         * 남성: 0
+         * 여성: 1
+         */
+        user.avatarIndex =
+                user.gender == Gender.FEMALE
+                        ? 1
+                        : 0;
+
+        user.grade = UserGrade.IRON;
+        user.level = 1;
+        user.exp = 0;
+
+        return user;
     }
 
-    public static final int DAILY_SETS_BASE = 3;
-
+    /**
+     * 하루 무료 운동 한도를 반환합니다.
+     *
+     * 레벨과 extraSets 값에 관계없이 3회입니다.
+     */
     public int getDailySetLimit() {
-        return DAILY_SETS_BASE + (level / 5) + extraSets;
+        return DAILY_FREE_SET_LIMIT;
     }
 
+    /**
+     * 오늘 남은 무료 운동 횟수를 반환합니다.
+     */
+    public int getRemainingDailyFreeSets() {
+
+        return Math.max(
+                getDailySetLimit() - setsUsedToday,
+                0
+        );
+    }
+
+    /**
+     * 오늘 무료 운동을 사용할 수 있는지 확인합니다.
+     */
+    public boolean hasRemainingDailyFreeSet() {
+
+        return getRemainingDailyFreeSets() > 0;
+    }
+
+    /**
+     * 대한민국 날짜가 변경됐다면
+     * 오늘 사용한 무료 운동 횟수를 초기화합니다.
+     */
     public void resetDailySetsIfNeeded() {
-        java.time.LocalDate today = java.time.LocalDate.now();
+
+        LocalDate today =
+                LocalDate.now(KOREA_ZONE_ID);
+
         if (!today.equals(setsResetDate)) {
             setsUsedToday = 0;
             setsResetDate = today;
         }
     }
 
+    /**
+     * 지역 정보를 하나의 문자열로 반환합니다.
+     */
     public String regionLabel() {
-        StringBuilder sb = new StringBuilder();
-        if (regionCity != null) sb.append(regionCity).append(' ');
-        if (regionGu != null) sb.append(regionGu).append(' ');
-        if (regionDong != null) sb.append(regionDong);
-        return sb.toString().trim();
+
+        StringBuilder region =
+                new StringBuilder();
+
+        if (regionCity != null) {
+            region.append(regionCity).append(' ');
+        }
+
+        if (regionGu != null) {
+            region.append(regionGu).append(' ');
+        }
+
+        if (regionDong != null) {
+            region.append(regionDong);
+        }
+
+        return region.toString().trim();
     }
 }

@@ -1,17 +1,5 @@
 package com.smhrd.hometraining.crew;
 
-import com.smhrd.hometraining.common.exception.BusinessException;
-import com.smhrd.hometraining.crew.dto.*;
-import com.smhrd.hometraining.crew.entity.*;
-import com.smhrd.hometraining.crew.repository.*;
-import com.smhrd.hometraining.exercise.repository.ExerciseRecordRepository;
-import com.smhrd.hometraining.user.UserService;
-import com.smhrd.hometraining.user.entity.User;
-import lombok.RequiredArgsConstructor;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -20,6 +8,41 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.smhrd.hometraining.common.exception.BusinessException;
+import com.smhrd.hometraining.crew.dto.CrewChatMessageDto;
+import com.smhrd.hometraining.crew.dto.CrewCreateRequest;
+import com.smhrd.hometraining.crew.dto.CrewJoinRequestDto;
+import com.smhrd.hometraining.crew.dto.CrewMemberEventDto;
+import com.smhrd.hometraining.crew.dto.CrewMemberResponse;
+import com.smhrd.hometraining.crew.dto.CrewNoticeDto;
+import com.smhrd.hometraining.crew.dto.CrewResponse;
+import com.smhrd.hometraining.crew.dto.CrewSummaryResponse;
+import com.smhrd.hometraining.crew.dto.CrewUpdateRequest;
+import com.smhrd.hometraining.crew.entity.Crew;
+import com.smhrd.hometraining.crew.entity.CrewChatMessage;
+import com.smhrd.hometraining.crew.entity.CrewJoinRequest;
+import com.smhrd.hometraining.crew.entity.CrewMember;
+import com.smhrd.hometraining.crew.entity.CrewNotice;
+import com.smhrd.hometraining.crew.repository.CrewChatMessageRepository;
+import com.smhrd.hometraining.crew.repository.CrewJoinRequestRepository;
+import com.smhrd.hometraining.crew.repository.CrewMemberRepository;
+import com.smhrd.hometraining.crew.repository.CrewNoticeRepository;
+import com.smhrd.hometraining.crew.repository.CrewRepository;
+import com.smhrd.hometraining.exercise.repository.ExerciseRecordRepository;
+import com.smhrd.hometraining.user.UserService;
+import com.smhrd.hometraining.user.UserResourceHistoryService;
+import com.smhrd.hometraining.user.entity.User;
+import com.smhrd.hometraining.user.entity.UserResourceHistory.Reason;
+import com.smhrd.hometraining.user.entity.UserResourceHistory.ResourceType;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -33,199 +56,939 @@ public class CrewService {
     private final ExerciseRecordRepository exerciseRecordRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final UserService userService;
+    private final UserResourceHistoryService resourceHistoryService;
+    private final CrewBattleContributionService
+            crewBattleContributionService;
+    private final EntityManager entityManager;
 
+    /**
+     * 현재 사용자가 가입한 크루를 조회합니다.
+     */
     @Transactional(readOnly = true)
-    public Optional<CrewResponse> getMyCrew(Long userId) {
-        return crewMemberRepository.findByUserId(userId).map(cm -> toResponse(cm.getCrew()));
+    public Optional<CrewResponse> getMyCrew(
+            Long userId
+    ) {
+
+        return crewMemberRepository
+                .findByUserId(userId)
+                .map(crewMember ->
+                        toResponse(
+                                crewMember.getCrew()
+                        )
+                );
     }
 
+    /**
+     * 지역별 또는 전체 크루 목록을 조회합니다.
+     */
     @Transactional(readOnly = true)
-    public List<CrewSummaryResponse> browse(String regionCity, String regionGu, Long viewerUserId) {
-        List<Crew> crews = (regionCity != null && regionGu != null)
-                ? crewRepository.findByRegionCityAndRegionGuOrderByLevelDesc(regionCity, regionGu)
-                : crewRepository.findAll();
-        // 비로그인 상태로 둘러보는 경우(게스트)에는 viewerUserId가 없으니 항상 "가입요청하기"로 보인다.
-        Set<Long> requestedCrewIds = viewerUserId == null ? Set.of()
-                : crewJoinRequestRepository.findByRequesterId(viewerUserId).stream()
-                    .map(r -> r.getCrew().getId()).collect(Collectors.toSet());
+    public List<CrewSummaryResponse> browse(
+            String regionCity,
+            String regionGu,
+            Long viewerUserId
+    ) {
+
+        List<Crew> crews =
+                regionCity != null
+                        && regionGu != null
+
+                        ? crewRepository
+                                .findByRegionCityAndRegionGuOrderByLevelDesc(
+                                        regionCity,
+                                        regionGu
+                                )
+
+                        : crewRepository.findAll();
+
+        /*
+         * 비로그인 상태로 둘러보는 경우에는
+         * 가입 신청 여부를 확인하지 않습니다.
+         */
+        Set<Long> requestedCrewIds =
+                viewerUserId == null
+                        ? Set.of()
+                        : crewJoinRequestRepository
+                                .findByRequesterId(
+                                        viewerUserId
+                                )
+                                .stream()
+                                .map(request ->
+                                        request.getCrew()
+                                                .getId()
+                                )
+                                .collect(
+                                        Collectors.toSet()
+                                );
+
         return crews.stream()
-                .map(c -> CrewSummaryResponse.of(c, crewMemberRepository.countByCrewId(c.getId()),
-                        requestedCrewIds.contains(c.getId())))
+                .map(crew ->
+                        CrewSummaryResponse.of(
+                                crew,
+                                crewMemberRepository
+                                        .countByCrewId(
+                                                crew.getId()
+                                        ),
+                                requestedCrewIds.contains(
+                                        crew.getId()
+                                )
+                        )
+                )
                 .toList();
     }
 
+    /**
+     * 새로운 크루를 생성합니다.
+     *
+     * 크루 생성과 포인트 차감,
+     * 생성자의 크루장 등록은 하나의
+     * 트랜잭션에서 처리합니다.
+     */
     @Transactional
-    public CrewResponse create(Long userId, CrewCreateRequest req) {
-        User user = userService.getUserOrThrow(userId);
-        if (crewMemberRepository.findByUserId(userId).isPresent()) {
-            throw new BusinessException("이미 크루에 소속되어 있습니다.");
+    public CrewResponse create(
+            Long userId,
+            CrewCreateRequest request
+    ) {
+
+        User user =
+                userService.getUserOrThrow(
+                        userId
+                );
+
+        /*
+         * 같은 사용자의 크루 생성 요청이
+         * 동시에 들어오더라도 포인트가 중복 차감되거나
+         * 크루가 여러 개 생성되지 않도록 잠급니다.
+         */
+        entityManager.lock(
+                user,
+                LockModeType.PESSIMISTIC_WRITE
+        );
+
+        if (crewMemberRepository
+                .findByUserId(userId)
+                .isPresent()) {
+
+            throw new BusinessException(
+                    "이미 크루에 소속되어 있습니다."
+            );
         }
+
         if (user.getPoints() < Crew.CREATE_COST) {
-            throw new BusinessException("크루 생성에는 " + Crew.CREATE_COST + "P가 필요합니다.");
+            throw new BusinessException(
+                    "크루 생성에는 "
+                            + Crew.CREATE_COST
+                            + "P가 필요합니다."
+            );
         }
-        if (crewRepository.existsByName(req.name())) {
-            throw new BusinessException("이미 사용 중인 크루 이름입니다.");
-        }
-        user.setPoints(user.getPoints() - Crew.CREATE_COST);
 
-        Crew crew = crewRepository.save(Crew.create(req.name(), req.description(), req.concept(),
-                user.getRegionCity(), user.getRegionGu(), user.getRegionDong()));
-        crewMemberRepository.save(CrewMember.of(crew, user, CrewMember.Role.LEADER));
+        if (crewRepository.existsByName(
+                request.name()
+        )) {
+
+            throw new BusinessException(
+                    "이미 사용 중인 크루 이름입니다."
+            );
+        }
+
+        /*
+         * 크루 생성 비용을 차감합니다.
+         *
+         * 아래 크루 또는 크루장 저장 과정에서 오류가 발생하면
+         * 트랜잭션이 롤백되어 포인트도 다시 복구됩니다.
+         */
+        long pointsBefore = user.getPoints();
+
+        user.setPoints(
+                pointsBefore - Crew.CREATE_COST
+        );
+
+        resourceHistoryService.record(
+                user,
+                ResourceType.POINT,
+                -Crew.CREATE_COST,
+                pointsBefore,
+                user.getPoints(),
+                Reason.CREW_CREATE,
+                request.name()
+        );
+
+        Crew crew =
+                crewRepository.save(
+                        Crew.create(
+                                request.name(),
+                                request.description(),
+                                request.concept(),
+                                user.getRegionCity(),
+                                user.getRegionGu(),
+                                user.getRegionDong()
+                        )
+                );
+
+        /*
+         * 크루를 생성한 사용자를
+         * 자동으로 크루장으로 등록합니다.
+         */
+        crewMemberRepository.save(
+                CrewMember.of(
+                        crew,
+                        user,
+                        CrewMember.Role.LEADER
+                )
+        );
+
         return toResponse(crew);
     }
 
+    /**
+     * 크루 가입을 신청합니다.
+     */
     @Transactional
-    public void requestJoin(Long userId, Long crewId, String message) {
-        if (crewMemberRepository.findByUserId(userId).isPresent()) {
-            throw new BusinessException("이미 크루에 소속되어 있습니다.");
+    public void requestJoin(
+            Long userId,
+            Long crewId,
+            String message
+    ) {
+
+        if (crewMemberRepository
+                .findByUserId(userId)
+                .isPresent()) {
+
+            throw new BusinessException(
+                    "이미 크루에 소속되어 있습니다."
+            );
         }
-        Crew crew = getCrewOrThrow(crewId);
-        if (crewJoinRequestRepository.existsByCrewIdAndRequesterId(crewId, userId)) {
-            throw new BusinessException("이미 가입 신청을 보냈습니다.");
+
+        Crew crew =
+                getCrewOrThrow(crewId);
+        
+        /*
+         * 가입 신청이 비활성화된 크루는
+         * 검색과 상세조회는 가능하지만
+         * 신규 가입 신청은 받을 수 없습니다.
+         */
+        if (!crew.isJoinEnabled()) {
+            throw new BusinessException(
+                    "현재 가입 신청을 받지 않는 크루입니다."
+            );
         }
-        User requester = userService.getUserOrThrow(userId);
-        crewJoinRequestRepository.save(CrewJoinRequest.of(crew, requester, message));
+        
+        long currentMembers =
+                crewMemberRepository
+                        .countByCrewId(crewId);
+
+        /*
+         * 이미 최대 인원에 도달한 크루에는
+         * 새로운 가입 신청을 등록하지 않습니다.
+         */
+        if (currentMembers >= Crew.MAX_MEMBERS) {
+            throw new BusinessException(
+                    "크루 정원이 모두 찼습니다."
+            );
+        }
+
+        if (crewJoinRequestRepository
+                .existsByCrewIdAndRequesterId(
+                        crewId,
+                        userId
+                )) {
+
+            throw new BusinessException(
+                    "이미 가입 신청을 보냈습니다."
+            );
+        }
+
+        User requester =
+                userService.getUserOrThrow(
+                        userId
+                );
+
+        crewJoinRequestRepository.save(
+                CrewJoinRequest.of(
+                        crew,
+                        requester,
+                        message
+                )
+        );
     }
 
+    /**
+     * 크루 가입 신청 목록을 조회합니다.
+     */
     @Transactional(readOnly = true)
-    public List<CrewJoinRequestDto> listJoinRequests(Long leaderId) {
-        CrewMember me = requireLeader(leaderId);
-        return crewJoinRequestRepository.findByCrewIdOrderByRequestedAtAsc(me.getCrew().getId())
-                .stream().map(CrewJoinRequestDto::from).toList();
+    public List<CrewJoinRequestDto> listJoinRequests(
+            Long leaderId
+    ) {
+
+        CrewMember leader =
+                requireLeader(leaderId);
+
+        return crewJoinRequestRepository
+                .findByCrewIdOrderByRequestedAtAsc(
+                        leader.getCrew().getId()
+                )
+                .stream()
+                .map(CrewJoinRequestDto::from)
+                .toList();
     }
 
+    /**
+     * 크루 가입 신청을 승인합니다.
+     */
     @Transactional
-    public void approveJoinRequest(Long leaderId, Long requestId) {
-        CrewMember leader = requireLeader(leaderId);
-        CrewJoinRequest request = crewJoinRequestRepository.findById(requestId)
-                .filter(r -> r.getCrew().getId().equals(leader.getCrew().getId()))
-                .orElseThrow(() -> new BusinessException("가입 신청을 찾을 수 없습니다."));
-        if (crewMemberRepository.findByUserId(request.getRequester().getId()).isPresent()) {
-            throw new BusinessException("이미 다른 크루에 소속된 사용자입니다.");
+    public void approveJoinRequest(
+            Long leaderId,
+            Long requestId
+    ) {
+
+        CrewMember leader =
+                requireLeader(leaderId);
+
+        CrewJoinRequest request =
+                crewJoinRequestRepository
+                        .findById(requestId)
+                        .filter(joinRequest ->
+                                joinRequest.getCrew()
+                                        .getId()
+                                        .equals(
+                                                leader.getCrew()
+                                                        .getId()
+                                        )
+                        )
+                        .orElseThrow(() ->
+                                new BusinessException(
+                                        "가입 신청을 찾을 수 없습니다."
+                                )
+                        );
+
+        if (crewMemberRepository
+                .findByUserId(
+                        request.getRequester().getId()
+                )
+                .isPresent()) {
+
+            throw new BusinessException(
+                    "이미 다른 크루에 소속된 사용자입니다."
+            );
         }
-        crewMemberRepository.save(CrewMember.of(leader.getCrew(), request.getRequester(), CrewMember.Role.MEMBER));
+
+        if (crewMemberRepository
+                .countByCrewId(
+                        leader.getCrew().getId()
+                )
+                >= Crew.MAX_MEMBERS) {
+
+            throw new BusinessException(
+                    "크루는 최대 "
+                            + Crew.MAX_MEMBERS
+                            + "명까지 가입할 수 있습니다."
+            );
+        }
+
+        crewMemberRepository.save(
+                CrewMember.of(
+                        leader.getCrew(),
+                        request.getRequester(),
+                        CrewMember.Role.MEMBER
+                )
+        );
+
         crewJoinRequestRepository.delete(request);
-        // kick과 같은 방식으로 브로드캐스트 — 이미 크루에 접속해 있던 다른 크루원들 화면을
-        // 새로고침 없이 갱신한다.
-        messagingTemplate.convertAndSend("/topic/crews/" + leader.getCrew().getId() + "/members",
-                new CrewMemberEventDto("JOINED", leader.getCrew().getId(),
-                        request.getRequester().getId(), request.getRequester().getNickname()));
-        // 승인된 본인은 방금 전까지 크루 소속이 아니었어서 위 토픽을 구독하고 있지 않다 —
-        // 로그인 아이디(STOMP Principal의 이름, StompAuthChannelInterceptor 참고)로 개인 큐에
-        // 따로 알려줘서, 가입 승인을 기다리는 화면(홈크루 탭)에 떠 있기만 하면 새로고침 없이도
-        // 바로 우리 크루 화면으로 넘어가게 한다.
-        messagingTemplate.convertAndSendToUser(request.getRequester().getLoginId(), "/queue/crew-events",
-                new CrewMemberEventDto("JOINED", leader.getCrew().getId(),
-                        request.getRequester().getId(), request.getRequester().getNickname()));
+
+        /*
+         * 기존 크루원의 화면에 신규 가입 정보를 전송합니다.
+         */
+        messagingTemplate.convertAndSend(
+                "/topic/crews/"
+                        + leader.getCrew().getId()
+                        + "/members",
+
+                new CrewMemberEventDto(
+                        "JOINED",
+                        leader.getCrew().getId(),
+                        request.getRequester().getId(),
+                        request.getRequester().getNickname()
+                )
+        );
+
+        /*
+         * 가입 승인을 받은 사용자에게도
+         * 개인 알림을 전송합니다.
+         */
+        messagingTemplate.convertAndSendToUser(
+                request.getRequester().getLoginId(),
+                "/queue/crew-events",
+
+                new CrewMemberEventDto(
+                        "JOINED",
+                        leader.getCrew().getId(),
+                        request.getRequester().getId(),
+                        request.getRequester().getNickname()
+                )
+        );
     }
 
+    /**
+     * 크루 가입 신청 가능 상태를 변경합니다.
+     *
+     * 크루장만 변경할 수 있습니다.
+     */
     @Transactional
-    public CrewResponse updateCrew(Long leaderId, CrewUpdateRequest req) {
-        CrewMember leader = requireLeader(leaderId);
-        Crew crew = leader.getCrew();
-        if (req.description() != null) crew.setDescription(req.description());
-        if (req.concept() != null) crew.setConcept(req.concept());
+    public CrewResponse updateJoinEnabled(
+            Long leaderId,
+            boolean joinEnabled
+    ) {
+
+        CrewMember leader =
+                requireLeader(leaderId);
+
+        Crew crew =
+                leader.getCrew();
+
+        crew.setJoinEnabled(joinEnabled);
+
+        return toResponse(crew);
+    }
+    
+    /**
+     * 크루 설명과 콘셉트를 수정합니다.
+     */
+    @Transactional
+    public CrewResponse updateCrew(
+            Long leaderId,
+            CrewUpdateRequest request
+    ) {
+
+        CrewMember leader =
+                requireLeader(leaderId);
+
+        Crew crew =
+                leader.getCrew();
+
+        if (request.description() != null) {
+            crew.setDescription(
+                    request.description()
+            );
+        }
+
+        if (request.concept() != null) {
+            crew.setConcept(
+                    request.concept()
+            );
+        }
+
         return toResponse(crew);
     }
 
+    /**
+     * 크루 가입 신청을 거절합니다.
+     */
     @Transactional
-    public void rejectJoinRequest(Long leaderId, Long requestId) {
-        CrewMember leader = requireLeader(leaderId);
-        CrewJoinRequest request = crewJoinRequestRepository.findById(requestId)
-                .filter(r -> r.getCrew().getId().equals(leader.getCrew().getId()))
-                .orElseThrow(() -> new BusinessException("가입 신청을 찾을 수 없습니다."));
+    public void rejectJoinRequest(
+            Long leaderId,
+            Long requestId
+    ) {
+
+        CrewMember leader =
+                requireLeader(leaderId);
+        
+        Crew crew =
+                leader.getCrew();
+
+        /*
+         * 같은 크루의 가입 승인 요청이 동시에 들어와도
+         * 최대 인원 5명을 초과하지 않도록
+         * 크루 DB 행을 잠급니다.
+         */
+        entityManager.lock(
+                crew,
+                LockModeType.PESSIMISTIC_WRITE
+        );
+
+        CrewJoinRequest request =
+                crewJoinRequestRepository
+                        .findById(requestId)
+                        .filter(joinRequest ->
+                                joinRequest.getCrew()
+                                        .getId()
+                                        .equals(
+                                                leader.getCrew()
+                                                        .getId()
+                                        )
+                        )
+                        .orElseThrow(() ->
+                                new BusinessException(
+                                        "가입 신청을 찾을 수 없습니다."
+                                )
+                        );
+
         crewJoinRequestRepository.delete(request);
     }
-
+    
+    /**
+     * 현재 크루장이 다른 크루원에게
+     * 크루장 권한을 양도합니다.
+     *
+     * 기존 크루장은 일반 크루원이 되고,
+     * 대상 크루원은 새로운 크루장이 됩니다.
+     */
     @Transactional
-    public void kickMember(Long leaderId, Long targetUserId) {
-        CrewMember leader = requireLeader(leaderId);
-        if (leader.getUser().getId().equals(targetUserId)) {
-            throw new BusinessException("크루장은 자기 자신을 강퇴할 수 없습니다.");
+    public CrewResponse transferLeadership(
+            Long currentLeaderId,
+            Long targetUserId
+    ) {
+
+        CrewMember currentLeader =
+                requireLeader(currentLeaderId);
+
+        if (currentLeaderId.equals(targetUserId)) {
+            throw new BusinessException(
+                    "자기 자신에게 크루장 권한을 양도할 수 없습니다."
+            );
         }
-        Long crewId = leader.getCrew().getId();
-        CrewMember target = crewMemberRepository.findByUserId(targetUserId)
-                .filter(cm -> cm.getCrew().getId().equals(crewId))
-                .orElseThrow(() -> new BusinessException("크루원을 찾을 수 없습니다."));
-        String targetNickname = target.getUser().getNickname();
-        crewMemberRepository.deleteByCrewIdAndUserId(crewId, targetUserId);
-        // 강퇴당한 사람 화면(같은 크루 화면을 보고 있다면)과 다른 크루원들의 크루원 목록을
-        // 새로고침 없이 실시간으로 갱신하기 위해 크루채팅과 같은 방식으로 브로드캐스트한다.
-        messagingTemplate.convertAndSend("/topic/crews/" + crewId + "/members",
-                new CrewMemberEventDto("KICKED", crewId, targetUserId, targetNickname));
+
+        Crew crew =
+                currentLeader.getCrew();
+
+        /*
+         * 같은 크루에서 권한 양도 요청이 동시에 들어와도
+         * 크루장이 여러 명 생기지 않도록 잠급니다.
+         */
+        entityManager.lock(
+                crew,
+                LockModeType.PESSIMISTIC_WRITE
+        );
+
+        CrewMember newLeader =
+                crewMemberRepository
+                        .findByUserId(targetUserId)
+                        .filter(member ->
+                                member.getCrew()
+                                        .getId()
+                                        .equals(crew.getId())
+                        )
+                        .orElseThrow(() ->
+                                new BusinessException(
+                                        "크루장으로 지정할 크루원을 찾을 수 없습니다."
+                                )
+                        );
+
+        if (newLeader.getRole()
+                != CrewMember.Role.MEMBER) {
+
+            throw new BusinessException(
+                    "일반 크루원에게만 크루장 권한을 양도할 수 있습니다."
+            );
+        }
+
+        /*
+         * 두 역할 변경은 같은 트랜잭션에서 처리됩니다.
+         *
+         * 중간에 오류가 발생하면 두 변경 모두 롤백됩니다.
+         */
+        currentLeader.demoteToMember();
+        newLeader.promoteToLeader();
+
+        /*
+         * 크루원 화면이 새로고침 없이 갱신될 수 있도록
+         * 새로운 크루장 정보를 전송합니다.
+         */
+        messagingTemplate.convertAndSend(
+                "/topic/crews/"
+                        + crew.getId()
+                        + "/members",
+
+                new CrewMemberEventDto(
+                        "LEADER_CHANGED",
+                        crew.getId(),
+                        newLeader.getUser().getId(),
+                        newLeader.getUser().getNickname()
+                )
+        );
+
+        return toResponse(crew);
     }
 
+    /**
+     * 크루원을 강퇴합니다.
+     */
+    @Transactional
+    public void kickMember(
+            Long leaderId,
+            Long targetUserId
+    ) {
+
+        CrewMember leader =
+                requireLeader(leaderId);
+
+        if (leader.getUser()
+                .getId()
+                .equals(targetUserId)) {
+
+            throw new BusinessException(
+                    "크루장은 자기 자신을 강퇴할 수 없습니다."
+            );
+        }
+
+        Long crewId =
+                leader.getCrew().getId();
+
+        CrewMember target =
+                crewMemberRepository
+                        .findByUserId(targetUserId)
+                        .filter(member ->
+                                member.getCrew()
+                                        .getId()
+                                        .equals(crewId)
+                        )
+                        .orElseThrow(() ->
+                                new BusinessException(
+                                        "크루원을 찾을 수 없습니다."
+                                )
+                        );
+
+        String targetNickname =
+                target.getUser().getNickname();
+
+        crewBattleContributionService
+                .handleMemberDeparture(
+                        crewId,
+                        targetUserId
+                );
+
+        crewMemberRepository
+                .deleteByCrewIdAndUserId(
+                        crewId,
+                        targetUserId
+                );
+
+        messagingTemplate.convertAndSend(
+                "/topic/crews/"
+                        + crewId
+                        + "/members",
+
+                new CrewMemberEventDto(
+                        "KICKED",
+                        crewId,
+                        targetUserId,
+                        targetNickname
+                )
+        );
+    }
+
+    /**
+     * 현재 사용자가 크루에서 탈퇴합니다.
+     *
+     * 일반 크루원은 바로 탈퇴할 수 있습니다.
+     *
+     * 크루장은 다른 크루원이 있으면 탈퇴할 수 없으며,
+     * 먼저 크루장 권한을 양도해야 합니다.
+     *
+     * 크루장 혼자 남은 상태에서 탈퇴하면
+     * 크루가 자동으로 해체됩니다.
+     */
     @Transactional
     public void leave(Long userId) {
-        CrewMember me = crewMemberRepository.findByUserId(userId)
-                .orElseThrow(() -> new BusinessException("소속된 크루가 없습니다."));
-        long memberCount = crewMemberRepository.countByCrewId(me.getCrew().getId());
-        if (me.getRole() == CrewMember.Role.LEADER && memberCount > 1) {
-            throw new BusinessException("크루장은 다른 팀원이 있는 동안 탈퇴할 수 없습니다. 먼저 강퇴하거나 크루장을 위임해주세요.");
-        }
-        crewMemberRepository.delete(me);
-        if (memberCount <= 1) {
-            crewRepository.deleteById(me.getCrew().getId());
-        }
-    }
 
-    @Transactional(readOnly = true)
-    public List<CrewNoticeDto> listNotices(Long userId) {
-        CrewMember me = requireMember(userId);
-        return crewNoticeRepository.findByCrewIdOrderByCreatedAtDesc(me.getCrew().getId())
-                .stream().map(CrewNoticeDto::from).toList();
-    }
+        CrewMember member =
+                crewMemberRepository
+                        .findByUserId(userId)
+                        .orElseThrow(() ->
+                                new BusinessException(
+                                        "소속된 크루가 없습니다."
+                                )
+                        );
 
+        Crew crew =
+                member.getCrew();
+
+        /*
+         * 탈퇴 처리 중 가입 승인이나 다른 탈퇴가
+         * 동시에 실행되지 않도록 크루 행을 잠급니다.
+         */
+        entityManager.lock(
+                crew,
+                LockModeType.PESSIMISTIC_WRITE
+        );
+
+        long memberCount =
+                crewMemberRepository
+                        .countByCrewId(
+                                crew.getId()
+                        );
+
+        /*
+         * 크루장이고 다른 크루원이 있다면
+         * 권한을 먼저 양도해야 합니다.
+         */
+        if (member.isLeader()
+                && memberCount > 1) {
+
+            throw new BusinessException(
+                    "다른 크루원이 있는 크루장은 탈퇴할 수 없습니다. "
+                            + "먼저 다른 크루원에게 크루장 권한을 양도해주세요."
+            );
+        }
+
+        /*
+         * 일반 크루원은 가입 관계만 삭제합니다.
+         * 사용자 계정은 삭제하지 않습니다.
+         */
+        if (!member.isLeader()) {
+
+            crewBattleContributionService
+                    .handleMemberDeparture(
+                            crew.getId(),
+                            userId
+                    );
+
+            crewMemberRepository.delete(member);
+            return;
+        }
+
+        /*
+         * 크루장 혼자 남은 경우에는
+         * 크루원 관계와 크루를 함께 삭제합니다.
+         */
+        crewBattleContributionService
+                .deleteCrewContributions(
+                        crew.getId()
+                );
+
+        crewMemberRepository.delete(member);
+        crewRepository.delete(crew);
+    }
+    
+    /**
+     * 크루장이 크루를 직접 해체합니다.
+     *
+     * 다른 크루원이 없는 경우에만 가능합니다.
+     */
     @Transactional
-    public CrewNoticeDto addNotice(Long userId, CrewNoticeDto.Create req) {
-        CrewMember leader = requireLeader(userId);
-        CrewNotice notice = crewNoticeRepository.save(
-                CrewNotice.of(leader.getCrew(), leader.getUser(), req.title(), req.body()));
+    public void disband(Long leaderId) {
+
+        CrewMember leader =
+                requireLeader(leaderId);
+
+        Crew crew =
+                leader.getCrew();
+
+        entityManager.lock(
+                crew,
+                LockModeType.PESSIMISTIC_WRITE
+        );
+
+        long memberCount =
+                crewMemberRepository
+                        .countByCrewId(
+                                crew.getId()
+                        );
+
+        if (memberCount > 1) {
+            throw new BusinessException(
+                    "다른 크루원이 있는 상태에서는 크루를 해체할 수 없습니다."
+            );
+        }
+
+        crewBattleContributionService
+                .deleteCrewContributions(
+                        crew.getId()
+                );
+
+        crewMemberRepository.delete(leader);
+        crewRepository.delete(crew);
+    }
+
+    /**
+     * 크루 공지사항을 조회합니다.
+     */
+    @Transactional(readOnly = true)
+    public List<CrewNoticeDto> listNotices(
+            Long userId
+    ) {
+
+        CrewMember me =
+                requireMember(userId);
+
+        return crewNoticeRepository
+                .findByCrewIdOrderByCreatedAtDesc(
+                        me.getCrew().getId()
+                )
+                .stream()
+                .map(CrewNoticeDto::from)
+                .toList();
+    }
+
+    /**
+     * 크루 공지사항을 등록합니다.
+     */
+    @Transactional
+    public CrewNoticeDto addNotice(
+            Long userId,
+            CrewNoticeDto.Create request
+    ) {
+
+        CrewMember leader =
+                requireLeader(userId);
+
+        CrewNotice notice =
+                crewNoticeRepository.save(
+                        CrewNotice.of(
+                                leader.getCrew(),
+                                leader.getUser(),
+                                request.title(),
+                                request.body()
+                        )
+                );
+
         return CrewNoticeDto.from(notice);
     }
 
+    /**
+     * 최근 크루 채팅 50개를 조회합니다.
+     */
     @Transactional(readOnly = true)
-    public List<CrewChatMessageDto> recentChat(Long userId) {
-        CrewMember me = requireMember(userId);
-        List<CrewChatMessage> messages = new ArrayList<>(
-                crewChatMessageRepository.findTop50ByCrewIdOrderBySentAtDesc(me.getCrew().getId()));
+    public List<CrewChatMessageDto> recentChat(
+            Long userId
+    ) {
+
+        CrewMember me =
+                requireMember(userId);
+
+        List<CrewChatMessage> messages =
+                new ArrayList<>(
+                        crewChatMessageRepository
+                                .findTop50ByCrewIdOrderBySentAtDesc(
+                                        me.getCrew().getId()
+                                )
+                );
+
         Collections.reverse(messages);
-        return messages.stream().map(CrewChatMessageDto::from).toList();
+
+        return messages.stream()
+                .map(CrewChatMessageDto::from)
+                .toList();
     }
 
+    /**
+     * 크루 채팅 메시지를 저장합니다.
+     */
     @Transactional
-    public CrewChatMessageDto sendChat(Long userId, Long crewId, String text) {
-        CrewMember me = crewMemberRepository.findByUserId(userId)
-                .filter(cm -> cm.getCrew().getId().equals(crewId))
-                .orElseThrow(() -> new BusinessException("해당 크루의 멤버가 아닙니다."));
-        CrewChatMessage saved = crewChatMessageRepository.save(CrewChatMessage.of(me.getCrew(), me.getUser(), text));
+    public CrewChatMessageDto sendChat(
+            Long userId,
+            Long crewId,
+            String text
+    ) {
+
+        CrewMember me =
+                crewMemberRepository
+                        .findByUserId(userId)
+                        .filter(member ->
+                                member.getCrew()
+                                        .getId()
+                                        .equals(crewId)
+                        )
+                        .orElseThrow(() ->
+                                new BusinessException(
+                                        "해당 크루의 멤버가 아닙니다."
+                                )
+                        );
+
+        CrewChatMessage saved =
+                crewChatMessageRepository.save(
+                        CrewChatMessage.of(
+                                me.getCrew(),
+                                me.getUser(),
+                                text
+                        )
+                );
+
         return CrewChatMessageDto.from(saved);
     }
 
+    /**
+     * 크루 상세 응답을 만듭니다.
+     */
     private CrewResponse toResponse(Crew crew) {
-        List<CrewMemberResponse> members = crewMemberRepository.findByCrewIdOrderByRoleAscJoinedAtAsc(crew.getId())
-                .stream().map(CrewMemberResponse::from).toList();
-        List<Long> memberIds = members.stream().map(CrewMemberResponse::userId).toList();
-        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
-        long current = memberIds.isEmpty() ? 0 : exerciseRecordRepository.sumRepsByUserIdsAndExerciseTypeAndPeriod(
-                memberIds, crew.getGroupMissionExercise(), startOfDay, startOfDay.plusDays(1));
-        return CrewResponse.of(crew, (int) current, members);
+
+        List<CrewMemberResponse> members =
+                crewMemberRepository
+                        .findByCrewIdOrderByRoleAscJoinedAtAsc(
+                                crew.getId()
+                        )
+                        .stream()
+                        .map(CrewMemberResponse::from)
+                        .toList();
+
+        List<Long> memberIds =
+                members.stream()
+                        .map(CrewMemberResponse::userId)
+                        .toList();
+
+        LocalDateTime startOfDay =
+                LocalDate.now().atStartOfDay();
+
+        long current =
+                memberIds.isEmpty()
+                        ? 0
+                        : exerciseRecordRepository
+                                .sumRepsByUserIdsAndExerciseTypeAndPeriod(
+                                        memberIds,
+                                        crew.getGroupMissionExercise(),
+                                        startOfDay,
+                                        startOfDay.plusDays(1)
+                                );
+
+        return CrewResponse.of(
+                crew,
+                (int) current,
+                members
+        );
     }
 
+    /**
+     * 크루를 조회합니다.
+     */
     private Crew getCrewOrThrow(Long crewId) {
-        return crewRepository.findById(crewId).orElseThrow(() -> new BusinessException("크루를 찾을 수 없습니다."));
+
+        return crewRepository
+                .findById(crewId)
+                .orElseThrow(() ->
+                        new BusinessException(
+                                "크루를 찾을 수 없습니다."
+                        )
+                );
     }
 
+    /**
+     * 현재 사용자가 크루원인지 확인합니다.
+     */
     private CrewMember requireMember(Long userId) {
-        return crewMemberRepository.findByUserId(userId)
-                .orElseThrow(() -> new BusinessException("소속된 크루가 없습니다."));
+
+        return crewMemberRepository
+                .findByUserId(userId)
+                .orElseThrow(() ->
+                        new BusinessException(
+                                "소속된 크루가 없습니다."
+                        )
+                );
     }
 
+    /**
+     * 현재 사용자가 크루장인지 확인합니다.
+     */
     private CrewMember requireLeader(Long userId) {
-        CrewMember member = requireMember(userId);
-        if (member.getRole() != CrewMember.Role.LEADER) {
-            throw new BusinessException("크루장만 가능한 작업입니다.");
+
+        CrewMember member =
+                requireMember(userId);
+
+        if (member.getRole()
+                != CrewMember.Role.LEADER) {
+
+            throw new BusinessException(
+                    "크루장만 가능한 작업입니다."
+            );
         }
+
         return member;
     }
 }

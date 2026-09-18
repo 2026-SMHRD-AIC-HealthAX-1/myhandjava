@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: 8086
 
 spring:
   application:
@@ -22,7 +22,7 @@ app:
     access-token-minutes: 60
     refresh-token-days: 14
   cors:
-        allowed-origins: ${CORS_ORIGINS:http://localhost:5500,http://127.0.0.1:5500,https://m8zvvvvx-5500.jpe1.devtunnels.ms}
+        allowed-origins: ${CORS_ORIGINS:http://localhost:5500,http://127.0.0.1:5500,https://lbmp3mgt-5500.jpe1.devtunnels.ms}
   oauth:
     kakao:
       rest-api-key: ${KAKAO_REST_API_KEY:}

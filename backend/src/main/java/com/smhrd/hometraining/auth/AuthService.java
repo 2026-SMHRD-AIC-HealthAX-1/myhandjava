@@ -1,9 +1,11 @@
 package com.smhrd.hometraining.auth;
 
 import com.smhrd.hometraining.auth.dto.*;
+
 import com.smhrd.hometraining.common.exception.BusinessException;
 import com.smhrd.hometraining.security.JwtTokenProvider;
 import com.smhrd.hometraining.user.entity.User;
+import com.smhrd.hometraining.user.entity.UserResourceHistory.Reason;
 import com.smhrd.hometraining.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,6 +21,13 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import com.smhrd.hometraining.user.UserService;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
+
+import java.time.LocalDate;
+import java.time.ZoneId;
 
 import java.security.SecureRandom;
 
@@ -27,11 +36,19 @@ import java.security.SecureRandom;
 public class AuthService {
 
     private static final String TEMP_PW_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+    private static final ZoneId KOREA_ZONE_ID =
+            ZoneId.of("Asia/Seoul");
+
+    private static final long BASIC_ATTENDANCE_POINTS = 5L;
+    private static final long CONSECUTIVE_BONUS_POINTS = 10L;
+    private static final int BONUS_STREAK_START_DAY = 3;
     private final SecureRandom random = new SecureRandom();
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final UserService userService;
+    private final EntityManager entityManager;
 
     private final ObjectMapper objectMapper;
 
@@ -205,19 +222,84 @@ public class AuthService {
     }
 
     private void applyDailyAttendance(User user) {
-        var today = java.time.LocalDate.now();
-        if (today.equals(user.getLastAttendanceDate()))
+
+        /*
+         * 같은 계정으로 로그인 요청이 동시에 들어와도
+         * 출석 포인트가 중복 지급되지 않도록 잠급니다.
+         */
+        entityManager.lock(
+                user,
+                LockModeType.PESSIMISTIC_WRITE
+        );
+
+        LocalDate today =
+                LocalDate.now(KOREA_ZONE_ID);
+
+        /*
+         * 오늘 이미 출석했다면
+         * 출석 일수와 포인트를 변경하지 않습니다.
+         */
+        if (today.equals(
+                user.getLastAttendanceDate()
+        )) {
             return;
-        boolean consecutive = user.getLastAttendanceDate() != null
-                && user.getLastAttendanceDate().plusDays(1).equals(today);
-        user.setStreak(consecutive ? user.getStreak() + 1 : 1);
+        }
+
+        boolean consecutive =
+                user.getLastAttendanceDate() != null
+                        && user.getLastAttendanceDate()
+                                .plusDays(1)
+                                .equals(today);
+
+        int newStreak =
+                consecutive
+                        ? user.getStreak() + 1
+                        : 1;
+
+        long attendancePoints =
+                BASIC_ATTENDANCE_POINTS;
+
+        /*
+         * 3일 이상 연속 출석하면
+         * 기본 5포인트에 추가 10포인트를 지급합니다.
+         */
+        if (newStreak >= BONUS_STREAK_START_DAY) {
+            attendancePoints +=
+                    CONSECUTIVE_BONUS_POINTS;
+        }
+
+        user.setStreak(newStreak);
         user.setStreakRewardClaimed(false);
         user.setLastAttendanceDate(today);
+
+        userService.grantRewards(
+                user,
+                0,
+                attendancePoints,
+                Reason.ATTENDANCE,
+                today
+        );
     }
 
     private LoginResponse issueToken(User user) {
-        String token = jwtTokenProvider.createAccessToken(user.getId(), user.getLoginId());
-        return new LoginResponse(token, user.getId(), user.getNickname());
+
+        String token = jwtTokenProvider.createAccessToken(
+                user.getId(),
+                user.getLoginId()
+        );
+
+        String gender =
+                user.getGender() == User.Gender.FEMALE
+                        ? "female"
+                        : "male";
+
+        return new LoginResponse(
+                token,
+                user.getId(),
+                user.getNickname(),
+                gender,
+                user.getAvatarIndex()
+        );
     }
 
     private String maskLoginId(String loginId) {
