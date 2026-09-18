@@ -1,0 +1,573 @@
+// calibration.js — 스마트폰 카메라 체형 캘리브레이션(MediaPipe Pose). 회원가입 중, 또는 운동 시작 전 필요 시 모달로 열립니다.
+
+const CAL_REQUIRED_HOLD_MS = 2000;
+const CAL_RING_CIRC = 226; // 2π·36 — exercise.js의 cam-ready-overlay 원형 게이지와 반지름을 맞췄다
+function setCalRingPct(pct){
+  const el=document.getElementById('cal-hold-ring');
+  if(el) el.style.strokeDashoffset = CAL_RING_CIRC*(1-Math.max(0,Math.min(1,pct)));
+}
+const CAL_VIS_THRESHOLD = 0.55;
+const CAL_DIST_MIN = 0.45;
+const CAL_DIST_MAX = 0.85;
+const CAL_CENTER_TOL = 0.16;
+const CAL_KEYPOINT_IDX = {
+  nose:0, lsh:11, rsh:12, lelbow:13, relbow:14, lwrist:15, rwrist:16,
+  lhip:23, rhip:24, lknee:25, rknee:26, lank:27, rank:28,
+};
+const CAL_CONNECTIONS = [
+  [11,12],[11,13],[13,15],[12,14],[14,16],
+  [11,23],[12,24],[23,24],
+  [23,25],[25,27],[27,29],[27,31],
+  [24,26],[26,28],[28,30],[28,32],
+];
+
+let calMediaPipeMod = null;   // 동적 import로 로드한 MediaPipe 모듈 (한 번만 로드)
+let calPoseLandmarker = null; // PoseLandmarker 인스턴스
+let calVideoStream = null;    // getUserMedia 스트림
+let calRunning = false;       // 캘리브레이션 루프 실행 여부
+let calRAF = null;            // requestAnimationFrame id
+let calLastVideoTime = -1;
+let calHoldStart = null;      // 정렬 유지 시작 시각
+let calFrameCount = 0, calFpsTs = 0;
+
+function openCalibrationModal(){
+  state.signup.calModalOpen = true;
+  state.signup.calStage = state.signup.calProfile ? 'done' : 'idle';
+  state.signup.calError = '';
+  render();
+}
+function closeCalibrationModal(){
+  calStopCamera();
+  state.signup.calModalOpen = false;
+  render();
+}
+function calRetake(){
+  state.signup.calProfile = null;
+  state.signup.calStage = 'idle';
+  state.signup.calError = '';
+  render();
+}
+// 서버 저장 실패를 조용히 넘기면(과거엔 catch에서 console.error만 찍었음) 화면엔 "저장됐다"고
+// 뜨는데 실제로는 DB에 안 남아서, 다음 로그인 때마다 다시 캘리브레이션을 하라고 뜨는 원인이 됐었다
+// (2026-09-10, calibration_profiles 컬럼이 tinytext라 항상 저장 실패 → LONGTEXT로 수정하며 발견).
+// 재발 방지 차원에서 실패 시 반드시 에러 토스트로 알리도록 함. 반환값(성공 여부)으로 호출부가
+// 필요하면 추가 분기를 할 수 있게 한다.
+async function saveCalibrationToServer(){
+  if(!state.token || !state.signup.calProfile) return false;
+  try{
+    const res = await fetch(`${API_BASE}/api/users/me/calibration`, {
+      method:'PUT',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization': 'Bearer ' + state.token,
+      },
+      body: JSON.stringify({ profileJson: JSON.stringify(state.signup.calProfile) })
+    });
+    const body = await res.json();
+    if(!body.success){
+      console.error('캘리브레이션 저장 실패', body.message);
+      toast('체형 보정 저장에 실패했습니다. 다시 시도해주세요.');
+      return false;
+    }
+    return true;
+  }catch(err){
+    console.error('캘리브레이션 저장 실패', err);
+    toast('체형 보정을 서버에 저장하지 못했습니다 (네트워크 확인)');
+    return false;
+  }
+}
+
+
+function calApply(){
+  state.signup.calibrated = true;
+  state.signup.calModalOpen = false;
+  toast('체형 보정이 저장되었습니다');
+  // 이미 앱 화면(screen==='app')에 들어와 있는 상태 — 실제 로그인 사용자든 게스트든 — 라면
+  // 여기서 바로 보정값을 반영해서, 곧장 튜토리얼로 넘어가게 한다.
+  if(state.screen==='app'){
+    state.user.calibration = state.signup.calProfile;
+    state.user.calibrated = true;
+    saveCalibrationToServer();
+    if(state.menu==='exercise' && state.exercise.step===0 && state.exercise.picked){
+      goExStep(1);
+      return;
+    }
+  }
+  render();
+}
+
+function calClamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+
+// 키/몸무게 입력값 → BMI. 가이드 실루엣 보정 및 저장되는 bodyInfo에 함께 쓰인다.
+// 성별은 캘리브레이션 화면의 남성/여성 토글(setCalGender)에서 선택한 값을 그대로 담아,
+// 이후 캐릭터 생성 시 남성/여성 캐릭터를 구분하는 기준으로 재사용한다.
+function calGetBodyInfo(){
+  const hEl = document.getElementById('cal-height-input');
+  const wEl = document.getElementById('cal-weight-input');
+  const heightCm = hEl ? (parseFloat(hEl.value) || null) : null;
+  const weightKg = wEl ? (parseFloat(wEl.value) || null) : null;
+  const bmi = heightCm && weightKg ? weightKg / ((heightCm/100) ** 2) : null;
+  return { heightCm, weightKg, bmi: bmi ? +bmi.toFixed(1) : null, gender: state.signup.gender || 'male' };
+}
+// 성별 토글은 캘리브레이션 촬영이 진행 중일 수 있어 render()로 화면 전체를 다시 그리지 않고,
+// 버튼 두 개의 active 클래스만 직접 바꾼다 (render()를 부르면 video 엘리먼트가 새로 만들어져
+// 이미 연결된 카메라 스트림이 끊긴다).
+function setCalGender(g){
+  state.signup.gender=g;
+  document.querySelectorAll('.cal-gender-tab').forEach(el=>{
+    el.classList.toggle('active', el.dataset.gender===g);
+  });
+}
+function calBmiCategory(bmi){
+  if(bmi==null) return '';
+  if(bmi<18.5) return '저체중';
+  if(bmi<23) return '표준';
+  if(bmi<25) return '과체중';
+  return '비만';
+}
+function calUpdateBmiLabel(){
+  const lbl=document.getElementById('cal-bmi-label');
+  const {heightCm,weightKg,bmi}=calGetBodyInfo();
+  const ready=!!(heightCm && weightKg);
+  const startBtn=document.getElementById('cal-start-btn');
+  if(startBtn){
+    startBtn.disabled=!ready;
+    startBtn.style.opacity=ready?'1':'.4';
+    startBtn.style.cursor=ready?'pointer':'not-allowed';
+  }
+  const startHint=document.getElementById('cal-start-hint');
+  if(startHint) startHint.style.display=ready?'none':'block';
+  if(!lbl) return;
+  if(!ready){ lbl.textContent='체형 정보를 입력하면 가이드 실루엣이 내 체형에 맞게 조정돼요.'; return; }
+  lbl.textContent = `BMI ${bmi.toFixed(1)} · ${calBmiCategory(bmi)} 기준으로 실루엣을 보정했어요.`;
+}
+// BMI가 높을수록 실루엣 폭을 넓게, 키가 클수록 하체 비중을 늘려 힙 위치를 살짝 올려준다.
+// (회원가입 캘리브레이션 화면·운동 촬영 고스트 양쪽에서 재사용하도록 DOM 의존 없이 값만 받는다.)
+function bodyShapeFactorsFromBmi(bmi, heightCm){
+  const widthFactor = bmi ? calClamp(0.85 + (bmi-21)*0.012, 0.82, 1.25) : 1;
+  const legShift = heightCm ? calClamp((heightCm-165)*0.0006, -0.03, 0.03) : 0;
+  return { widthFactor, legShift };
+}
+function calGetBodyShapeFactors(){
+  const {heightCm,bmi}=calGetBodyInfo();
+  return bodyShapeFactorsFromBmi(bmi, heightCm);
+}
+
+async function loadMediaPipe(){
+  if(calMediaPipeMod) return calMediaPipeMod;
+  calMediaPipeMod = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14');
+  return calMediaPipeMod;
+}
+
+async function calStartCamera(){
+  const btn=document.getElementById('cal-start-btn');
+  if(btn){ btn.disabled=true; btn.textContent='준비 중...'; }
+  state.signup.calError='';
+  try{
+    const {PoseLandmarker, FilesetResolver} = await loadMediaPipe();
+    const vision = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm');
+    calPoseLandmarker = await PoseLandmarker.createFromOptions(vision, {
+      baseOptions:{
+        modelAssetPath:'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',
+        delegate:'GPU',
+      },
+      runningMode:'VIDEO', numPoses:1,
+    });
+    const stream = await navigator.mediaDevices.getUserMedia({video:{width:960,height:720,facingMode:'user'}, audio:false});
+    calVideoStream = stream;
+    const video=document.getElementById('cal-video');
+    video.srcObject=stream;
+    await new Promise(res=>{ video.onloadedmetadata=res; });
+    video.play();
+    const canvas=document.getElementById('cal-canvas');
+    canvas.width=video.videoWidth;
+    canvas.height=video.videoHeight;
+    calRunning=true;
+    calHoldStart=null;
+    state.signup.calStage='running';
+    if(btn) btn.style.display='none';
+    calLoop();
+  }catch(err){
+    console.error(err);
+    state.signup.calError = '카메라를 시작할 수 없습니다: '+err.message+' (권한 허용 여부, https 또는 localhost 환경인지 확인해주세요)';
+    state.signup.calStage='error';
+    render();
+  }
+}
+
+function calStopCamera(){
+  calRunning=false;
+  if(calRAF) cancelAnimationFrame(calRAF);
+  calRAF=null;
+  if(calVideoStream){ calVideoStream.getTracks().forEach(t=>t.stop()); calVideoStream=null; }
+}
+
+function calSetCheck(id, ok){
+  const el=document.getElementById(id);
+  if(!el) return;
+  el.classList.toggle('ok', ok===true);
+  el.classList.toggle('bad', ok===false);
+}
+
+function calEvaluate(landmarks){
+  const idx={nose:0,lsh:11,rsh:12,lhip:23,rhip:24,lank:27,rank:28};
+  const need=[idx.nose,idx.lsh,idx.rsh,idx.lhip,idx.rhip,idx.lank,idx.rank];
+  const bodyOk = need.every(i=>landmarks[i] && (landmarks[i].visibility ?? 1) >= CAL_VIS_THRESHOLD);
+  let distOk=false, centerOk=false, bodyHeightRatio=null;
+  if(bodyOk){
+    const topY=landmarks[idx.nose].y;
+    const botY=(landmarks[idx.lank].y+landmarks[idx.rank].y)/2;
+    bodyHeightRatio=botY-topY;
+    distOk = bodyHeightRatio>=CAL_DIST_MIN && bodyHeightRatio<=CAL_DIST_MAX;
+    const hipCenterX=(landmarks[idx.lhip].x+landmarks[idx.rhip].x)/2;
+    centerOk = Math.abs(hipCenterX-0.5) <= CAL_CENTER_TOL;
+  }
+  return { bodyOk, distOk, centerOk, all: bodyOk&&distOk&&centerOk, bodyHeightRatio };
+}
+
+// 키·몸무게(BMI) 입력값에 맞춰 크기·비율을 잡은 뒤, 얇은 점선 뼈대가 아니라 두꺼운 흰색
+// 캡슐+원으로 채운 실루엣을 그린다(운동 촬영 화면의 고스트와 같은 스타일). 정렬이 되면 흰색은
+// 그대로 두고 테두리 색만 파랗게 바꿔서 "채워진 흰색"이라는 느낌은 유지한다.
+function calDrawGuideSilhouette(ctx, w, h, aligned){
+  const totalH = ((CAL_DIST_MIN+CAL_DIST_MAX)/2) * h;
+  const topY = 0.32*h; // 발끝이 화면 아래쪽에 거의 닿도록 실루엣 전체를 아래로 내림 (크기는 그대로, 위치만 이동)
+  const cx = 0.5*w;
+  const {widthFactor, legShift} = calGetBodyShapeFactors();
+
+  const headR = totalH*0.085*widthFactor;
+  const headCY = topY+headR;
+  const shoulderY = topY+totalH*0.20;
+  const hipY = topY+totalH*(0.52-legShift);
+  const kneeY = topY+totalH*(0.76-legShift*0.6);
+  const footY = topY+totalH;
+  const handY = shoulderY+totalH*0.30;
+
+  const shoulderHalfW = totalH*0.16*widthFactor;
+  const hipHalfW = totalH*0.11*widthFactor;
+  const handHalfW = totalH*0.30;
+  const kneeHalfW = totalH*0.09*widthFactor;
+  const footHalfW = totalH*0.11*widthFactor;
+  const limbWidth = Math.max(10, totalH*0.05*widthFactor);
+
+  ctx.save();
+  ctx.globalAlpha = aligned ? 0.85 : 0.6;
+  ctx.fillStyle = '#FFFFFF';
+  ctx.strokeStyle = aligned ? '#6FBBEE' : '#FFFFFF';
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  // 사용자 옷 색·배경 밝기와 상관없이 실루엣이 잘 보이도록 어두운 그림자를 깔아 대비를 높인다.
+  ctx.shadowColor = 'rgba(0,0,0,0.75)';
+  ctx.shadowBlur = 7;
+
+  ctx.lineWidth = limbWidth;
+  [-1,1].forEach(side=>{ // 팔: 어깨→손 곡선을 두꺼운 캡슐로
+    ctx.beginPath();
+    ctx.moveTo(cx+side*shoulderHalfW, shoulderY);
+    ctx.quadraticCurveTo(cx+side*handHalfW*0.9, (shoulderY+handY)/2, cx+side*handHalfW, handY);
+    ctx.stroke();
+  });
+  [-1,1].forEach(side=>{ // 다리: 엉덩이→무릎→발
+    ctx.beginPath();
+    ctx.moveTo(cx+side*hipHalfW*0.7, hipY);
+    ctx.lineTo(cx+side*kneeHalfW, kneeY);
+    ctx.lineTo(cx+side*footHalfW, footY);
+    ctx.stroke();
+  });
+
+  ctx.beginPath(); // 몸통: 채운 사각형
+  ctx.moveTo(cx-shoulderHalfW, shoulderY);
+  ctx.lineTo(cx-hipHalfW, hipY);
+  ctx.lineTo(cx+hipHalfW, hipY);
+  ctx.lineTo(cx+shoulderHalfW, shoulderY);
+  ctx.closePath(); ctx.fill();
+
+  const jointR = limbWidth*0.5; // 관절 이음매를 원으로 채워 캡슐 연결부를 매끄럽게
+  [[cx-shoulderHalfW,shoulderY],[cx+shoulderHalfW,shoulderY],
+   [cx-hipHalfW*0.7,hipY],[cx+hipHalfW*0.7,hipY],
+   [cx-kneeHalfW,kneeY],[cx+kneeHalfW,kneeY],
+   [cx-footHalfW,footY],[cx+footHalfW,footY],
+   [cx-handHalfW,handY],[cx+handHalfW,handY]].forEach(([x,y])=>{
+    ctx.beginPath(); ctx.arc(x,y,jointR,0,Math.PI*2); ctx.fill();
+  });
+
+  ctx.beginPath(); ctx.arc(cx, headCY, headR, 0, Math.PI*2); ctx.fill(); // 머리
+
+  ctx.globalAlpha=1;
+  ctx.fillStyle = aligned ? '#6FBBEE' : '#FFFFFF';
+  ctx.font = `700 ${Math.max(12, w*0.018)}px 'Pretendard', 'Malgun Gothic', sans-serif`;
+  ctx.textAlign='center';
+  // 캔버스가 CSS로 좌우 반전(셀카뷰)되어 있어 텍스트만 한 번 더 반전시켜 상쇄한다.
+  ctx.translate(w,0);
+  ctx.scale(-1,1);
+  ctx.fillText(aligned ? '정렬 완료' : '이 실루엣 안에 맞춰 서주세요', cx, Math.max(18, topY-10));
+  ctx.restore();
+}
+
+function calDraw(landmarks, checks){
+  const canvas=document.getElementById('cal-canvas');
+  if(!canvas) return;
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  calDrawGuideSilhouette(ctx, canvas.width, canvas.height, !!(checks && checks.all));
+  if(!landmarks) return;
+  const w=canvas.width, h=canvas.height;
+  ctx.lineWidth=3;
+  ctx.strokeStyle = checks.all ? '#6FBBEE' : '#FF8A5E';
+  CAL_CONNECTIONS.forEach(([a,b])=>{
+    const pa=landmarks[a], pb=landmarks[b];
+    if(!pa||!pb) return;
+    ctx.beginPath(); ctx.moveTo(pa.x*w, pa.y*h); ctx.lineTo(pb.x*w, pb.y*h); ctx.stroke();
+  });
+  ctx.fillStyle = checks.all ? '#6FBBEE' : '#FF8A5E';
+  landmarks.forEach(p=>{
+    if(p.visibility!==undefined && p.visibility<CAL_VIS_THRESHOLD) return;
+    ctx.beginPath(); ctx.arc(p.x*w, p.y*h, 4, 0, Math.PI*2); ctx.fill();
+  });
+}
+
+function calSnapshotDataUrl(){
+  const video=document.getElementById('cal-video');
+  const snap=document.createElement('canvas');
+  snap.width=video.videoWidth; snap.height=video.videoHeight;
+  snap.getContext('2d').drawImage(video,0,0,snap.width,snap.height);
+  return snap.toDataURL('image/jpeg',0.7);
+}
+function calComputeMetrics(pts){
+  const shoulderWidth=Math.hypot(pts.lsh.x-pts.rsh.x, pts.lsh.y-pts.rsh.y);
+  const hipWidth=Math.hypot(pts.lhip.x-pts.rhip.x, pts.lhip.y-pts.rhip.y);
+  const torsoLen=Math.hypot(
+    (pts.lsh.x+pts.rsh.x)/2-(pts.lhip.x+pts.rhip.x)/2,
+    (pts.lsh.y+pts.rsh.y)/2-(pts.lhip.y+pts.rhip.y)/2
+  );
+  const bodyHeight=((pts.lank.y+pts.rank.y)/2)-pts.nose.y;
+  return {
+    shoulderWidth:+shoulderWidth.toFixed(4), hipWidth:+hipWidth.toFixed(4),
+    torsoLength:+torsoLen.toFixed(4), bodyHeightRatio:+bodyHeight.toFixed(4),
+  };
+}
+function calComputeProfile(landmarks){
+  const canvas=document.getElementById('cal-canvas');
+  const pts={};
+  for(const [key,idx] of Object.entries(CAL_KEYPOINT_IDX)){
+    pts[key]={x:+landmarks[idx].x.toFixed(4), y:+landmarks[idx].y.toFixed(4)};
+  }
+  return {
+    createdAt:new Date().toISOString(),
+    frameWidth:canvas.width, frameHeight:canvas.height,
+    bodyInfo:calGetBodyInfo(),
+    snapshot:calSnapshotDataUrl(),
+    landmarks:pts,
+    normalized:calComputeMetrics(pts),
+  };
+}
+
+function calLoop(){
+  if(!calRunning) return;
+  calRAF=requestAnimationFrame(calLoop);
+  const video=document.getElementById('cal-video');
+  if(!video || video.currentTime===calLastVideoTime) return;
+  calLastVideoTime=video.currentTime;
+
+  const ts=performance.now();
+  const res=calPoseLandmarker.detectForVideo(video, ts);
+
+  calFrameCount++;
+  if(ts-calFpsTs>1000){
+    const fpsEl=document.getElementById('cal-fps-badge');
+    if(fpsEl) fpsEl.textContent=`${calFrameCount} fps`;
+    calFrameCount=0; calFpsTs=ts;
+  }
+
+  if(!res.landmarks || res.landmarks.length===0){
+    calDraw(null, {all:false});
+    calSetCheck('cal-check-body', false);
+    calSetCheck('cal-check-dist', false);
+    calSetCheck('cal-check-center', false);
+    calHoldStart=null;
+    setCalRingPct(0);
+    const lbl=document.getElementById('cal-hold-label'); if(lbl) lbl.textContent='사람이 인식되지 않았어요';
+    return;
+  }
+
+  const landmarks=res.landmarks[0];
+  const checks=calEvaluate(landmarks);
+  calDraw(landmarks, checks);
+  calSetCheck('cal-check-body', checks.bodyOk);
+  calSetCheck('cal-check-dist', checks.bodyOk ? checks.distOk : null);
+  calSetCheck('cal-check-center', checks.bodyOk ? checks.centerOk : null);
+
+  const lbl=document.getElementById('cal-hold-label');
+  if(checks.all){
+    if(!calHoldStart){ calHoldStart=ts; speakFeedback('자세를 보정중입니다'); }
+    const elapsed=ts-calHoldStart;
+    setCalRingPct(elapsed/CAL_REQUIRED_HOLD_MS);
+    if(lbl) lbl.textContent='좋아요! 이 자세를 유지해주세요';
+    if(elapsed>=CAL_REQUIRED_HOLD_MS){
+      speakFeedback('보정이 완료되었습니다');
+      const profile=calComputeProfile(landmarks);
+      calStopCamera();
+      state.signup.calProfile=profile;
+      state.signup.calStage='done';
+      render();
+    }
+  } else {
+    calHoldStart=null;
+    setCalRingPct(0);
+    const reasons=[];
+    if(!checks.bodyOk) reasons.push('전신이 프레임에 보이지 않습니다');
+    else{
+      if(!checks.distOk) reasons.push(checks.bodyHeightRatio<CAL_DIST_MIN ? '카메라와 더 가까이 서주세요' : '카메라와 더 멀리 떨어져주세요');
+      if(!checks.centerOk) reasons.push('화면 중앙으로 이동해주세요');
+    }
+    if(lbl) lbl.textContent=reasons.join(' · ');
+  }
+}
+
+function renderCalibrationModal(){
+  const s=state.signup;
+  const stage=s.calStage||'idle';
+  return `
+  <div class="confirm-backdrop">
+    <div class="confirm-box" style="max-width:min(1080px,94vw);width:100%;">
+      <h3>카메라 캘리브레이션</h3>
+      ${stage==='done' ? renderCalDone(s) : renderCalLive(s)}
+    </div>
+  </div>`;
+}
+
+function renderCalLive(s){
+  return `
+  <div class="grid cal-grid">
+    <div>
+      <div class="cam-stage" style="aspect-ratio:3/4;max-height:70vh;">
+        <video id="cal-video" autoplay playsinline muted style="transform:scaleX(-1);width:100%;height:100%;object-fit:cover;"></video>
+        <canvas class="cam-overlay-canvas" id="cal-canvas" style="transform:scaleX(-1);"></canvas>
+        <div class="cam-badge"><span class="rec-dot"></span><span id="cal-fps-badge">대기중</span></div>
+        <div class="cam-ready-overlay show">
+          <div class="ready-ring">
+            <svg viewBox="0 0 84 84" width="84" height="84">
+              <circle class="ring-track" cx="42" cy="42" r="36"/>
+              <circle class="ring-fill" id="cal-hold-ring" cx="42" cy="42" r="36"/>
+            </svg>
+          </div>
+          <div class="msg" id="cal-hold-label">보정 유지 시간</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <p class="cal-start-instruction">전신(머리~발목)이 화면에 들어오도록 서서, 화면의 점선 실루엣에 맞춰 2초간 자세를 유지하면 자동으로 체형이 저장됩니다.</p>
+      <button class="btn btn-primary btn-block" id="cal-start-btn" style="margin-top:14px;" onclick="calStartCamera()">카메라 시작</button>
+      ${s.calError ? `<p class="hint" style="color:var(--danger);margin-top:8px;">${s.calError}</p>` : ''}
+      <button class="btn btn-ghost btn-block" style="margin-top:8px;" onclick="closeCalibrationModal()">닫기</button>
+    </div>
+  </div>`;
+}
+
+/* ---------- 캘리브레이션 완료 후 관절 포인트 직접 편집 (calibrationeditor.html 로직을 모달 내로 이식) ---------- */
+// (FR-AC-003) 이 구간(calSetupEditCanvas ~ calEditEndDrag)은 캔버스 위에서 점을 드래그해
+// 좌표만 수정하는 순수 프론트엔드 로직입니다 — 별도 백엔드 호출 없이, 위 calApply()가
+// 실행될 때 수정된 좌표까지 함께 저장 API로 넘어가면 됩니다.
+const CAL_EDIT_POINTS=[
+  {key:'nose', label:'코(머리)', color:'#6FBBEE'},
+  {key:'lsh', label:'왼쪽 어깨', color:'#F0B93A'}, {key:'rsh', label:'오른쪽 어깨', color:'#F0B93A'},
+  {key:'lelbow', label:'왼쪽 팔꿈치', color:'#C88CFF'}, {key:'relbow', label:'오른쪽 팔꿈치', color:'#C88CFF'},
+  {key:'lwrist', label:'왼쪽 손목', color:'#8CD0FF'}, {key:'rwrist', label:'오른쪽 손목', color:'#8CD0FF'},
+  {key:'lhip', label:'왼쪽 골반', color:'#FF8A5E'}, {key:'rhip', label:'오른쪽 골반', color:'#FF8A5E'},
+  {key:'lknee', label:'왼쪽 무릎', color:'#4A7CFF'}, {key:'rknee', label:'오른쪽 무릎', color:'#4A7CFF'},
+  {key:'lank', label:'왼쪽 발목', color:'#E5645A'}, {key:'rank', label:'오른쪽 발목', color:'#E5645A'},
+];
+const CAL_EDIT_BONES=[
+  ['lsh','rsh'],['lsh','lhip'],['rsh','rhip'],['lhip','rhip'],
+  ['lsh','lelbow'],['lelbow','lwrist'],['rsh','relbow'],['relbow','rwrist'],
+  ['lhip','lknee'],['lknee','lank'],['rhip','rknee'],['rknee','rank'],
+];
+let calEditImg=null, calEditImgSrc=null, calEditSelectedKey=null, calEditDragKey=null;
+
+function calSetupEditCanvas(){
+  const canvas=document.getElementById('cal-edit-canvas');
+  const profile=state.signup.calProfile;
+  if(!canvas || !profile) return;
+  canvas.width=profile.frameWidth||640;
+  canvas.height=profile.frameHeight||480;
+
+  if(calEditImgSrc!==profile.snapshot){
+    calEditImg=new Image();
+    calEditImgSrc=profile.snapshot;
+    calEditImg.onload=calEditRender;
+    calEditImg.src=profile.snapshot;
+  } else {
+    calEditRender();
+  }
+
+  canvas.onmousedown=calEditStartDrag;
+  canvas.onmousemove=calEditMoveDrag;
+  window.onmouseup=calEditEndDrag;
+  canvas.ontouchstart=calEditStartDrag;
+  canvas.ontouchmove=calEditMoveDrag;
+  window.ontouchend=calEditEndDrag;
+}
+function calEditRender(){
+  const canvas=document.getElementById('cal-edit-canvas');
+  const profile=state.signup.calProfile;
+  if(!canvas || !profile) return;
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  if(calEditImg && calEditImg.complete) ctx.drawImage(calEditImg,0,0,canvas.width,canvas.height);
+
+  const pts=profile.landmarks;
+  ctx.strokeStyle='rgba(111,187,238,0.75)'; ctx.lineWidth=3;
+  CAL_EDIT_BONES.forEach(([a,b])=>{
+    if(!pts[a]||!pts[b]) return;
+    ctx.beginPath();
+    ctx.moveTo(pts[a].x*canvas.width, pts[a].y*canvas.height);
+    ctx.lineTo(pts[b].x*canvas.width, pts[b].y*canvas.height);
+    ctx.stroke();
+  });
+  CAL_EDIT_POINTS.forEach(({key,color})=>{
+    const p=pts[key]; if(!p) return;
+    const isSel=key===calEditSelectedKey;
+    ctx.beginPath();
+    ctx.arc(p.x*canvas.width, p.y*canvas.height, isSel?10:7, 0, Math.PI*2);
+    ctx.fillStyle=color; ctx.fill();
+    if(isSel){ ctx.lineWidth=2; ctx.strokeStyle='#fff'; ctx.stroke(); }
+  });
+}
+function calEditCanvasPos(evt){
+  const canvas=document.getElementById('cal-edit-canvas');
+  const rect=canvas.getBoundingClientRect();
+  const scaleX=canvas.width/rect.width, scaleY=canvas.height/rect.height;
+  const clientX=evt.touches?evt.touches[0].clientX:evt.clientX;
+  const clientY=evt.touches?evt.touches[0].clientY:evt.clientY;
+  return { x:(clientX-rect.left)*scaleX, y:(clientY-rect.top)*scaleY };
+}
+function calEditHitTest(mx,my){
+  const canvas=document.getElementById('cal-edit-canvas');
+  const pts=state.signup.calProfile.landmarks;
+  let best=null, bestDist=18;
+  CAL_EDIT_POINTS.forEach(({key})=>{
+    const p=pts[key]; if(!p) return;
+    const d=Math.hypot(p.x*canvas.width-mx, p.y*canvas.height-my);
+    if(d<bestDist){ bestDist=d; best=key; }
+  });
+  return best;
+}
+function calEditStartDrag(evt){
+  const {x,y}=calEditCanvasPos(evt);
+  const hit=calEditHitTest(x,y);
+  if(hit){ calEditDragKey=hit; calEditSelectedKey=hit; calEditRender(); evt.preventDefault(); }
+}
+function calEditMoveDrag(evt){
+  if(!calEditDragKey) return;
+  const canvas=document.getElementById('cal-edit-canvas');
+  const {x,y}=calEditCanvasPos(evt);
+  const nx=Math.min(1,Math.max(0,x/canvas.width));
+  const ny=Math.min(1,Math.max(0,y/canvas.height));
+  const profile=state.signup.calProfile;
+  profile.landmarks[calEditDragKey]={x:+nx.toFixed(4), y:+ny.toFixed(4)};
+  profile.normalized=calComputeMetrics(profile.landmarks);
+  calEditRender();
+  evt.preventDefault();
+}
+function calEditEndDrag(){ calEditDragKey=null; }
+
+/* ---------- 로그인 ---------- */
+// renderLogin: 입력 폼 렌더링만 담당하는 프론트엔드 로직. 실제 인증 처리는 아래 doLogin() 지점 참고.

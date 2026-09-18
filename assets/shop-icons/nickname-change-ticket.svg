@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180" viewBox="0 0 320 180">
+ <rect width="320" height="180" rx="24" fill="#fff7e8"/>
+ <path d="M61 48h198a14 14 0 0 1 14 14v18a18 18 0 0 0 0 36v18a14 14 0 0 1-14 14H61a14 14 0 0 1-14-14v-18a18 18 0 0 0 0-36V62a14 14 0 0 1 14-14z" fill="#fff" stroke="#e58a00" stroke-width="6"/>
+ <path d="M98 72h116M98 103h83" stroke="#17315f" stroke-width="10" stroke-linecap="round"/>
+ <path d="M207 115l35-35 12 12-35 35-18 6z" fill="#ff9d2e" stroke="#17315f" stroke-width="4" stroke-linejoin="round"/>
+ <text x="95" y="132" font-family="sans-serif" font-size="16" font-weight="700" fill="#e58a00">NICKNAME</text>
+</svg>

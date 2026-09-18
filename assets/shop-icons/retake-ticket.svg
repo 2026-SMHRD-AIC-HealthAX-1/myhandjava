@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180" viewBox="0 0 320 180">
+ <rect width="320" height="180" rx="24" fill="#eef5ff"/>
+ <rect x="86" y="55" width="148" height="90" rx="18" fill="#fff" stroke="#17315f" stroke-width="7"/>
+ <rect x="122" y="40" width="55" height="24" rx="8" fill="#ff9d2e"/>
+ <circle cx="160" cy="100" r="28" fill="#dbeaff" stroke="#17315f" stroke-width="7"/>
+ <path d="M207 45a42 42 0 0 1 22 31" fill="none" stroke="#ff8a00" stroke-width="9" stroke-linecap="round"/>
+ <path d="M232 59l2 23-23-5" fill="#ff8a00"/>
+ <text x="160" y="168" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="700" fill="#17315f">RETAKE</text>
+</svg>
