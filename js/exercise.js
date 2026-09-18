@@ -107,7 +107,7 @@ function pickExercise(id) { state.exercise.picked = id; render(); }
 // 게스트 모드에서 "나중에 할게요"를 누르면 게스트 상태는 유지한 채(다른 카테고리도 계속
 // 둘러볼 수 있게) 운동 위저드만 종목 선택 화면으로 되돌린다.
 function resetExerciseWizard() {
-  state.exercise = { step: 0, picked: null, camPhase: 'idle', camStream: null, timerId: null, seconds: 0, result: null, retakesUsed: 0, liveReps: [], replayOpen: false };
+  state.exercise = { step: 0, picked: null, camPhase: 'idle', camStream: null, timerId: null, seconds: 0, result: null, retakesUsed: 0, liveReps: [], replayOpen: false, sessionId: null, idempotencyKey: null };
   render();
 }
 function goExStep(n) {
@@ -255,8 +255,54 @@ function renderExStepCam() {
   </div>`;
 }
 
+// [백엔드 연동] 운동 세션 생성/시작 — 서버는 결과 저장 시 sessionId가 실제로 존재하고
+// STARTED 상태여야만 받아준다(ExerciseService.saveResult 참고). 카메라 화면에 들어오자마자
+// (아직 촬영·판정 전, 무료횟수 차감 전) 세션부터 만들어두고, 실제로 "촬영 시작"이 눌려
+// beginRecording()이 도는 시점에 /start를 호출해 그때 무료횟수·티켓이 차감되게 한다.
+async function createExerciseSession(exerciseType) {
+  if (!state.token || state.guestMode) return null;
+  try {
+    const res = await fetch(`${API_BASE}/api/exercise-sessions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.token },
+      body: JSON.stringify({ exerciseType })
+    });
+    const body = await res.json();
+    if (!body.success) { console.error('운동 세션 생성 실패', body.message); return null; }
+    return body.data.sessionId;
+  } catch (err) {
+    console.error('운동 세션 생성 실패', err);
+    return null;
+  }
+}
+async function startExerciseSession(sessionId) {
+  if (!sessionId) return false;
+  try {
+    const res = await fetch(`${API_BASE}/api/exercise-sessions/${sessionId}/start`, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + state.token }
+    });
+    const body = await res.json();
+    if (!body.success) { console.error('운동 세션 시작 실패', body.message); return false; }
+    return true;
+  } catch (err) {
+    console.error('운동 세션 시작 실패', err);
+    return false;
+  }
+}
+
 function setupCamera() {
   ensureSquatBottomSilhouette(); // 카메라 화면에 들어오자마자 실루엣 이미지를 미리 로드해둔다
+  // setupCamera()는 render()가 다시 돌 때마다 setTimeout으로 반복 호출될 수 있어서(router.js
+  // 참고), sessionId가 아직 없어도 이미 생성 요청을 보낸 상태(sessionCreating)라면 또 보내지
+  // 않도록 막는다 — 안 막으면 devtunnel처럼 왕복이 느릴 때 세션이 여러 개 만들어질 수 있다.
+  if (state.exercise.picked && !state.exercise.sessionId && !state.exercise.sessionCreating && state.token && !state.guestMode) {
+    state.exercise.sessionCreating = true;
+    createExerciseSession(state.exercise.picked.toUpperCase()).then(id => {
+      state.exercise.sessionCreating = false;
+      if (id) state.exercise.sessionId = id;
+    });
+  }
   const video = document.getElementById('cam-video');
   const placeholder = document.getElementById('cam-placeholder');
   if (!video) return;
@@ -937,6 +983,12 @@ function beginRecording() {
       state.user.setsUsedToday = state.user.freeWorkoutsUsed;
     }
     state.exercise.sessionConsumed = true;
+    // 실제 차감·기록 저장 가능 여부는 서버가 갖고 있는 세션 상태(STARTED)로 판단하므로,
+    // 여기서 /start를 호출해 서버에도 "지금부터 진짜 측정 시작"을 알려준다. 화면 흐름은
+    // 응답을 기다리지 않고 바로 진행하고(체감 딜레이 방지), 실제 카운트·잔여횟수는 저장 시점에
+    // loadMyProfile()로 다시 서버 값과 맞춘다.
+    if (state.exercise.sessionId) startExerciseSession(state.exercise.sessionId);
+    state.exercise.idempotencyKey = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
   }
   state.exercise.camPhase = 'recording';
   state.exercise.seconds = 0;
@@ -1295,7 +1347,9 @@ async function saveExerciseResult() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.token },
       body: JSON.stringify({
-        exerciseType: r.ex,
+        sessionId: state.exercise.sessionId,
+        idempotencyKey: state.exercise.idempotencyKey,
+        exerciseType: (state.exercise.picked || '').toUpperCase(),
         reps: r.total,
         accuracy: r.acc,
         score: r.score,

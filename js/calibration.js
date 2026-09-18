@@ -422,6 +422,26 @@ function calLoop(){
   }
 }
 
+function renderCalDone(s){
+  const p=s.calProfile;
+  const bi=p.bodyInfo||{};
+  return `
+  <div class="grid cal-grid">
+    <div>
+      <div class="cam-stage" style="aspect-ratio:3/4;max-height:70vh;">
+        <canvas id="cal-edit-canvas" style="width:100%;height:100%;display:block;cursor:grab;"></canvas>
+      </div>
+      <p class="hint" style="margin-top:8px;">보정 완료 · ${new Date(p.createdAt).toLocaleString()} · 점을 드래그하면 관절 위치를 바로 수정할 수 있어요.</p>
+    </div>
+    <div>
+      ${bi.bmi ? `<div class="stat-row" style="margin:0 0 12px;"><div class="stat-box"><div class="num mono">${bi.bmi}</div><div class="lbl">BMI</div></div></div>` : ''}
+      <button class="btn btn-primary btn-block" onclick="calApply()">이 보정값 적용하기</button>
+      <button class="btn btn-secondary btn-block" style="margin-top:8px;" onclick="calRetake()">다시 촬영</button>
+      <button class="btn btn-ghost btn-block" style="margin-top:8px;" onclick="closeCalibrationModal()">닫기</button>
+    </div>
+  </div>`;
+}
+
 function renderCalibrationModal(){
   const s=state.signup;
   const stage=s.calStage||'idle';

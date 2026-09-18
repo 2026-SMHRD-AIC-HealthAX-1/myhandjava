@@ -22,6 +22,7 @@ const state = {
   exercise: {step:0, picked:null, camPhase:'idle', camStream:null, timerId:null, seconds:0, result:null, retakesUsed:0, liveReps:[], replayOpen:false},
   crewBattle: null, // 5vs5 크루대전 진행 중 상태 — startCrewBattle() 참고
   crewParty: {open:false, statusOpen:false, selected:[], invites:null, incoming:[], ready:false, tickId:null, incomingTickId:null, battleSize:5}, // 크루대전 파티맺기 — openPartyInvite() 참고. invites=내가 보낸 초대(상태만 표시), incoming=내가 받은 초대(수락/거절 버튼)
+  crewConceptEditor: {open:false, selected:[]}, // 크루 메인 카드에서 바로 태그 재선택하는 팝업 — openCrewConceptEditor() 참고
   // 서버(GET /api/missions/today)에서 받아온 오늘의 미션 목록. 각 항목은 이미
   // {id, metric, label, target, current, reward, achieved, claimed}를 다 채운 상태로 온다 —
   // 진행도 계산은 백엔드(MissionService)가 담당하므로 프론트는 그대로 표시만 하면 된다.

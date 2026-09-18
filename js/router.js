@@ -13,6 +13,7 @@ function render() {
   if (state.itemPreview.open) root.innerHTML += renderItemPreviewModal();
   if (state.crewParty.open) root.innerHTML += renderPartyInviteModal();
   if (state.crewParty.statusOpen) root.innerHTML += renderPartyStatusModal();
+  if (state.crewConceptEditor.open) root.innerHTML += renderCrewConceptEditorModal();
   if (state.publicProfileModal.open) root.innerHTML += renderPublicProfileModal();
   if (state.exercise.replayOpen) root.innerHTML += renderReplayPopup();
   // 캘리브레이션 모달은 회원가입 화면뿐 아니라, 운동 탭에서 "캘리브레이션 필수" 조건에 걸려

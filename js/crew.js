@@ -35,6 +35,65 @@ function setCrewConcept(c) {
   else list.push(c);
   render();
 }
+
+/* ---------- 크루 메인 카드에서 바로 태그(컨셉) 재선택하기 (팀장 전용) ----------
+   크루원관리 탭에도 같은 기능이 있지만, 크루 메인 화면에서 바로 접근할 수 있게 버튼을
+   추가했다. 취소하면 원래 태그로 되돌아가도록 별도의 임시 선택값(state.crewConceptEditor)에서
+   고르고, 저장할 때만 실제 state.crew.concepts와 서버에 반영한다. */
+function openCrewConceptEditor() {
+  if (getMyCrewRole() !== '팀장') return;
+  state.crewConceptEditor.selected = [...state.crew.concepts];
+  state.crewConceptEditor.open = true;
+  render();
+}
+function closeCrewConceptEditor() {
+  state.crewConceptEditor.open = false;
+  render();
+}
+function toggleCrewConceptEditorPick(c) {
+  const sel = state.crewConceptEditor.selected;
+  const idx = sel.indexOf(c);
+  if (idx >= 0) sel.splice(idx, 1);
+  else if (sel.length >= CREW_CONCEPT_MAX) { toast(`태그는 최대 ${CREW_CONCEPT_MAX}개까지 선택할 수 있어요`); return; }
+  else sel.push(c);
+  render();
+}
+async function saveCrewConceptEditor() {
+  const selected = state.crewConceptEditor.selected;
+  if (!selected.length) { toast('태그를 하나 이상 선택해주세요'); return; }
+  try {
+    const res = await fetch(`${API_BASE}/api/crews/me`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.token },
+      body: JSON.stringify({ concepts: selected })
+    });
+    const body = await res.json();
+    if (!body.success) { toast(body.message || '태그 저장에 실패했습니다'); return; }
+    state.crew.concepts = normalizeCrewConcepts(body.data.concepts, selected);
+    state.crewConceptEditor.open = false;
+    toast('태그를 저장했습니다');
+    render();
+  } catch (err) {
+    toast('서버에 연결할 수 없습니다');
+  }
+}
+function renderCrewConceptEditorModal() {
+  const sel = state.crewConceptEditor.selected;
+  return `
+  <div class="confirm-backdrop" onclick="if(event.target===this) closeCrewConceptEditor()">
+    <div class="confirm-box" style="max-width:360px;">
+      <h3 style="margin:0 0 4px;">크루 태그 수정</h3>
+      <p class="hint" style="margin:0 0 12px;">최대 ${CREW_CONCEPT_MAX}개까지 고를 수 있어요. (${sel.length}/${CREW_CONCEPT_MAX})</p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        ${CREW_CONCEPTS.map(c => `<button type="button" class="btn btn-sm ${sel.includes(c) ? 'btn-primary' : 'btn-secondary'}" onclick="toggleCrewConceptEditorPick('${c}')">#${c}</button>`).join('')}
+      </div>
+      <div class="confirm-actions" style="margin-top:16px;">
+        <button class="btn btn-ghost btn-sm" onclick="closeCrewConceptEditor()">취소</button>
+        <button class="btn btn-primary btn-sm" onclick="saveCrewConceptEditor()">저장</button>
+      </div>
+    </div>
+  </div>`;
+}
 // 우리동네 크루 가입하기 목록. 검색·지역 필터·페이지네이션 데모를 위해 여러 지역에 걸쳐 구성했다.
 let JOINABLE_CREWS = []; // 서버에서 실제 크루 목록을 받아와 채우는 배열 (loadJoinableCrews 참고)
 
@@ -363,10 +422,13 @@ function renderCrewOverview() {
     <div class="card crew-level-exp-card" style="display:flex;flex-direction:column;">
       <div class="crew-level-exp-head">
         <p class="section-label">크루 레벨 · 누적 경험치</p>
-        ${(() => {
-          const region = state.crew.leaderRegion || state.crew.region || '';
-          return region ? `<span class="crew-leader-region">${region}</span>` : '';
-        })()}
+        <div style="display:flex;align-items:center;gap:8px;">
+          ${(() => {
+            const region = state.crew.leaderRegion || state.crew.region || '';
+            return region ? `<span class="crew-leader-region">${region}</span>` : '';
+          })()}
+          ${getMyCrewRole() === '팀장' ? `<button type="button" class="btn btn-sm btn-secondary" onclick="openCrewConceptEditor()">태그 수정</button>` : ''}
+        </div>
       </div>
       <div class="stat-row">
         <div class="stat-box"><div class="num mono">Lv.${state.crew.level}</div><div class="lbl">크루 레벨</div></div>
