@@ -117,6 +117,12 @@ public final class CrewBattleDto {
             CrewBattle.Status status,
             int teamSize,
 
+            /**
+             * 이 점수(teamSize * CrewBattle.TARGET_SCORE_PER_MEMBER)를 먼저 채운
+             * 크루가 있으면 제한시간 전에 대전이 종료됩니다.
+             */
+            int targetScore,
+
             Long requesterUserId,
 
             Long challengerCrewId,
@@ -209,6 +215,7 @@ public final class CrewBattleDto {
                     id,
                     status,
                     teamSize,
+                    CrewBattle.targetScoreFor(teamSize),
 
                     requesterUserId,
 
@@ -267,6 +274,7 @@ public final class CrewBattleDto {
                     id,
                     status,
                     teamSize,
+                    CrewBattle.targetScoreFor(teamSize),
 
                     null,
 

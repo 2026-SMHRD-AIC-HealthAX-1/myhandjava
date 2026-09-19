@@ -557,6 +557,14 @@ public class CrewBattleService {
                         participant.getCrew().getId()
                 );
 
+        /*
+         * 목표 점수(teamSize * TARGET_SCORE_PER_MEMBER)를 먼저 채운 크루가 있으면
+         * 제한시간 2분을 다 기다리지 않고 즉시 종료합니다.
+         */
+        if (crewScore >= CrewBattle.targetScoreFor(battle.getTeamSize())) {
+            finishBattle(battle);
+        }
+
         return new CrewBattleEventResponse(
                 battle.getId(),
                 participant.getUser().getId(),
@@ -1269,6 +1277,7 @@ public class CrewBattleService {
                 battle.getId(),
                 battle.getStatus(),
                 battle.getTeamSize(),
+                CrewBattle.targetScoreFor(battle.getTeamSize()),
 
                 battle.getRequesterUserId(),
 

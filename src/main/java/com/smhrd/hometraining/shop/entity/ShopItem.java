@@ -13,7 +13,7 @@ import lombok.Setter;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ShopItem {
 
-    public enum Category { 의상, 배경, 기타 }
+    public enum Category { 헤어, 상의, 하의, 신발, 배경, 기타 }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

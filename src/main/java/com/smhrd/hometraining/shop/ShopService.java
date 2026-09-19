@@ -165,19 +165,7 @@ public class ShopService {
                         item.getId()
                 );
             }
-            case "세트 추가권" -> {
-                int before = user.getExtraSets();
-                user.setExtraSets(before + 3);
-                recordTicketChange(
-                        user,
-                        ResourceType.EXTRA_SET,
-                        3,
-                        before,
-                        user.getExtraSets(),
-                        item.getId()
-                );
-            }
-            case "다시찍기 티켓" -> {
+            case "운동 추가권" -> {
                 int before = user.getRetakeTickets();
                 user.setRetakeTickets(before + 1);
                 recordTicketChange(

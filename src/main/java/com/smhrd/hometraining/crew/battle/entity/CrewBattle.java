@@ -36,6 +36,16 @@ public class CrewBattle {
      */
     public static final int BATTLE_DURATION_MINUTES = 2;
 
+    /**
+     * 팀원 1명당 목표 점수. 이 점수(teamSize * TARGET_SCORE_PER_MEMBER)를 먼저
+     * 채우는 크루가 있으면 2분을 다 기다리지 않고 즉시 종료됩니다.
+     */
+    public static final int TARGET_SCORE_PER_MEMBER = 20;
+
+    public static int targetScoreFor(int teamSize) {
+        return teamSize * TARGET_SCORE_PER_MEMBER;
+    }
+
     public enum Status {
         REQUESTED,
         WAITING,
