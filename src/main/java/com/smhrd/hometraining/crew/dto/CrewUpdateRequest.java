@@ -1,0 +1,11 @@
+package com.smhrd.hometraining.crew.dto;
+
+import jakarta.validation.constraints.Size;
+
+import java.util.List;
+
+/** 크루 소개/컨셉 수정. null인 필드는 그대로 둔다(UserService.updateProfile()과 같은 부분수정 패턴). */
+public record CrewUpdateRequest(
+        @Size(max = 200) String description,
+        @Size(max = 3) List<String> concepts
+) {}
