@@ -3,11 +3,10 @@
 // PC 브라우저로 테스트할 땐 로컬 백엔드를 직접 쓰는 게 devtunnel보다 훨씬 빠르다(1.3s ↔ 6.7ms
 // 왕복시간 직접 측정 비교, 2026-09-10). 폰으로 테스트할 때만 아래 devtunnel 주소로 다시 바꿔주면 됨.
 //const API_BASE = 'http://localhost:8080';
-//const API_BASE = 'http://127.0.0.1:8086';
-const API_BASE = 'https://m8zvvvvx-8086.jpe1.devtunnels.ms';
+const API_BASE = 'http://127.0.0.1:8086';
 
 const OAUTH_REDIRECT_URI =
-  'https://m8zvvvvx-5500.jpe1.devtunnels.ms/index.html';
+  'http://127.0.0.1:5500/index.html';
 
 // 새로고침하면 랜딩페이지로 돌아가던 문제 — state가 메모리에만 있고 어디에도 저장이 안 됐던
 // 게 원인이라, 로그인 토큰·마지막으로 보던 메뉴를 localStorage에 저장해두고 새로고침 시

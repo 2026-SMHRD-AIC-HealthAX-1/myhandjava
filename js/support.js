@@ -93,38 +93,90 @@ async function markTicketInProgress(ticketId){
 
 function renderSupport(){
   const s=state.support;
+  const section=s.section || 'guide';
+  return `
+  <div class="view-head"><h1>고객센터</h1></div>
+  <div class="filter-bar" style="margin-bottom:18px;">
+    <button class="btn btn-sm ${section==='guide'?'btn-primary':'btn-secondary'}" onclick="setSupportSection('guide')">서비스 안내</button>
+    <button class="btn btn-sm ${section==='faq'?'btn-primary':'btn-secondary'}" onclick="setSupportSection('faq')">F&A</button>
+    <button class="btn btn-sm ${section==='inquiry'?'btn-primary':'btn-secondary'}" onclick="setSupportSection('inquiry')">문의</button>
+  </div>
+  ${section==='guide' ? renderSupportGuide() : section==='faq' ? renderSupportFAQ() : renderSupportInquiry()}`;
+}
+
+function setSupportSection(section){
+  state.support.section=section;
+  render();
+}
+
+function renderSupportGuide(){
+  return `
+  <div class="card" style="max-width:820px;">
+    <h2 style="margin-top:0;">운동 경험치 안내</h2>
+    <p class="desc">운동 점수에 따라 경험치(EXP)가 지급됩니다.</p>
+    <div style="overflow-x:auto;margin:14px 0 18px;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr><th style="text-align:left;padding:10px;border-bottom:1px solid var(--border);">운동 점수</th><th style="text-align:left;padding:10px;border-bottom:1px solid var(--border);">획득 경험치</th></tr></thead>
+        <tbody>
+          ${[['0 ~ 249점','0 EXP'],['250 ~ 499점','50 EXP'],['500 ~ 749점','150 EXP'],['750 ~ 899점','250 EXP'],['900 ~ 1,049점','300 EXP'],['1,050 ~ 1,199점','350 EXP'],['1,200 ~ 1,349점','400 EXP'],['1,350 ~ 1,499점','450 EXP'],['1,500점','500 EXP']].map(r=>`<tr><td style="padding:9px 10px;border-bottom:1px solid var(--border);">${r[0]}</td><td style="padding:9px 10px;border-bottom:1px solid var(--border);font-weight:700;">${r[1]}</td></tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <p class="desc">높은 운동 점수를 기록할수록 더 많은 경험치를 획득할 수 있습니다.</p>
+    <p class="desc">획득한 경험치는 사용자 레벨에 누적되며, 필요한 경험치를 모두 채우면 다음 레벨로 올라갑니다.</p>
+
+    <h2 style="margin:28px 0 12px;">레벨 및 등급 안내</h2>
+    <ul class="desc" style="line-height:1.9;padding-left:22px;">
+      <li>각 등급의 레벨은 <b>Lv.1 ~ Lv.500</b>으로 구성됩니다.</li>
+      <li>현재 경험치와 다음 레벨까지 필요한 경험치는 <b>EXP 게이지</b>에서 확인할 수 있습니다.</li>
+      <li>레벨 구간에 따라 다음 레벨에 필요한 경험치가 달라집니다.</li>
+      <li>획득한 EXP는 계속 누적됩니다.</li>
+      <li>레벨업에 필요한 경험치를 초과하여 획득한 EXP는 <b>다음 레벨에 자동으로 이월됩니다.</b></li>
+      <li><b>Lv.500의 필요 EXP를 모두 채우면 다음 등급의 Lv.1로 승급합니다.</b></li>
+      <li>등급 승급 시 초과 EXP도 <b>새로운 등급의 Lv.1 경험치에 자동으로 이월됩니다.</b></li>
+      <li>현재 등급은 레벨 옆에 표시되는 <b>등급 문양과 고유 색상</b>으로 확인할 수 있습니다.</li>
+    </ul>
+    <div style="margin-top:18px;padding:14px 16px;background:var(--surface-2);border-radius:12px;">
+      <b>등급 순서</b>
+      <p class="desc" style="margin:8px 0 0;line-height:1.8;">아이언 → 브론즈 → 실버 → 골드 → 플래티넘 → 에메랄드 → 다이아몬드 → 마스터 → 그랜드마스터 → 챌린저</p>
+    </div>
+  </div>`;
+}
+
+function renderSupportFAQ(){
+  const faqs=[
+    ['Lv.1 → Lv.2에는 정확히 몇 EXP가 필요한가요?','레벨업에 필요한 EXP는 현재 레벨의 경험치 게이지에서 확인할 수 있습니다. 레벨 구간에 따라 필요한 EXP가 달라집니다.'],
+    ['레벨업에 필요한 EXP는 언제 증가하나요?','레벨업에 필요한 EXP는 10레벨 단위로 변경됩니다. 현재 레벨에 적용되는 필요 EXP는 경험치 게이지에서 확인할 수 있습니다.'],
+    ['운동을 여러 번 하면 EXP가 계속 누적되나요?','네. 운동으로 획득한 EXP는 계속 누적되며, 필요한 EXP를 모두 채우면 다음 레벨로 올라갑니다.'],
+    ['0 EXP를 받은 운동도 운동 기록이나 점수에는 남나요?','0 ~ 249점 구간에서는 EXP가 지급되지 않습니다. 운동 기록 및 누적 점수 반영 여부는 해당 운동의 기록 기준에 따라 처리됩니다.'],
+    ['1,500점이 운동 점수의 최대 점수인가요?','현재 경험치 지급 기준은 운동 점수 1,500점을 최고 구간으로 적용합니다.'],
+    ['한 번의 운동에서 받을 수 있는 최대 EXP는 500 EXP인가요?','네. 현재 경험치 지급 기준에서 운동 1회 최대 획득 경험치는 500 EXP입니다.'],
+    ['Lv.500을 달성하는 순간 다음 등급으로 승급하나요?','아니요. Lv.500에 도달한 뒤 해당 레벨의 필요 EXP까지 모두 채우면 다음 등급의 Lv.1로 승급합니다. 초과하여 획득한 EXP는 새로운 등급의 Lv.1 경험치로 자동 이월됩니다.']
+  ];
+  return `<div style="max-width:820px;">
+    <div class="card" style="margin-bottom:14px;"><h2 style="margin:0;">레벨 · 경험치 F&A</h2><p class="desc" style="margin-bottom:0;">운동 경험치와 레벨, 등급에 대해 자주 묻는 내용을 확인해보세요.</p></div>
+    ${faqs.map((f,i)=>`<details class="card" ${i===0?'open':''} style="margin-bottom:10px;"><summary style="cursor:pointer;font-weight:700;">${f[0]}</summary><p class="desc" style="margin:12px 0 0;line-height:1.7;">${f[1]}</p></details>`).join('')}
+  </div>`;
+}
+
+function renderSupportInquiry(){
+  const s=state.support;
   const isAdmin = state.user.role === 'ADMIN';
   const adminView = isAdmin && s.adminView;
   const source = adminView ? s.adminTickets : s.tickets;
   const list = s.filter==='all' ? source : source.filter(t=>t.status===s.filter);
   return `
-  <div class="view-head"><h1>고객센터</h1></div>
   <div class="flex-between" style="margin-bottom:14px;">
     <div class="filter-bar" style="margin:0;">
-      ${['all','접수','처리중','답변완료'].map(f=>`
-        <button class="btn btn-sm ${s.filter===f?'btn-primary':'btn-secondary'}" onclick="setSupportFilter('${f}')">${f==='all'?'전체':f}</button>`).join('')}
+      ${['all','접수','처리중','답변완료'].map(f=>`<button class="btn btn-sm ${s.filter===f?'btn-primary':'btn-secondary'}" onclick="setSupportFilter('${f}')">${f==='all'?'전체':f}</button>`).join('')}
     </div>
     <div style="display:flex;gap:8px;">
       ${isAdmin ? `<button class="btn btn-sm ${adminView?'btn-primary':'btn-secondary'}" onclick="toggleSupportAdminView()">${adminView?'내 문의 보기':'🛠 전체 문의 (관리자)'}</button>` : ''}
       ${!adminView ? `<button class="btn btn-primary btn-sm" onclick="${(state.guestMode && !s.composerOpen) ? "goto('login')" : 'toggleComposer()'}">${s.composerOpen?'접기':'불편사항 접수하기'}</button>` : ''}
     </div>
   </div>
-
-  ${(!adminView && s.composerOpen) ? `
-  <div class="card" style="max-width:560px;margin-bottom:20px;">
-    <p class="section-label">새 불편사항 접수</p>
-    <div class="field"><label for="sp-type">유형</label>
-      <select id="sp-type"><option>Error</option><option>기능제안</option><option>기타</option></select>
-    </div>
-    <div class="field"><label for="sp-title">제목</label><input id="sp-title" placeholder="어떤 문제인지 한 줄로 요약해주세요"></div>
-    <div class="field"><label for="sp-body">내용</label><textarea id="sp-body" rows="4" placeholder="언제, 어떤 화면에서, 어떤 문제가 발생했는지 알려주세요"></textarea></div>
-    <button class="btn btn-primary" onclick="submitTicket()">접수하기</button>
-  </div>` : ''}
-
-  <div class="grid grid-2">
-    ${list.length===0 ? `<div class="empty-note">해당하는 ${adminView?'문의':'접수'} 내역이 없습니다.</div>`
-      : list.map(t => adminView ? renderAdminTicketCard(t) : renderMyTicketCard(t)).join('')}
-  </div>`;
+  ${(!adminView && s.composerOpen) ? `<div class="card" style="max-width:560px;margin-bottom:20px;"><p class="section-label">새 불편사항 접수</p><div class="field"><label for="sp-type">유형</label><select id="sp-type"><option>Error</option><option>기능제안</option><option>기타</option></select></div><div class="field"><label for="sp-title">제목</label><input id="sp-title" placeholder="어떤 문제인지 한 줄로 요약해주세요"></div><div class="field"><label for="sp-body">내용</label><textarea id="sp-body" rows="4" placeholder="언제, 어떤 화면에서, 어떤 문제가 발생했는지 알려주세요"></textarea></div><button class="btn btn-primary" onclick="submitTicket()">접수하기</button></div>` : ''}
+  <div class="grid grid-2">${list.length===0 ? `<div class="empty-note">해당하는 ${adminView?'문의':'접수'} 내역이 없습니다.</div>` : list.map(t => adminView ? renderAdminTicketCard(t) : renderMyTicketCard(t)).join('')}</div>`;
 }
 function renderMyTicketCard(t){
   return `

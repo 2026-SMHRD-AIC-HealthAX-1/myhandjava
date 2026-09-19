@@ -71,6 +71,7 @@ const state = {
     account:{nickname:'', regionCity:'서울시', regionGu:'강남구', regionDong:'역삼동', profilePublic:true},
   },
   support: {
+    section:'guide', // 고객센터: 서비스 안내 / F&A / 문의
     composerOpen:false,
     filter:'all',
     tickets:[], // 서버에서 실제 내 문의 목록을 받아와 채우는 배열 (loadSupportTickets 참고)
