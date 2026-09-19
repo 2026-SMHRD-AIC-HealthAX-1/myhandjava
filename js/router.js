@@ -36,9 +36,8 @@ function render() {
   // 물고 있는 cam-video/cam-canvas가 매번 새로 만들어지며 끊기는 걸 막을 수 있다. 이 훅은
   // 대전 화면에 처음 진입하거나(카메라 준비) 대전이 끝났을 때(결과 화면 전환) 같은, render()가
   // 실제로 호출되는 몇 안 되는 시점에만 카메라를 (재)연결한다.
-  if (state.screen === 'app' && state.menu === 'crewBattle' && state.crewBattle && !state.crewBattle.result) {
+  if (state.screen === 'app' && state.menu === 'crewBattle' && state.crewBattle && state.crewBattle.status === 'ACTIVE' && !state.crewBattle.result) {
     setTimeout(setupCamera, 0);
-    setTimeout(drawBattleTeammates, 0);
   }
   if (state.screen === 'app' && state.menu === 'crewBattle' && !state.crewBattle) {
     setTimeout(drawBattleResultCharacters, 0);
@@ -156,6 +155,8 @@ async function setMenu(id){
     else await loadCrewRegionRanking();
   } else if(id==='exercise' || id==='profile'){
     await loadTodayMissions(); // 종목선택 화면의 미션 리스트·마이페이지 미션 탭 둘 다 이 값을 쓴다
+  } else if(id==='shop'){
+    await loadShopItems();
   }
 }
 

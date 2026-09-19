@@ -359,7 +359,6 @@ function startBattleReadyCountdown() {
     } else {
       el.textContent = 'START';
       beginRecording();
-      startBattleTicker(); // 상대팀·팀원 점수도 이 순간부터 같이 오르기 시작한다 (crew.js)
       setTimeout(() => {
         const e2 = document.getElementById('cam-battle-countdown');
         if (e2) e2.textContent = '';
@@ -776,15 +775,11 @@ function exRegisterRep(bottomAngle, torsoDrop) {
   const aEl = document.getElementById('live-acc'); if (aEl) aEl.textContent = acc + '%';
   exFlashGrade(result.grade);
   speakFeedback(result.voice);
-  // 크루대전 중이면 일반 미션 카운터 대신 대전 스코어보드를 갱신한다. 여기서 render()를 부르면
-  // 이 콜백을 부른 포즈 인식 루프 자체가 물고 있는 cam-video/cam-canvas가 통째로 새로
-  // 그려지며 스트림 연결이 끊기므로, DOM을 직접 패치하는 updateBattleUI()만 쓴다.
+  // 크루대전 중이면 일반 미션 카운터 대신 서버(crew.js의 sendCrewBattleRep)로 판정을 보낸다.
+  // 점수는 로컬에서 미리 올리지 않는다 — 양쪽 팀 전원의 판정이 모여야 하는 값이라 서버가
+  // 계산해서 브로드캐스트로 돌려준 걸 그대로 반영한다(handleCrewBattleEvent, crew.js).
   if (state.crewBattle) {
-    const pts = BATTLE_GRADE_POINTS[result.grade] ?? 0;
-    state.crewBattle.myScore += pts;
-    state.crewBattle.myGradeCounts[result.grade] = (state.crewBattle.myGradeCounts[result.grade] || 0) + 1;
-    updateBattleUI('me', pts);
-    checkBattleEnd();
+    sendCrewBattleRep(result.grade);
     return;
   }
   if (state.exercise.liveReps.length >= EXERCISE_REP_TARGET) toggleRecording();

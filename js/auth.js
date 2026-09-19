@@ -266,6 +266,7 @@ async function doLogin() {
     await loadMyProfile();
     await loadExerciseHistory();
     await loadMyCrew();
+    await loadShopItems();
     state.user.id = body.data.userId;
     state.user.nickname = body.data.nickname;
     state.guestMode = false;
@@ -378,6 +379,7 @@ async function handleKakaoRedirect(code) {
     await loadMyProfile();
     await loadExerciseHistory();
     await loadMyCrew();
+    await loadShopItems();
     state.user.id = body.data.userId;
     state.user.nickname = body.data.nickname;
     state.guestMode = false;
@@ -404,6 +406,7 @@ async function handleGoogleRedirect(code) {
     await loadMyProfile();
     await loadExerciseHistory();
     await loadMyCrew();
+    await loadShopItems();
     state.user.id = body.data.userId;
     state.user.nickname = body.data.nickname;
     state.guestMode = false;

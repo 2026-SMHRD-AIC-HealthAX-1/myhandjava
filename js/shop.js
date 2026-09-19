@@ -32,7 +32,7 @@ function renderMissionShop(){
             <span class="shop-price">P ${it.price}</span>
             <div class="shop-item-actions">
               ${it.slot?`<button class="btn btn-sm btn-secondary" onclick="${state.guestMode ? "goto('login')" : `openItemPreview(${idx})`}">미리보기</button>`:''}
-              <button class="btn btn-sm ${(it.owned && !it.consumable)?'btn-ghost':'btn-primary'}" ${(it.owned && !it.consumable)?'disabled style="opacity:.5;"':''} onclick="${state.guestMode ? "goto('login')" : `buyItem(${idx})`}">${(it.owned && !it.consumable)?'보유중':'구매하기'}</button>
+              <button class="btn btn-sm ${(it.owned && !it.consumable)?'btn-ghost':'btn-primary'}" ${(it.owned && !it.consumable)||it.locked?'disabled style="opacity:.5;"':''} onclick="${state.guestMode ? "goto('login')" : `buyItem(${idx})`}">${(it.owned && !it.consumable)?'보유중':it.locked?`Lv.${it.levelReq} 필요`:'구매하기'}</button>
             </div>
           </div>
         </div>
@@ -40,6 +40,31 @@ function renderMissionShop(){
   </div>`;
 }
 function setShopFilter(c){ state.shopFilter=c; render(); }
+
+// 서버 카탈로그(구매 가능 아이템)를 불러와 로컬 카탈로그에 병합한다. 기본 지급 아이템(헤드밴드·
+// 민트 티셔츠 등, state.js에서 owned:true로 박아둔 것들)은 서버 카탈로그에 없으므로 그대로 둔다.
+async function loadShopItems(){
+  if(!state.token) return;
+  try{
+    const res = await fetch(`${API_BASE}/api/shop/items`, {
+      headers: { 'Authorization': 'Bearer ' + state.token }
+    });
+    const body = await res.json();
+    if(!body.success) return;
+    body.data.forEach(server => {
+      const local = state.shopItems.find(it => it.name === server.name);
+      if(!local) return;
+      local.serverId = server.id;
+      local.owned = server.owned;
+      local.equipped = server.equipped;
+      local.locked = server.locked;
+      local.price = server.price;
+    });
+    render();
+  }catch(err){
+    console.error('상점 아이템 불러오기 실패', err);
+  }
+}
 
 
 // v11.1: 신발/모자 상품 PNG의 작은 고립 조각을 화면에서 제거한다.
@@ -102,10 +127,24 @@ function drawItemPreviewCanvas(){
   drawPixelCharacter(canvas,{...getEquipState(),[it.slot]:it.asset?it:true},state.user.gender);
 }
 
-function buyItem(idx){
+async function buyItem(idx){
   const it=state.shopItems[idx];
   if(it.owned && !it.consumable){toast('이미 보유한 아이템입니다'); return;}
+  if(it.locked){toast(`Lv.${it.levelReq}부터 구매할 수 있습니다`); return;}
   if(state.user.points<it.price){toast('포인트가 부족합니다'); return;}
+  if(!it.serverId){toast('아직 구매할 수 없는 아이템입니다'); return;}
+  try{
+    const res = await fetch(`${API_BASE}/api/shop/items/${it.serverId}/purchase`, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + state.token }
+    });
+    const body = await res.json();
+    if(!body.success){ toast(body.message || '구매에 실패했습니다'); return; }
+  }catch(err){
+    console.error('구매 실패', err);
+    toast('구매 중 오류가 발생했습니다');
+    return;
+  }
   state.user.points -= it.price;
   if(it.consumable){
     if(it.name==='닉네임 변경권'){

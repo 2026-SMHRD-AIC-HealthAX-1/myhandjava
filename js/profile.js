@@ -159,15 +159,32 @@ function getEquipState() {
   });
   return bySlot;
 }
-function toggleEquip(idx) {
+async function toggleEquip(idx) {
   const it = state.shopItems[idx];
   if (!it.owned) { toast('포인트 상점에서 구매해주세요'); return; }
+  const nextEquipped = !it.equipped;
+  // 서버 카탈로그 아이템(구매로 얻은 것)은 착용 상태도 서버에 반영해야 새로고침 후에도 유지된다.
+  // 기본 지급 아이템(serverId 없음)은 예전처럼 로컬 상태로만 관리한다.
+  if (it.serverId) {
+    try {
+      const res = await fetch(`${API_BASE}/api/shop/items/${it.serverId}/${nextEquipped ? 'equip' : 'unequip'}`, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + state.token }
+      });
+      const body = await res.json();
+      if (!body.success) { toast(body.message || '처리에 실패했습니다'); return; }
+    } catch (err) {
+      console.error('착용 상태 변경 실패', err);
+      toast('착용 처리 중 오류가 발생했습니다');
+      return;
+    }
+  }
   // 같은 슬롯(예: 배경)에 아이템이 여러 개 생길 수 있어, 새로 착용할 때는 같은 슬롯의
   // 나머지 아이템을 먼저 해제해서 한 슬롯에 하나만 착용되도록 한다.
-  if (!it.equipped && it.slot) {
+  if (nextEquipped && it.slot) {
     state.shopItems.forEach(o => { if (o !== it && o.slot === it.slot) o.equipped = false; });
   }
-  it.equipped = !it.equipped;
+  it.equipped = nextEquipped;
   toast(it.equipped ? `${it.name} 착용했습니다` : `${it.name} 착용 해제했습니다`);
   render();
 }

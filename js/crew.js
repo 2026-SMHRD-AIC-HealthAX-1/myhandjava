@@ -942,115 +942,179 @@ function renderPartyStatusModal() {
    집계가 필요한 지점). 실시간 갱신은 render()를 다시 타지 않고 updateBattleUI()가
    DOM을 직접 패치한다 — 이유는 render() 훅 주석과 exRegisterRep() 참고.
    ======================================================================== */
-const BATTLE_FILLER_NAMES = ['헬린이', '스쿼트왕', '런닝러버', '플랭크신', '다이어터'];
-// 정확도 등급별 점수 — 크루대전은 반복 횟수가 아니라 이 점수 합산으로 승패를 가린다.
-// GOOD은 따로 언급되지 않아 GREAT과 동일하게 취급한다(둘 다 "유효한 반복"이라는 의미로).
+// 정확도 등급별 점수 — 결과 화면의 개인 판정 비율 표시에 쓰는 가중치일 뿐, 실제 대전 점수는
+// 서버(CrewBattleService.registerRep)가 계산해서 내려준다.
 const BATTLE_GRADE_POINTS = { PERFECT: 2, GREAT: 1, GOOD: 1, MISS: 0 };
-// 팀원·상대팀은 실제 판정이 없으니, 매 틱마다 이 분포에서 등급을 하나 뽑아 점수를 흉내낸다.
-const BATTLE_TICK_GRADES = ['PERFECT', 'PERFECT', 'GREAT', 'GREAT', 'GREAT', 'GOOD', 'GOOD', 'MISS'];
-function randomBattleGrade() { return BATTLE_TICK_GRADES[Math.floor(Math.random() * BATTLE_TICK_GRADES.length)]; }
-function startCrewBattle() {
+let crewBattleStompClient = null;
+let crewBattleTopicSubscription = null;
+let crewBattleWaitPollId = null;
+
+async function startCrewBattle() {
   if (!state.crewParty.ready) {
     toast('먼저 크루대전파티를 맺어야 대전을 시작할 수 있어요');
     openPartyInvite();
     return;
   }
-  const myLevel = state.crew.level || 1;
-  const battleSize = Number(state.crewParty.battleSize || 5);
-  const candidates = JOINABLE_CREWS.filter(c => c.name !== state.crew.name && Math.abs(c.level - myLevel) <= 2);
-  const pool = candidates.length ? candidates : JOINABLE_CREWS.filter(c => c.name !== state.crew.name);
-  // 크루 찾기 화면을 거치지 않고 바로 크루대전을 시작하면 JOINABLE_CREWS가 아직 비어있을 수
-  // 있다 — 그 경우 대비용 가짜 상대팀으로 대체해서 죽지 않게 한다.
-  const opponent = pool[Math.floor(Math.random() * pool.length)] || JOINABLE_CREWS[0] || { name: '랜덤크루', level: myLevel, leader: null };
-
-  // 파티에 합류(수락)한 크루원을 우선으로 데려가고, 남는 자리는 나머지 크루원 → 필러로 채운다.
-  const partyMates = (state.crewParty.invites || []).filter(x => x.status === 'accepted').map(x => x.n);
-  const restMates = state.crew.members.filter(m => m.n !== '나').map(m => m.n).filter(n => !partyMates.includes(n));
-  const realMates = [...partyMates, ...restMates];
-  clearInterval(state.crewParty.tickId);
-  state.crewParty = { open: false, statusOpen: false, selected: [], invites: null, ready: false, tickId: null, battleSize };
-  const teammates = [];
-  for (let i = 0; i < battleSize - 1; i++) {
-    teammates.push({ n: realMates[i] || BATTLE_FILLER_NAMES[i % BATTLE_FILLER_NAMES.length], score: 0, dur: (1.6 + Math.random() * 0.9).toFixed(2), gender: i % 2 === 0 ? 'male' : 'female', gradeCounts: { PERFECT: 0, GREAT: 0, GOOD: 0, MISS: 0 } });
-  }
-  // 상대팀도 5명(리더 1 + 필러 4) 개인별 점수를 따로 굴려야 결과 팝업에서 "누가 MVP인지"를
-  // 보여줄 수 있다 — 예전엔 oppScore 합계만 있었다.
-  const oppNamePool = [opponent.leader, ...BATTLE_FILLER_NAMES];
-  const oppTeammates = [];
-  for (let i = 0; i < battleSize; i++) {
-    oppTeammates.push({ n: oppNamePool[i] || `상대팀원${i + 1}`, score: 0, gender: i % 2 === 0 ? 'female' : 'male', gradeCounts: { PERFECT: 0, GREAT: 0, GOOD: 0, MISS: 0 } });
-  }
-
-  state.crewBattle = {
-    target: randInt(40, 60), // 점수 목표 (PERFECT=2 / GREAT·GOOD=1 / MISS=0점 합산) — 테스트 편의상 낮춰둠
-    opponent: { name: opponent.name, level: opponent.level },
-    size: battleSize,
-    myScore: 0, oppScore: 0,
-    myGradeCounts: { PERFECT: 0, GREAT: 0, GOOD: 0, MISS: 0 }, // 결과 팝업에서 "나"의 개인 판정 비율용
-    teammates, oppTeammates,
-    tickId: null,
-    result: null, // null | 'win' | 'lose' | 'draw'
-    startedAt: null, timeLimitSeconds: 120,
-  };
-  state.exercise = { step: 0, picked: 'squat', camPhase: 'idle', camStream: null, timerId: null, seconds: 0, result: null, retakesUsed: 0, liveReps: [], replayOpen: false };
-  exBattleCountdownStarted = false; // 새 대전마다 공용 카운트다운을 다시 탈 수 있게 초기화
-  disconnectCrewChat(); // 홈크루 메뉴를 벗어나므로 채팅·크루원 실시간 소켓도 함께 끊는다
-  state.menu = 'crewBattle';
-  // 상대팀·팀원 점수도 나와 똑같이 공용 카운트다운(startBattleReadyCountdown, exercise.js)이
-  // START가 되는 순간부터 오르기 시작한다 — 누구는 먼저 시작하고 누구는 늦게 시작하는 일이
-  // 없게, 모든 팀의 측정 시작 시점을 하나로 맞춘다.
-
   if (!state.user.calibration) {
     toast('크루대전을 시작하려면 체형 캘리브레이션이 먼저 필요해요');
     openCalibrationModal();
     return;
   }
+  // checkPartyReady()는 초대 전원이 수락할 때까지 기다리지 않고, 한 명이라도 수락하면 파티를
+  // "완성"으로 본다 — 그래서 실제 참가자 수(나+수락한 사람)를 그대로 팀 사이즈로 쓴다. 처음
+  // 고른 battleSize(초대 인원)보다 적어도 서버가 요구하는 건 "정확한 인원수 일치"뿐이다.
+  const partyMateIds = (state.crewParty.invites || []).filter(x => x.status === 'accepted').map(x => x.userId);
+  const participantUserIds = [state.user.id, ...partyMateIds];
+  const battleSize = Math.min(5, Math.max(2, participantUserIds.length));
+  clearInterval(state.crewParty.tickId);
+  state.crewParty = { open: false, statusOpen: false, selected: [], invites: null, incoming: [], ready: false, tickId: null, incomingTickId: null, battleSize: state.crewParty.battleSize };
+  if (participantUserIds.length < 2) {
+    toast('같이 대전할 크루원이 없어요. 파티를 다시 맺어주세요');
+    return;
+  }
+  disconnectCrewChat(); // 홈크루 메뉴를 벗어나므로 채팅·크루원 실시간 소켓도 함께 끊는다
+  try {
+    const res = await fetch(`${API_BASE}/api/crew-battles`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.token },
+      body: JSON.stringify({ teamSize: battleSize, participantUserIds, exerciseType: 'squat' })
+    });
+    const body = await res.json();
+    if (!body.success) { toast(body.message || '매칭 신청에 실패했습니다'); connectCrewChat(); return; }
+    initCrewBattleFromResponse(body.data);
+  } catch (err) {
+    console.error('크루대전 매칭 신청 실패', err);
+    toast('서버에 연결할 수 없습니다');
+    connectCrewChat();
+    return;
+  }
+  state.menu = 'crewBattle';
   render();
 }
-function startBattleTicker() {
-  clearInterval(state.crewBattle.tickId);
-  state.crewBattle.startedAt = Date.now();
-  state.crewBattle.tickId = setInterval(() => {
-    const b = state.crewBattle;
-    if (!b || b.result) return;
-    const idx = Math.floor(Math.random() * b.teammates.length);
-    const g1 = randomBattleGrade();
-    const pts1 = BATTLE_GRADE_POINTS[g1];
-    b.teammates[idx].score += pts1;
-    b.teammates[idx].gradeCounts[g1] = (b.teammates[idx].gradeCounts[g1] || 0) + 1;
-    updateBattleUI('mate-' + idx, pts1);
-    if (Math.random() < 0.9) {
-      const oidx = Math.floor(Math.random() * b.oppTeammates.length);
-      const g2 = randomBattleGrade();
-      const pts2 = BATTLE_GRADE_POINTS[g2];
-      b.oppTeammates[oidx].score += pts2;
-      b.oppScore += pts2;
-      b.oppTeammates[oidx].gradeCounts[g2] = (b.oppTeammates[oidx].gradeCounts[g2] || 0) + 1;
-      updateBattleUI('opp', pts2);
+// 서버 응답(자동매칭 신청 직후 또는 대기 중 폴링 결과)을 화면 상태로 반영한다. 신청자의 크루가
+// 항상 challenger로 저장되므로, 내 크루가 어느 쪽인지 비교해서 내 편/상대 편을 가른다.
+function initCrewBattleFromResponse(data) {
+  const isChallenger = String(data.challengerCrewId) === String(state.crew.id);
+  const prev = state.crewBattle;
+  state.crewBattle = {
+    battleId: data.id,
+    status: data.status,
+    size: data.teamSize,
+    myCrewName: isChallenger ? data.challengerCrewName : data.opponentCrewName,
+    oppCrewId: isChallenger ? data.opponentCrewId : data.challengerCrewId,
+    oppCrewName: isChallenger ? data.opponentCrewName : data.challengerCrewName,
+    oppCrewLevel: null,
+    myScore: Number(isChallenger ? data.challengerScore : data.opponentScore) || 0,
+    myReps: Number(isChallenger ? data.challengerReps : data.opponentReps) || 0,
+    oppScore: Number(isChallenger ? data.opponentScore : data.challengerScore) || 0,
+    oppReps: Number(isChallenger ? data.opponentReps : data.challengerReps) || 0,
+    myGradeCounts: (prev && prev.myGradeCounts) || { PERFECT: 0, GREAT: 0, GOOD: 0, MISS: 0 },
+    target: data.targetScore, // 이 점수를 먼저 채우면 2분을 다 기다리지 않고 종료된다
+    endsAt: data.endsAt ? new Date(data.endsAt).getTime() : null,
+    timeLeftId: null,
+    ourMembers: null, oppMembers: null, rewardExp: 0, // 종료 후 결과 조회로 채워짐
+    result: null, // null | 'win' | 'lose' | 'draw'
+  };
+  if (data.status === 'WAITING') startCrewBattleWaitPolling();
+  else if (data.status === 'ACTIVE') onCrewBattleActive();
+}
+function startCrewBattleWaitPolling() {
+  clearInterval(crewBattleWaitPollId);
+  crewBattleWaitPollId = setInterval(async () => {
+    if (!state.crewBattle || state.crewBattle.status !== 'WAITING') { clearInterval(crewBattleWaitPollId); return; }
+    try {
+      const res = await fetch(`${API_BASE}/api/crew-battles/${state.crewBattle.battleId}`, { headers: { 'Authorization': 'Bearer ' + state.token } });
+      const body = await res.json();
+      if (!body.success) return;
+      if (body.data.status === 'ACTIVE') {
+        clearInterval(crewBattleWaitPollId);
+        initCrewBattleFromResponse(body.data);
+        onCrewBattleActive();
+        render();
+      } else if (body.data.status === 'CANCELLED') {
+        clearInterval(crewBattleWaitPollId);
+        toast('매칭이 취소됐어요');
+        exitCrewBattle();
+      }
+    } catch (err) { console.error('매칭 대기 조회 실패', err); }
+  }, 2000);
+}
+async function cancelCrewBattleWaiting() {
+  if (!state.crewBattle) return;
+  clearInterval(crewBattleWaitPollId);
+  try {
+    await fetch(`${API_BASE}/api/crew-battles/${state.crewBattle.battleId}/matching`, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + state.token } });
+  } catch (err) { console.error('매칭 취소 실패', err); }
+  exitCrewBattle();
+}
+// 매칭되는 순간(즉시 매칭 또는 대기 폴링) 호출: 실시간 소켓을 연결하고 카메라 화면으로 넘어간다.
+function onCrewBattleActive() {
+  state.crewBattle.status = 'ACTIVE';
+  connectCrewBattleSocket();
+  state.exercise = { step: 0, picked: 'squat', camPhase: 'idle', camStream: null, timerId: null, seconds: 0, result: null, retakesUsed: 0, liveReps: [], replayOpen: false, sessionId: null, idempotencyKey: null };
+  exBattleCountdownStarted = false; // 새 대전마다 공용 카운트다운을 다시 탈 수 있게 초기화
+  startCrewBattleCountdown();
+}
+function connectCrewBattleSocket() {
+  if (!state.token || !state.crewBattle) return;
+  const socket = new SockJS(`${API_BASE}/ws`);
+  crewBattleStompClient = Stomp.over(socket);
+  crewBattleStompClient.debug = null;
+  crewBattleStompClient.connect(
+    { Authorization: 'Bearer ' + state.token },
+    () => {
+      if (!state.crewBattle) return;
+      crewBattleTopicSubscription = crewBattleStompClient.subscribe(`/topic/crew-battles/${state.crewBattle.battleId}`, (frame) => {
+        handleCrewBattleEvent(JSON.parse(frame.body));
+      });
+    },
+    (err) => { console.error('크루대전 실시간 연결 실패', err); }
+  );
+}
+function disconnectCrewBattleSocket() {
+  if (crewBattleTopicSubscription) { crewBattleTopicSubscription.unsubscribe(); crewBattleTopicSubscription = null; }
+  if (crewBattleStompClient && crewBattleStompClient.connected) { crewBattleStompClient.disconnect(); }
+  crewBattleStompClient = null;
+}
+// exercise.js의 exRegisterRep()이 스쿼트 1회를 판정할 때마다 호출한다. 점수 집계는 여기서
+// 직접 하지 않고(양쪽 팀 전원의 판정이 필요하므로) 서버에 보낸 뒤 브로드캐스트로 받는다.
+function sendCrewBattleRep(grade) {
+  if (!state.crewBattle || state.crewBattle.status !== 'ACTIVE') return;
+  if (!crewBattleStompClient || !crewBattleStompClient.connected) return;
+  crewBattleStompClient.send('/app/crew-battles/reps', {}, JSON.stringify({ battleId: state.crewBattle.battleId, grade }));
+}
+// 서버가 /topic/crew-battles/{battleId}로 보내주는 판정 브로드캐스트 — 나를 포함해 양쪽 팀
+// 전원의 판정이 전부 이 이벤트로 온다. render()를 부르지 않고 DOM만 직접 패치하는 이유는
+// exRegisterRep()의 주석과 동일(카메라 포즈 인식 루프가 물고 있는 DOM이 새로 그려지면 안 됨).
+function handleCrewBattleEvent(ev) {
+  const b = state.crewBattle;
+  if (!b || Number(ev.battleId) !== Number(b.battleId)) return;
+  if (String(ev.crewId) === String(b.oppCrewId)) {
+    b.oppReps = ev.crewReps; b.oppScore = ev.crewScore;
+  } else {
+    b.myReps = ev.crewReps; b.myScore = ev.crewScore;
+    if (Number(ev.userId) === Number(state.user.id)) {
+      b.myGradeCounts[ev.grade] = (b.myGradeCounts[ev.grade] || 0) + 1;
     }
-    if ((Date.now() - b.startedAt) >= b.timeLimitSeconds * 1000) {
-      const teamTotal=b.myScore+b.teammates.reduce((s,t)=>s+t.score,0);
-      b.result=teamTotal===b.oppScore?'draw':teamTotal>b.oppScore?'win':'lose';
-      finishBattle(); return;
-    }
-    checkBattleEnd();
-  }, 1400);
+  }
+  updateBattleUI(Number(ev.userId) === Number(state.user.id) ? 'me' : 'opp', ev.counted ? BATTLE_GRADE_POINTS[ev.grade] : 0);
+  // 목표 점수를 먼저 채운 크루가 있으면 서버가 이미 대전을 종료 처리했다 — 클라이언트도
+  // 2분을 더 기다리지 않고 바로 결과를 가져온다.
+  if (b.target && (b.myScore >= b.target || b.oppScore >= b.target)) endCrewBattle();
 }
 // 실시간 구간 전용 DOM 패치 — render()를 부르지 않는 이유는 exRegisterRep()의 주석 참고.
 function updateBattleUI(bumpedKey, delta) {
   const b = state.crewBattle;
   if (!b) return;
-  const teamTotal = b.myScore + b.teammates.reduce((s, t) => s + t.score, 0);
   const setText = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
-  setText('battle-team-total', teamTotal.toLocaleString());
+  setText('battle-team-total', b.myScore.toLocaleString());
   setText('battle-opp-total', b.oppScore.toLocaleString());
-  const bar = document.getElementById('battle-progress'); if (bar) bar.style.width = Math.min(100, teamTotal / b.target * 100) + '%';
+  const bar = document.getElementById('battle-progress');
+  if (bar && b.target) bar.style.width = Math.min(100, b.myScore / b.target * 100) + '%';
   // 스마트폰 카메라 위에 떠 있는 실시간 스코어 오버레이도 같이 갱신한다.
-  setText('cam-battle-my', teamTotal.toLocaleString());
+  setText('cam-battle-my', b.myScore.toLocaleString());
   setText('cam-battle-opp', b.oppScore.toLocaleString());
-  const miniBar = document.getElementById('cam-battle-gauge'); if (miniBar) miniBar.style.width = Math.min(100, teamTotal / b.target * 100) + '%';
   setText('battle-my-score', b.myScore);
-  b.teammates.forEach((t, i) => setText('battle-mate-score-' + i, t.score));
   if (bumpedKey) popBattleFx(bumpedKey, delta);
 }
 // MISS(0점)일 땐 "+0"이 뜨는 게 어색하니 실제로 점수가 오를 때만 팝업을 띄운다.
@@ -1064,43 +1128,78 @@ function popBattleFx(key, delta) {
   host.appendChild(el);
   setTimeout(() => el.remove(), 900);
 }
-function checkBattleEnd() {
+// 서버의 endsAt(대전 시작 즉시 2분 뒤로 고정)을 기준으로 남은 시간을 표시하고, 0이 되면
+// 결과를 조회해 종료 화면으로 넘어간다 — 매칭된 순간부터 도니까 카메라 준비가 늦으면
+// 그만큼 대전에 쓸 시간이 줄어든다(실제로 다 같이 2분간 겨루는 대전이라 자연스러운 제약).
+function startCrewBattleCountdown() {
   const b = state.crewBattle;
-  if (!b || b.result) return;
-  const teamTotal = b.myScore + b.teammates.reduce((s, t) => s + t.score, 0);
-  if (teamTotal >= b.target) { b.result = 'win'; finishBattle(); }
-  else if (b.oppScore >= b.target) { b.result = 'lose'; finishBattle(); }
+  if (!b || !b.endsAt) return;
+  clearInterval(b.timeLeftId);
+  const tick = () => {
+    if (!state.crewBattle || state.crewBattle.battleId !== b.battleId) { clearInterval(b.timeLeftId); return; }
+    const leftMs = b.endsAt - Date.now();
+    const el = document.getElementById('cam-battle-timeleft');
+    if (el) {
+      const s = Math.max(0, Math.ceil(leftMs / 1000));
+      el.textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+    }
+    if (leftMs <= 0) { clearInterval(b.timeLeftId); endCrewBattle(); }
+  };
+  tick();
+  b.timeLeftId = setInterval(tick, 1000);
 }
 // 대전이 실제로 끝나는 시점(카메라를 먼저 정리한 뒤)에만 render()를 부른다 — 이때는 더 이상
 // 살아있는 포즈 인식 루프가 없으므로 화면을 통째로 다시 그려도 안전하다.
-function finishBattle() {
-  clearInterval(state.crewBattle.tickId);
-  if (state.exercise.camStream) { state.exercise.camStream.getTracks().forEach(t => t.stop()); state.exercise.camStream = null; }
+async function endCrewBattle() {
+  const b = state.crewBattle;
+  if (!b || b.result) return;
+  if (state.exercise.camPhase === 'recording') stopRecording();
+  else if (state.exercise.camStream) { state.exercise.camStream.getTracks().forEach(t => t.stop()); state.exercise.camStream = null; }
   clearInterval(state.exercise.timerId);
-  const b=state.crewBattle;
-  const ourScore=b.myScore+b.teammates.reduce((s,t)=>s+t.score,0);
-  const exp=b.result==='win'?100:50;
-  state.crew.exp=(state.crew.exp||0)+exp;
-  const ourMembers = battleMyRoster(b).map(p => ({ n:p.n, gender:p.gender || 'male', score:p.score, gradeCounts:{...(p.gradeCounts || {PERFECT:0,GREAT:0,GOOD:0,MISS:0})} }));
-  const oppMembers = battleOppRoster(b).map(p => ({ n:p.n, gender:p.gender || 'male', score:p.score, gradeCounts:{...(p.gradeCounts || {PERFECT:0,GREAT:0,GOOD:0,MISS:0})} }));
-  state.crew.battleHistory.unshift({
-    at:new Date().toLocaleString('ko-KR'),
-    size:b.size || 5,
-    ourCrewName:state.crew.name || '우리 크루',
-    opponentCrewName:b.opponent.name,
-    opponent:b.opponent.name,
-    ourScore,
-    oppScore:b.oppScore,
-    result:b.result==='win'?'승리':b.result==='lose'?'패배':'무승부',
-    exp,
-    ourMembers,
-    oppMembers
-  });
-  toast(b.result==='win'?`🎉 크루대전 승리! 크루 경험치 +${exp}`:b.result==='draw'?`무승부 · 크루 경험치 +${exp}`:`패배 · 크루 경험치 +${exp}`);
+  disconnectCrewBattleSocket();
+  try {
+    const res = await fetch(`${API_BASE}/api/crew-battles/${b.battleId}/result`, { headers: { 'Authorization': 'Bearer ' + state.token } });
+    const body = await res.json();
+    if (!body.success) { toast(body.message || '대전 결과를 불러오지 못했습니다'); exitCrewBattle(); return; }
+    const data = body.data;
+    const isChallenger = String(data.challenger.crewId) === String(state.crew.id);
+    const mine = isChallenger ? data.challenger : data.opponent;
+    const opp = isChallenger ? data.opponent : data.challenger;
+    const toRoster = team => (team.participants || []).map(p => ({
+      n: p.nickname, gender: 'male', score: p.personalScore,
+      gradeCounts: { PERFECT: p.perfectCount, GREAT: p.greatCount, GOOD: p.goodCount, MISS: p.missCount }
+    })).sort((a, c) => c.score - a.score);
+    b.result = mine.result === 'WIN' ? 'win' : mine.result === 'LOSS' ? 'lose' : 'draw';
+    b.myReps = mine.totalReps; b.myScore = mine.totalScore;
+    b.oppReps = opp.totalReps; b.oppScore = opp.totalScore;
+    b.ourMembers = toRoster(mine);
+    b.oppMembers = toRoster(opp);
+    b.rewardExp = mine.rewardExp || 0;
+    state.crew.exp = (state.crew.exp || 0) + b.rewardExp;
+    state.crew.battleHistory.unshift({
+      at: new Date().toLocaleString('ko-KR'),
+      size: b.size || 5,
+      ourCrewName: state.crew.name || '우리 크루',
+      opponentCrewName: b.oppCrewName,
+      opponent: b.oppCrewName,
+      ourScore: b.myScore,
+      oppScore: b.oppScore,
+      result: b.result === 'win' ? '승리' : b.result === 'lose' ? '패배' : '무승부',
+      exp: b.rewardExp,
+      ourMembers: b.ourMembers,
+      oppMembers: b.oppMembers
+    });
+    toast(b.result === 'win' ? `🎉 크루대전 승리! 크루 경험치 +${b.rewardExp}` : b.result === 'draw' ? `무승부 · 크루 경험치 +${b.rewardExp}` : `패배 · 크루 경험치 +${b.rewardExp}`);
+  } catch (err) {
+    console.error('대전 결과 조회 실패', err);
+    toast('대전 결과를 불러오지 못했습니다');
+  }
   render();
 }
 function exitCrewBattle() {
-  if (state.crewBattle) clearInterval(state.crewBattle.tickId);
+  clearInterval(crewBattleWaitPollId);
+  if (state.crewBattle) clearInterval(state.crewBattle.timeLeftId);
+  disconnectCrewBattleSocket();
   if (state.exercise.camStream) { state.exercise.camStream.getTracks().forEach(t => t.stop()); }
   clearInterval(state.exercise.timerId);
   state.crewBattle = null;
@@ -1110,22 +1209,10 @@ function exitCrewBattle() {
   connectCrewChat(); // 다시 홈크루 메뉴로 돌아왔으니 실시간 소켓을 재연결한다
   render();
 }
-function drawBattleTeammates() {
-  if (!state.crewBattle) return;
-  state.crewBattle.teammates.forEach((t, i) => {
-    const c = document.getElementById('battle-char-' + i);
-    if (c) drawPixelCharacter(c, {}, t.gender || (i % 2 === 0 ? 'male' : 'female'));
-  });
-}
-// 결과 팝업의 "참여인원" 명단 — 나+팀원, 상대팀을 각각 점수 많은 순으로 정렬한다. teammates/
-// oppTeammates 원본 객체를 그대로 펼쳐 쓰므로 각자의 gradeCounts(개인 판정 카운트)도 함께 딸려온다.
-function battleMyRoster(b) {
-  return [{ n: '나', score: b.myScore, gender: state.user.gender || 'male', gradeCounts: b.myGradeCounts }, ...b.teammates]
-    .sort((a, c) => c.score - a.score);
-}
-function battleOppRoster(b) {
-  return [...b.oppTeammates].sort((a, c) => c.score - a.score);
-}
+// 결과 화면의 "참여인원" 명단 — endCrewBattle()이 서버 결과로 채워둔 ourMembers/oppMembers를
+// 점수 많은 순으로 보여준다.
+function battleMyRoster(b) { return b.ourMembers || []; }
+function battleOppRoster(b) { return b.oppMembers || []; }
 // MVP(1등)는 폰트를 헤딩용 서체(Jua)로 바꾸고 배지를 붙여서 나머지와 구분한다. 캐릭터 그림
 // 대신 닉네임과 그 사람 본인의 판정 비율(PERFECT/GREAT/MISS)을 보여준다.
 function renderBattleRoster(list) {
@@ -1295,10 +1382,46 @@ function renderCrewBattleMenu() {
 function renderCrewBattle() {
   const b = state.crewBattle;
   if (!b) return renderCrewBattleMenu();
-  const teamTotal = b.myScore + b.teammates.reduce((s, t) => s + t.score, 0);
+
+  if (b.status === 'WAITING') {
+    return `
+    <div class="view-head flex-between">
+      <h1 style="margin:0;">${b.size}vs${b.size} 크루대전</h1>
+      <button class="btn btn-ghost btn-sm" onclick="cancelCrewBattleWaiting()">취소</button>
+    </div>
+    <div class="card" style="text-align:center;max-width:420px;margin:0 auto;">
+      <div class="spinner" style="margin:12px auto;"></div>
+      <h2 style="margin:0 0 6px;">비슷한 레벨의 상대를 찾는 중...</h2>
+      <p class="desc">상대 크루가 매칭되면 자동으로 대전이 시작돼요.</p>
+    </div>`;
+  }
+
+  if (b.result) {
+    return `
+    <div class="view-head flex-between">
+      <h1 style="margin:0;">${b.size}vs${b.size} 크루대전</h1>
+    </div>
+    <div class="card" style="max-width:640px;margin:0 auto;">
+      <h2 style="margin:0 0 6px;text-align:center;">${b.result === 'win' ? '🎉 우리 팀 승리!' : b.result === 'draw' ? '무승부' : '아쉽게 패배했어요'}</h2>
+      <p class="desc" style="text-align:center;margin:0 0 4px;">최종 ${b.myScore}점 : ${b.oppScore}점</p>
+      <p class="mono" style="font-weight:700;color:var(--gold);margin:0 0 14px;text-align:center;">크루 경험치 +${b.rewardExp}</p>
+      <div class="grid grid-2" style="align-items:start;">
+        <div>
+          <p class="section-label" style="margin:0 0 8px;">${state.crew.name} (우리팀)</p>
+          ${renderBattleRoster(battleMyRoster(b))}
+        </div>
+        <div>
+          <p class="section-label" style="margin:0 0 8px;">${b.oppCrewName} (상대팀)</p>
+          ${renderBattleRoster(battleOppRoster(b))}
+        </div>
+      </div>
+      <button class="btn btn-primary btn-block" style="margin-top:20px;" onclick="exitCrewBattle()">크루로 돌아가기</button>
+    </div>`;
+  }
+
   return `
   <div class="view-head flex-between">
-    <h1 style="margin:0;">${b.size || 5}vs${b.size || 5} 크루대전</h1>
+    <h1 style="margin:0;">${b.size}vs${b.size} 크루대전</h1>
     <button class="btn btn-ghost btn-sm" onclick="exitCrewBattle()">나가기</button>
   </div>
 
@@ -1310,43 +1433,25 @@ function renderCrewBattle() {
       </div>
       <span style="font-size:13px;font-weight:700;color:var(--ink-faint);flex:none;">vs</span>
       <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;min-width:0;">
-        <span class="pill pill-muted">Lv.${b.opponent.level}</span>
-        <h2 style="margin:0;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">${b.opponent.name}</h2>
+        <span class="pill pill-muted">상대</span>
+        <h2 style="margin:0;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">${b.oppCrewName}</h2>
       </div>
     </div>
-    <p style="margin:0 0 18px;font-size:16px;font-weight:700;color:var(--gold);">스쿼트 ${b.target}점 먼저 채우기</p>
     <div style="display:flex;align-items:center;justify-content:center;gap:28px;flex-wrap:wrap;">
       <div>
-        <div id="battle-team-total" class="mono" style="font-size:44px;font-weight:700;color:var(--accent);">${teamTotal}</div>
+        <div id="battle-team-total" class="mono" style="font-size:44px;font-weight:700;color:var(--accent);">${b.myScore}</div>
         <div class="hint">${state.crew.name} (우리팀)</div>
       </div>
       <div style="font-size:20px;font-weight:700;color:var(--ink-faint);">VS</div>
       <div>
         <div id="battle-opp-total" class="mono" style="font-size:44px;font-weight:700;color:var(--coral);">${b.oppScore}</div>
-        <div class="hint" style="position:relative;display:inline-block;">${b.opponent.name} <span id="battle-pop-opp" style="position:relative;display:inline-block;"></span></div>
+        <div class="hint" style="position:relative;display:inline-block;">${b.oppCrewName} <span id="battle-pop-opp" style="position:relative;display:inline-block;"></span></div>
       </div>
     </div>
-    <div class="progress" style="margin-top:14px;height:10px;"><span id="battle-progress" style="width:${Math.min(100, teamTotal / b.target * 100)}%"></span></div>
-    <p class="hint" style="margin-top:6px;">목표 ${b.target}점을 먼저 채우는 팀이 승리해요 (PERFECT +2점 · GREAT/GOOD +1점 · MISS +0점)</p>
+    <div class="progress" style="margin-top:14px;height:10px;"><span id="battle-progress" style="width:${Math.min(100, b.myScore / b.target * 100)}%"></span></div>
+    <p class="hint" style="margin-top:6px;">목표 ${b.target}점을 먼저 채우거나, 2분 안에 더 높은 점수를 내면 승리해요 (PERFECT +2점 · GREAT/GOOD +1점 · MISS +0점)</p>
   </div>
 
-  ${b.result ? `
-  <div class="card" style="max-width:640px;margin:0 auto;">
-    <h2 style="margin:0 0 6px;text-align:center;">${b.result === 'win' ? '🎉 우리 팀 승리!' : b.result === 'draw' ? '무승부' : '아쉽게 패배했어요'}</h2>
-    <p class="desc" style="text-align:center;margin:0 0 4px;">최종 ${teamTotal}점 : ${b.oppScore}점</p>
-    ${b.result === 'win' ? `<p class="mono" style="font-weight:700;color:var(--gold);margin:0 0 14px;text-align:center;">크루 포인트 획득 +${b.target}P</p>` : '<div style="margin-bottom:14px;"></div>'}
-    <div class="grid grid-2" style="align-items:start;">
-      <div>
-        <p class="section-label" style="margin:0 0 8px;">${state.crew.name} (우리팀)</p>
-        ${renderBattleRoster(battleMyRoster(b))}
-      </div>
-      <div>
-        <p class="section-label" style="margin:0 0 8px;">${b.opponent.name} (상대팀)</p>
-        ${renderBattleRoster(battleOppRoster(b))}
-      </div>
-    </div>
-    <button class="btn btn-primary btn-block" style="margin-top:20px;" onclick="exitCrewBattle()">크루로 돌아가기</button>
-  </div>` : `
   <div class="grid cal-grid">
     <div>
       <div class="cam-stage" id="cam-stage">
@@ -1357,11 +1462,11 @@ function renderCrewBattle() {
         <div class="cam-timer mono" id="cam-timer">00:00</div>
         <div class="cam-battle-hud">
           <div class="scores">
-            <span class="my mono" id="cam-battle-my">${teamTotal}</span>
+            <span class="my mono" id="cam-battle-my">${b.myScore}</span>
             <span class="sep">:</span>
             <span class="opp mono" id="cam-battle-opp">${b.oppScore}</span>
           </div>
-          <div class="mini-gauge"><span id="cam-battle-gauge" style="width:${Math.min(100, teamTotal / b.target * 100)}%"></span></div>
+          <div class="hint mono" id="cam-battle-timeleft">02:00</div>
         </div>
         <div id="cam-grade-flash" class="cam-grade-flash"></div>
         <div class="cam-battle-countdown" id="cam-battle-countdown"></div>
@@ -1371,21 +1476,15 @@ function renderCrewBattle() {
       </div>
     </div>
     <div class="card">
-      <p class="section-label">우리 팀 (실시간 자동 진행)</p>
-      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;">
-        ${b.teammates.map((t, i) => `
-          <div style="text-align:center;">
-            <div class="battle-char-wrap" style="animation-duration:${t.dur}s;">
-              <canvas id="battle-char-${i}" width="90" height="110" style="width:70px;height:86px;image-rendering:pixelated;"></canvas>
-            </div>
-            <p style="margin:4px 0 0;font-size:12px;font-weight:700;">${t.n}</p>
-            <p class="mono" style="margin:0;font-size:13px;color:var(--ink-dim);position:relative;display:inline-block;">
-              <span id="battle-mate-score-${i}">${t.score}</span>점 <span id="battle-pop-mate-${i}" style="position:relative;display:inline-block;"></span>
-            </p>
-          </div>`).join('')}
-      </div>
+      <p class="section-label">대전 안내</p>
+      <ul class="steplist">
+        <li><span class="num">·</span>카메라 준비가 끝나면 자동으로 측정이 시작돼요.</li>
+        <li><span class="num">·</span>내가 스쿼트할 때마다 우리 팀 점수가 실시간으로 올라가요.</li>
+        <li><span class="num">·</span>상대팀·다른 팀원의 점수도 그때그때 바로 반영돼요.</li>
+        <li><span class="num">·</span>2분이 지나면 자동으로 종료되고 결과가 나와요.</li>
+      </ul>
     </div>
-  </div>`}`;
+  </div>`;
 }
 
 /* ---------- 크루탈퇴: 일반 크루원 전용 ---------- */
