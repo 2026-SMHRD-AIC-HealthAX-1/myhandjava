@@ -18,22 +18,26 @@ public class RankingController {
     private final RankingService rankingService;
 
     @GetMapping("/region")
-    public ApiResponse<List<RankingRowResponse>> region(@RequestParam String city, @RequestParam String gu,
-                                                          @RequestParam String dong,
+    public ApiResponse<List<RankingRowResponse>> region(@RequestParam(required = false) String city,
+                                                          @RequestParam(required = false) String gu,
+                                                          @RequestParam(required = false) String dong,
                                                           @AuthenticationPrincipal CustomUserPrincipal principal) {
         return ApiResponse.ok(rankingService.regionRanking(city, gu, dong, principal == null ? null : principal.getUserId()));
     }
 
     @GetMapping("/exercise")
-    public ApiResponse<List<RankingRowResponse>> exercise(@RequestParam String city, @RequestParam String gu,
-                                                            @RequestParam String dong, @RequestParam String exerciseType,
+    public ApiResponse<List<RankingRowResponse>> exercise(@RequestParam(required = false) String city,
+                                                            @RequestParam(required = false) String gu,
+                                                            @RequestParam(required = false) String dong,
+                                                            @RequestParam String exerciseType,
                                                             @AuthenticationPrincipal CustomUserPrincipal principal) {
         return ApiResponse.ok(rankingService.exerciseRanking(city, gu, dong, exerciseType,
                 principal == null ? null : principal.getUserId()));
     }
 
     @GetMapping("/crew")
-    public ApiResponse<List<CrewRankingRowResponse>> crew(@RequestParam String city, @RequestParam String gu) {
+    public ApiResponse<List<CrewRankingRowResponse>> crew(@RequestParam(required = false) String city,
+                                                            @RequestParam(required = false) String gu) {
         return ApiResponse.ok(rankingService.crewRanking(city, gu));
     }
 }
