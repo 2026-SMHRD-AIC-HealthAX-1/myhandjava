@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C /c/Users/baby4/ounhome-f status*)",
+      "Bash(git -C /c/Users/baby4/ounhome-f log*)",
+      "Bash(git -C /c/Users/baby4/ounhome-f diff*)",
+      "Bash(git -C /c/Users/baby4/ounhome-f branch*)",
+      "Bash(git -C /c/Users/baby4/ounhome-f remote*)",
+      "Bash(git -C /c/Users/baby4/ounhome-f show*)",
+      "Bash(git -C /c/Users/baby4/ounhome-f worktree list*)",
+      "Bash(git -C /c/Users/baby4/ounhome-f merge-base*)",
+      "Bash(git -C /c/Users/baby4/ounhome-f ls-files*)",
+      "Bash(git -C /c/Users/baby4/ounhome-f ls-remote*)",
+      "Bash(git -C /c/Users/baby4/ounhome-b/backend status*)",
+      "Bash(git -C /c/Users/baby4/ounhome-b/backend log*)",
+      "Bash(git -C /c/Users/baby4/ounhome-b/backend diff*)",
+      "Bash(git -C /c/Users/baby4/ounhome-b/backend branch*)",
+      "Bash(git -C /c/Users/baby4/ounhome-b/backend remote*)",
+      "Bash(git -C /c/Users/baby4/ounhome-b/backend ls-tree*)",
+      "Bash(git -C /c/Users/baby4/ounhome-b/backend rev-parse*)",
+      "Bash(git config --get*)",
+      "Bash(git config user.name)",
+      "Bash(git config user.email)",
+      "Bash(git config --global user.name)",
+      "Bash(git config --global user.email)"
+    ]
+  }
+}
