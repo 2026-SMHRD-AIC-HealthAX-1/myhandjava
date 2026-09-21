@@ -78,12 +78,6 @@ public class ShopService {
                 .orElseThrow(() ->
                         new BusinessException("아이템을 찾을 수 없습니다."));
 
-        if (user.getLevel() < item.getLevelReq()) {
-            throw new BusinessException(
-                    "Lv." + item.getLevelReq() + "부터 구매할 수 있습니다."
-            );
-        }
-
         if (!item.isConsumable()
                 && userItemRepository
                         .findByUserIdAndShopItemId(userId, itemId)

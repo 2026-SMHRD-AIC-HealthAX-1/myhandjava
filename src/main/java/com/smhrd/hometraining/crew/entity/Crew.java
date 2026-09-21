@@ -96,6 +96,19 @@ public class Crew {
     )
     private boolean joinEnabled = true;
 
+    /**
+     * 가입 신청이 크루장 승인 없이 바로 처리되는지 나타냅니다.
+     *
+     * true  : 가입 신청과 동시에 즉시 크루원이 됩니다(가입 화면에 "바로가입하기"로 표시).
+     * false : 가입 신청 후 크루장이 승인해야 크루원이 됩니다(기존 방식, "가입요청하기").
+     */
+    @Column(
+            name = "auto_approve",
+            nullable = false,
+            columnDefinition = "boolean default false"
+    )
+    private boolean autoApprove = false;
+
     @Column(
             name = "group_mission_target",
             nullable = false

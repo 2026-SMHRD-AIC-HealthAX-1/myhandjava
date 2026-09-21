@@ -51,11 +51,10 @@ public record UserResponse(
                         ? "female"
                         : "male";
 
-        // 기존 회원에게 등급이 없으면 아이언 등급으로 처리합니다.
-        UserGrade grade =
-                user.getGrade() == null
-                        ? UserGrade.IRON
-                        : user.getGrade();
+        // 등급은 저장된 값을 그대로 믿지 않고 항상 현재 레벨로 다시 계산한다 — 레벨→등급
+        // 매핑 기준이 바뀌어도(UserGrade.forLevel) 예전에 저장된 값 때문에 화면에 옛날 등급이
+        // 남아있는 일이 없게 하기 위함.
+        UserGrade grade = UserGrade.forLevel(user.getLevel());
 
         // 현재 레벨에서 필요한 전체 경험치를 가져옵니다.
         int requiredExp =

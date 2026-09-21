@@ -9,8 +9,10 @@ import com.smhrd.hometraining.mission.repository.MissionCounterRepository;
 import com.smhrd.hometraining.mission.repository.MissionRepository;
 import com.smhrd.hometraining.shop.repository.UserItemRepository;
 import com.smhrd.hometraining.support.repository.SupportTicketRepository;
+import com.smhrd.hometraining.user.dto.AdminUserResponse;
 import com.smhrd.hometraining.user.dto.CalibrationRequest;
 import com.smhrd.hometraining.user.dto.PublicProfileResponse;
+import com.smhrd.hometraining.user.dto.SocialOnboardingRequest;
 import com.smhrd.hometraining.user.dto.UpdateProfileRequest;
 import com.smhrd.hometraining.user.dto.UserResponse;
 import com.smhrd.hometraining.user.entity.CalibrationProfile;
@@ -26,6 +28,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -123,6 +126,53 @@ public class UserService {
         if (req.profilePublic() != null) {
             user.setProfilePublic(req.profilePublic());
         }
+
+        boolean calibrationCompleted =
+                calibrationProfileRepository
+                        .findByUserId(userId)
+                        .isPresent();
+
+        return UserResponse.from(
+                user,
+                calibrationCompleted
+        );
+    }
+
+    /**
+     * 소셜 로그인으로 처음 가입한 사용자가 닉네임·동네·캐릭터(성별)를 최초로 확정합니다.
+     *
+     * updateProfile()과 달리 닉네임 변경권을 쓰지 않는다 — 소셜 로그인이 자동으로 지어준
+     * 임시 닉네임을 "바꾸는" 게 아니라 처음 "정하는" 것이기 때문이다. 이미 동네를 설정해
+     * 초기 설정을 마친 계정이 다시 호출하는 건 막는다(닉네임 변경권 없이 계속 닉네임을
+     * 바꿔치기하는 것을 막기 위함).
+     */
+    @Transactional
+    public UserResponse completeSocialOnboarding(
+            Long userId,
+            SocialOnboardingRequest req
+    ) {
+
+        User user = getUserOrThrow(userId);
+
+        if (user.getRegionCity() != null) {
+            throw new BusinessException(
+                    "이미 초기 설정을 완료한 계정입니다."
+            );
+        }
+
+        if (!req.nickname().equals(user.getNickname())
+                && userRepository.existsByNickname(req.nickname())) {
+
+            throw new BusinessException(
+                    "이미 사용 중인 닉네임입니다."
+            );
+        }
+
+        user.setNickname(req.nickname());
+        user.setGender(req.genderEnum());
+        user.setRegionCity(req.regionCity());
+        user.setRegionGu(req.regionGu());
+        user.setRegionDong(req.regionDong());
 
         boolean calibrationCompleted =
                 calibrationProfileRepository
@@ -407,11 +457,6 @@ public class UserService {
         int currentLevel = user.getLevel();
         int currentExp = user.getExp();
 
-        UserGrade currentGrade =
-                user.getGrade() == null
-                        ? UserGrade.IRON
-                        : user.getGrade();
-
         currentExp += expGain;
 
         while (true) {
@@ -424,11 +469,9 @@ public class UserService {
             }
 
             /*
-             * 최고 등급의 최고 레벨이면
-             * 더 이상 레벨이나 등급을 올리지 않습니다.
+             * 최고 레벨이면 더 이상 레벨을 올리지 않습니다.
              */
-            if (currentLevel >= UserLevelPolicy.MAX_LEVEL
-                    && currentGrade.isHighestGrade()) {
+            if (currentLevel >= UserLevelPolicy.MAX_LEVEL) {
 
                 currentExp = Math.min(
                         currentExp,
@@ -439,25 +482,14 @@ public class UserService {
             }
 
             currentExp -= requiredExp;
-
-            /*
-             * 아직 레벨 500 미만이면
-             * 같은 등급에서 레벨만 올립니다.
-             */
-            if (currentLevel < UserLevelPolicy.MAX_LEVEL) {
-                currentLevel++;
-                continue;
-            }
-
-            /*
-             * 레벨 500을 넘으면 다음 등급으로 승급하고
-             * 레벨을 1로 초기화합니다.
-             */
-            currentGrade = currentGrade.next();
-            currentLevel = 1;
+            currentLevel++;
         }
 
-        user.setGrade(currentGrade);
+        /*
+         * 등급은 더 이상 별도로 승급시키지 않고, 매번 현재 레벨에서 바로 계산합니다
+         * (10레벨 단위로 아이언~챌린저, UserGrade.forLevel 참고).
+         */
+        user.setGrade(UserGrade.forLevel(currentLevel));
         user.setLevel(currentLevel);
         user.setExp(currentExp);
 
@@ -491,5 +523,39 @@ public class UserService {
                                 "사용자를 찾을 수 없습니다."
                         )
                 );
+    }
+
+    /**
+     * 관리자 "전체 사용자 관리" 화면의 회원 목록을 조회합니다.
+     *
+     * search가 있으면 닉네임 또는 이메일에 포함된 회원만 걸러서 돌려줍니다.
+     */
+    @Transactional(readOnly = true)
+    public List<AdminUserResponse> listUsersForAdmin(String search) {
+
+        List<User> users =
+                (search == null || search.isBlank())
+                        ? userRepository.findAll()
+                        : userRepository.findByNicknameContainingIgnoreCaseOrEmailContainingIgnoreCase(search, search);
+
+        return users.stream()
+                .sorted(Comparator.comparing(User::getCreatedAt).reversed())
+                .map(user -> AdminUserResponse.of(
+                        user,
+                        exerciseRecordRepository.countByUserId(user.getId())
+                ))
+                .toList();
+    }
+
+    /** 회원을 정지시킵니다 — 정지된 계정은 다음 로그인 시도부터 거부됩니다(AuthService 참고). */
+    @Transactional
+    public void suspendUser(Long userId) {
+        getUserOrThrow(userId).setStatus(User.Status.SUSPENDED);
+    }
+
+    /** 정지된 회원을 다시 활성 상태로 되돌립니다. */
+    @Transactional
+    public void activateUser(Long userId) {
+        getUserOrThrow(userId).setStatus(User.Status.ACTIVE);
     }
 }

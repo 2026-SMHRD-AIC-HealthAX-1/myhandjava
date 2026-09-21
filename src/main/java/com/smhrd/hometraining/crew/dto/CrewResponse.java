@@ -16,6 +16,7 @@ public record CrewResponse(
         int exp,
 
         boolean joinEnabled,
+        boolean autoApprove,
         int currentMembers,
         int maxMembers,
 
@@ -49,6 +50,7 @@ public record CrewResponse(
                 crew.getExp(),
 
                 crew.isJoinEnabled(),
+                crew.isAutoApprove(),
                 safeMembers.size(),
                 Crew.MAX_MEMBERS,
 

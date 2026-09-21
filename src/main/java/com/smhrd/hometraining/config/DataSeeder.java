@@ -43,9 +43,9 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     /**
-     * 프론트(avatar-items.js/state.js)에 있는 실제 구매 가능 카탈로그로 맞춘다. 기본 지급 아이템
-     * (오렌지 헤드밴드·민트 티셔츠·딥그린 숏팬츠·오렌지 손목밴드·닉네임 컬러 이펙트)은 모든
-     * 유저가 항상 보유한 것으로 프론트가 처리하므로 여기엔 넣지 않는다 — 구매 대상만 시딩.
+     * 프론트(avatar-items.js/state.js)에 있는 실제 구매 가능 카탈로그로 맞춘다. 오렌지 헤드밴드·
+     * 민트 티셔츠·딥그린 숏팬츠·오렌지 손목밴드는 지금 판매 대상이 아니라(shop.js의
+     * SHOP_ENABLED_ITEM_NAMES 참고) 여기엔 넣지 않는다 — 구매 가능한 아이템만 시딩.
      * "네이비 스포츠 캡"을 마이그레이션 완료 표시로 써서, 예전(script.js 시절) 카탈로그가 이미
      * 심어져 있던 DB에서도 한 번만 정리하고 다시 심는다.
      */
@@ -60,6 +60,9 @@ public class DataSeeder implements CommandLineRunner {
                         "운동 1회 추가", "운동 기회를 1회 추가할 수 있는 이용권입니다."),
                 ShopItem.of("닉네임 변경권", 150, ShopItem.Category.기타, true, null, 1,
                         "닉네임 변경 1회", "닉네임을 한 번 변경할 수 있습니다."),
+                // 보유/착용 개념 없이 구매 즉시 색을 골라 적용하는 소모 아이템(shop.js buyItem 참고).
+                ShopItem.of("닉네임 컬러 이펙트", 180, ShopItem.Category.기타, true, "nickname", 2,
+                        "닉네임 컬러 변경 1회", "구매하면 바로 원하는 닉네임 색상을 골라 적용할 수 있습니다. 보유 아이템으로 쌓이지 않고, 다시 구매하면 색상을 또 바꿀 수 있어요."),
 
                 ShopItem.of("네이비 스포츠 캡", 220, ShopItem.Category.헤어, false, "head", 2,
                         "능력치 없음 · 외형 전용", "차분한 네이비 컬러의 스포츠 캡입니다."),

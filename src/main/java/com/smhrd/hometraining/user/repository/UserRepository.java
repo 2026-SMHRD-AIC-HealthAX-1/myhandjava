@@ -19,6 +19,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findTop50ByRegionCityAndRegionGuAndRegionDongOrderByPointsDesc(
             String regionCity, String regionGu, String regionDong);
 
+    /** 관리자 전체 사용자 관리 화면의 검색 — 닉네임 또는 이메일에 검색어가 포함된 회원을 찾는다. */
+    List<User> findByNicknameContainingIgnoreCaseOrEmailContainingIgnoreCase(
+            String nickname, String email);
+
     /**
      * 동 단위 지역 랭킹 — 운동기록 총점(script.js의 totalScore()) 기준.
      *

@@ -23,18 +23,11 @@ public enum UserGrade {
         return koreanName;
     }
 
-    public UserGrade next() {
-
-        int nextIndex = ordinal() + 1;
-
-        if (nextIndex >= values().length) {
-            return CHALLENGER;
-        }
-
-        return values()[nextIndex];
-    }
-
-    public boolean isHighestGrade() {
-        return this == CHALLENGER;
+    // 레벨을 10단위로 끊어 등급을 정한다: 1~10 아이언, 11~20 브론즈, ... 91~100(이상) 챌린저.
+    // 100레벨을 넘어가도 정의된 등급이 없으므로 마지막 등급(챌린저)에 그대로 머문다.
+    public static UserGrade forLevel(int level) {
+        int bucket = Math.max(0, (level - 1) / 10);
+        int index = Math.min(values().length - 1, bucket);
+        return values()[index];
     }
 }

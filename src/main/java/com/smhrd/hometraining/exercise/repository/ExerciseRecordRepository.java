@@ -143,4 +143,10 @@ public interface ExerciseRecordRepository
 
     void deleteByUserId(Long userId);
 
+    /** 관리자 전체 사용자 관리 화면의 "인증 횟수" — 사용자가 저장한 전체 운동 기록 수. */
+    long countByUserId(Long userId);
+
+    /** 관리자 대시보드의 "오늘 운동 인증" — 기간 안에 기록된 운동 수. */
+    long countByRecordedAtBetween(LocalDateTime from, LocalDateTime to);
+
 }

@@ -21,6 +21,7 @@ public record CrewSummaryResponse(
         int maxMembers,
 
         boolean joinEnabled,
+        boolean autoApprove,
         boolean full,
         boolean alreadyRequested
 
@@ -48,6 +49,7 @@ public record CrewSummaryResponse(
                 Crew.MAX_MEMBERS,
 
                 crew.isJoinEnabled(),
+                crew.isAutoApprove(),
                 full,
                 alreadyRequested
         );

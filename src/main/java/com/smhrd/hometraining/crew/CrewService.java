@@ -17,6 +17,7 @@ import com.smhrd.hometraining.common.exception.BusinessException;
 import com.smhrd.hometraining.crew.dto.CrewBattlePartyInviteEventDto;
 import com.smhrd.hometraining.crew.dto.CrewBattlePartyResponseEventDto;
 import com.smhrd.hometraining.crew.dto.CrewChatMessageDto;
+import com.smhrd.hometraining.crew.dto.CrewChatReportResponse;
 import com.smhrd.hometraining.crew.dto.CrewCreateRequest;
 import com.smhrd.hometraining.crew.dto.CrewJoinRequestDto;
 import com.smhrd.hometraining.crew.dto.CrewMemberEventDto;
@@ -27,11 +28,13 @@ import com.smhrd.hometraining.crew.dto.CrewSummaryResponse;
 import com.smhrd.hometraining.crew.dto.CrewUpdateRequest;
 import com.smhrd.hometraining.crew.entity.Crew;
 import com.smhrd.hometraining.crew.entity.CrewChatMessage;
+import com.smhrd.hometraining.crew.entity.CrewChatReport;
 import com.smhrd.hometraining.crew.entity.CrewJoinRequest;
 import com.smhrd.hometraining.crew.entity.CrewMember;
 import com.smhrd.hometraining.crew.entity.CrewNotice;
 import com.smhrd.hometraining.crew.battle.repository.CrewBattleParticipantRepository;
 import com.smhrd.hometraining.crew.repository.CrewChatMessageRepository;
+import com.smhrd.hometraining.crew.repository.CrewChatReportRepository;
 import com.smhrd.hometraining.crew.repository.CrewExperienceHistoryRepository;
 import com.smhrd.hometraining.crew.repository.CrewJoinRequestRepository;
 import com.smhrd.hometraining.crew.repository.CrewMemberRepository;
@@ -59,6 +62,7 @@ public class CrewService {
     private final CrewJoinRequestRepository crewJoinRequestRepository;
     private final CrewNoticeRepository crewNoticeRepository;
     private final CrewChatMessageRepository crewChatMessageRepository;
+    private final CrewChatReportRepository crewChatReportRepository;
     private final CrewExperienceHistoryRepository crewExperienceHistoryRepository;
     private final CrewWeeklyMissionRepository crewWeeklyMissionRepository;
     private final CrewWeeklyContributionRepository crewWeeklyContributionRepository;
@@ -312,6 +316,15 @@ public class CrewService {
                         userId
                 );
 
+        /*
+         * 자동가입승인이 켜진 크루는 승인 대기열에 쌓지 않고
+         * 신청과 동시에 바로 크루원으로 등록한다.
+         */
+        if (crew.isAutoApprove()) {
+            addMemberAndNotify(crew, requester);
+            return;
+        }
+
         crewJoinRequestRepository.save(
                 CrewJoinRequest.of(
                         crew,
@@ -394,58 +407,74 @@ public class CrewService {
             );
         }
 
-        crewMemberRepository.save(
-                CrewMember.of(
-                        leader.getCrew(),
-                        request.getRequester(),
-                        CrewMember.Role.MEMBER
-                )
+        addMemberAndNotify(
+                leader.getCrew(),
+                request.getRequester()
         );
 
         crewJoinRequestRepository.delete(request);
+    }
+
+    /**
+     * 크루원을 추가하고, 기존 크루원과 새로 들어온 사용자 모두에게
+     * 가입 완료를 실시간으로 알립니다.
+     *
+     * 크루장 승인(approveJoinRequest)과 자동가입승인(requestJoin) 두 경로에서 공통으로 씁니다.
+     */
+    private void addMemberAndNotify(
+            Crew crew,
+            User newMember
+    ) {
+
+        crewMemberRepository.save(
+                CrewMember.of(
+                        crew,
+                        newMember,
+                        CrewMember.Role.MEMBER
+                )
+        );
 
         /*
          * 기존 크루원의 화면에 신규 가입 정보를 전송합니다.
          */
         messagingTemplate.convertAndSend(
                 "/topic/crews/"
-                        + leader.getCrew().getId()
+                        + crew.getId()
                         + "/members",
 
                 new CrewMemberEventDto(
                         "JOINED",
-                        leader.getCrew().getId(),
-                        request.getRequester().getId(),
-                        request.getRequester().getNickname()
+                        crew.getId(),
+                        newMember.getId(),
+                        newMember.getNickname()
                 )
         );
 
         /*
-         * 가입 승인을 받은 사용자에게도
-         * 개인 알림을 전송합니다.
+         * 가입한 사용자에게도 개인 알림을 전송합니다.
          */
         messagingTemplate.convertAndSendToUser(
-                request.getRequester().getLoginId(),
+                newMember.getLoginId(),
                 "/queue/crew-events",
 
                 new CrewMemberEventDto(
                         "JOINED",
-                        leader.getCrew().getId(),
-                        request.getRequester().getId(),
-                        request.getRequester().getNickname()
+                        crew.getId(),
+                        newMember.getId(),
+                        newMember.getNickname()
                 )
         );
     }
 
     /**
-     * 크루 가입 신청 가능 상태를 변경합니다.
+     * 크루 가입 신청 자동승인 여부를 변경합니다.
      *
      * 크루장만 변경할 수 있습니다.
      */
     @Transactional
-    public CrewResponse updateJoinEnabled(
+    public CrewResponse updateAutoApprove(
             Long leaderId,
-            boolean joinEnabled
+            boolean autoApprove
     ) {
 
         CrewMember leader =
@@ -454,7 +483,7 @@ public class CrewService {
         Crew crew =
                 leader.getCrew();
 
-        crew.setJoinEnabled(joinEnabled);
+        crew.setAutoApprove(autoApprove);
 
         return toResponse(crew);
     }
@@ -839,6 +868,13 @@ public class CrewService {
         crewNoticeRepository.deleteByAuthorId(userId);
         crewJoinRequestRepository.deleteByRequesterId(userId);
         crewBattleParticipantRepository.deleteByUser_Id(userId);
+        /*
+         * 평소 "크루 탈퇴"는 CrewBattleContributionPolicy(PRESERVE)에 따라 기여도 기록을
+         * 크루에 남겨두지만, 계정 자체가 삭제되는 회원 탈퇴에서는 crew_battle_contributions.
+         * user_id FK가 걸려 있어 그 행을 남겨두면 아래에서 User를 지울 때 그대로 실패한다
+         * (회원탈퇴가 안 되던 원인). 이 사용자가 남긴 기여도는 모든 크루에서 무조건 지운다.
+         */
+        crewBattleContributionService.deleteAllForUser(userId);
         crewWeeklyContributionRepository.deleteByUserId(userId);
 
         Optional<CrewMember> memberOpt =
@@ -1006,6 +1042,82 @@ public class CrewService {
                 );
 
         return CrewChatMessageDto.from(saved);
+    }
+
+    /**
+     * 크루채팅 메시지를 신고합니다.
+     *
+     * 신고자가 해당 메시지가 속한 크루의 멤버인지 확인한 뒤 저장한다 — 다른 크루 메시지는
+     * 애초에 화면에 보이지 않지만, 혹시 모를 조작된 요청을 막기 위한 서버측 방어.
+     */
+    @Transactional
+    public void reportChatMessage(
+            Long userId,
+            Long messageId
+    ) {
+
+        CrewMember me =
+                requireMember(userId);
+
+        CrewChatMessage message =
+                crewChatMessageRepository
+                        .findById(messageId)
+                        .filter(m ->
+                                m.getCrew()
+                                        .getId()
+                                        .equals(me.getCrew().getId())
+                        )
+                        .orElseThrow(() ->
+                                new BusinessException(
+                                        "신고할 메시지를 찾을 수 없습니다."
+                                )
+                        );
+
+        if (message.getSender().getId().equals(userId)) {
+            throw new BusinessException(
+                    "본인 메시지는 신고할 수 없습니다."
+            );
+        }
+
+        crewChatReportRepository.save(
+                CrewChatReport.of(
+                        me.getCrew(),
+                        message,
+                        me.getUser(),
+                        message.getSender()
+                )
+        );
+    }
+
+    /**
+     * 관리자 "크루채팅 신고 관리" 화면의 전체 신고 목록을 조회합니다.
+     */
+    @Transactional(readOnly = true)
+    public List<CrewChatReportResponse> listChatReportsForAdmin() {
+
+        return crewChatReportRepository
+                .findAllByOrderByReportedAtDesc()
+                .stream()
+                .map(CrewChatReportResponse::from)
+                .toList();
+    }
+
+    /**
+     * 신고를 처리완료로 표시합니다.
+     */
+    @Transactional
+    public void resolveChatReport(Long reportId) {
+
+        CrewChatReport report =
+                crewChatReportRepository
+                        .findById(reportId)
+                        .orElseThrow(() ->
+                                new BusinessException(
+                                        "신고 내역을 찾을 수 없습니다."
+                                )
+                        );
+
+        report.resolve();
     }
 
     /**

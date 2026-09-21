@@ -3,6 +3,7 @@ package com.smhrd.hometraining.user;
 import com.smhrd.hometraining.common.ApiResponse;
 import com.smhrd.hometraining.security.CustomUserPrincipal;
 import com.smhrd.hometraining.user.dto.CalibrationRequest;
+import com.smhrd.hometraining.user.dto.SocialOnboardingRequest;
 import com.smhrd.hometraining.user.dto.UpdateProfileRequest;
 import com.smhrd.hometraining.user.dto.UserResponse;
 import jakarta.validation.Valid;
@@ -28,6 +29,16 @@ public class UserController {
     public ApiResponse<UserResponse> updateProfile(@AuthenticationPrincipal CustomUserPrincipal principal,
                                                      @RequestBody UpdateProfileRequest req) {
         return ApiResponse.ok(userService.updateProfile(principal.getUserId(), req));
+    }
+
+    /**
+     * 소셜 로그인으로 처음 가입한 사용자가 닉네임·동네·캐릭터(성별)를 한 번에 확정합니다.
+     * (updateProfile과 달리 닉네임 변경권을 쓰지 않음 — SocialOnboardingRequest 주석 참고)
+     */
+    @PatchMapping("/onboarding")
+    public ApiResponse<UserResponse> completeSocialOnboarding(@AuthenticationPrincipal CustomUserPrincipal principal,
+                                                                @Valid @RequestBody SocialOnboardingRequest req) {
+        return ApiResponse.ok(userService.completeSocialOnboarding(principal.getUserId(), req));
     }
 
     @GetMapping("/calibration")

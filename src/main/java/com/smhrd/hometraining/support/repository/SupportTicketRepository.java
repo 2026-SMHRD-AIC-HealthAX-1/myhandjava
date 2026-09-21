@@ -8,5 +8,7 @@ import java.util.List;
 public interface SupportTicketRepository extends JpaRepository<SupportTicket, Long> {
     List<SupportTicket> findByAuthorIdOrderByCreatedAtDesc(Long authorId);
     List<SupportTicket> findAllByOrderByCreatedAtDesc();
+    List<SupportTicket> findTop3ByOrderByCreatedAtDesc();
+    long countByStatusNot(SupportTicket.Status status);
     void deleteByAuthorId(Long authorId);
 }

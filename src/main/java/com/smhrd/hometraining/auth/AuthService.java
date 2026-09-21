@@ -95,6 +95,7 @@ public class AuthService {
         if (!passwordEncoder.matches(req.password(), user.getPasswordHash())) {
             throw new BusinessException("아이디 또는 비밀번호가 올바르지 않습니다.", HttpStatus.UNAUTHORIZED);
         }
+        assertNotSuspended(user);
         applyDailyAttendance(user);
         return issueToken(user);
     }
@@ -113,6 +114,7 @@ public class AuthService {
                             email, safeNickname, User.Gender.MALE);
                     return userRepository.save(created);
                 });
+        assertNotSuspended(user);
         applyDailyAttendance(user);
         return issueToken(user);
     }
@@ -279,6 +281,19 @@ public class AuthService {
                 Reason.ATTENDANCE,
                 today
         );
+    }
+
+    /**
+     * 관리자가 정지시킨 계정은 로그인을 거부한다.
+     *
+     * login()과 socialLogin() 두 곳에서 호출한다(kakaoLogin/googleLogin은 socialLogin을
+     * 거치므로 자동으로 같이 막힌다). 출석 포인트가 지급되기 전에 걸러야 하므로
+     * applyDailyAttendance보다 먼저 호출한다.
+     */
+    private void assertNotSuspended(User user) {
+        if (user.getStatus() == User.Status.SUSPENDED) {
+            throw new BusinessException("정지된 계정입니다. 고객센터로 문의해주세요.", HttpStatus.FORBIDDEN);
+        }
     }
 
     private LoginResponse issueToken(User user) {

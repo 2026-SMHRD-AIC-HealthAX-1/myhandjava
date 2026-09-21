@@ -154,4 +154,17 @@ public class CrewBattleContributionService {
     public void deleteCrewContributions(Long crewId) {
         contributionRepository.deleteByCrewId(crewId);
     }
+
+    /**
+     * 회원 탈퇴 시 이 사용자의 크루대전 기여도를 소속됐던 모든 크루에서 지웁니다.
+     *
+     * handleMemberDeparture()는 "크루만 탈퇴"하는 일반적인 경우를 위한 것이라
+     * LEAVE_HANDLING 정책(PRESERVE)을 따르지만, 계정 자체가 없어지는 회원 탈퇴는 남겨둘
+     * 사용자가 없으므로 정책과 무관하게 무조건 지워야 한다(안 지우면 user FK 위반으로
+     * 회원 탈퇴 자체가 실패한다).
+     */
+    @Transactional
+    public void deleteAllForUser(Long userId) {
+        contributionRepository.deleteByUserId(userId);
+    }
 }

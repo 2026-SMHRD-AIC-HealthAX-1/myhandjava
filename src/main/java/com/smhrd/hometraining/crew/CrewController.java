@@ -202,7 +202,7 @@ public class CrewController {
     }
 
     /**
-     * 크루 가입 신청 활성·비활성 상태를 변경합니다.
+     * 크루 가입 신청 자동승인 여부를 변경합니다.
      *
      * 크루장만 사용할 수 있습니다.
      */
@@ -217,9 +217,9 @@ public class CrewController {
     ) {
 
         CrewResponse response =
-                crewService.updateJoinEnabled(
+                crewService.updateAutoApprove(
                         principal.getUserId(),
-                        request.joinEnabled()
+                        request.autoApprove()
                 );
 
         return ApiResponse.ok(response);
@@ -443,5 +443,25 @@ public class CrewController {
                 );
 
         return ApiResponse.ok(response);
+    }
+
+    /**
+     * 크루채팅 메시지를 신고합니다.
+     */
+    @PostMapping("/me/chat/{messageId}/report")
+    public ApiResponse<Void> reportChat(
+            @AuthenticationPrincipal
+            CustomUserPrincipal principal,
+
+            @PathVariable
+            Long messageId
+    ) {
+
+        crewService.reportChatMessage(
+                principal.getUserId(),
+                messageId
+        );
+
+        return ApiResponse.ok();
     }
 }

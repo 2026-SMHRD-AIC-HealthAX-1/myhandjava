@@ -4,8 +4,8 @@ import jakarta.validation.constraints.NotNull;
 
 public record CrewJoinSettingRequest(
 
-        @NotNull(message = "가입 신청 상태가 필요합니다.")
-        Boolean joinEnabled
+        @NotNull(message = "자동가입승인 상태가 필요합니다.")
+        Boolean autoApprove
 
 ) {
 }

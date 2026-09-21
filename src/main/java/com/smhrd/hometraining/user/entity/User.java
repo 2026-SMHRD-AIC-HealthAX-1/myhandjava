@@ -53,6 +53,11 @@ public class User {
         ADMIN
     }
 
+    public enum Status {
+        ACTIVE,
+        SUSPENDED
+    }
+
     /**
      * 무료 운동 횟수 계산에 사용하는 대한민국 시간대입니다.
      */
@@ -123,6 +128,19 @@ public class User {
             length = 10
     )
     private Role role = Role.USER;
+
+    /**
+     * 관리자가 정지시킨 계정인지 나타냅니다.
+     *
+     * SUSPENDED 계정은 로그인이 거부됩니다(AuthService.issueToken 참고).
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(
+            nullable = false,
+            length = 10,
+            columnDefinition = "varchar(10) default 'ACTIVE'"
+    )
+    private Status status = Status.ACTIVE;
 
     @Column(
             name = "avatar_index",

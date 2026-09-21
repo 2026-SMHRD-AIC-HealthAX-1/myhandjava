@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.PageRequest;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,7 @@ import com.smhrd.hometraining.crew.battle.entity.CrewBattle;
 import com.smhrd.hometraining.crew.battle.entity.CrewBattleParticipant;
 import com.smhrd.hometraining.crew.battle.repository.CrewBattleParticipantRepository;
 import com.smhrd.hometraining.crew.battle.repository.CrewBattleRepository;
+import com.smhrd.hometraining.crew.dto.CrewBattleSyncEventDto;
 import com.smhrd.hometraining.crew.entity.Crew;
 import com.smhrd.hometraining.crew.entity.CrewExperienceHistory.SourceType;
 import com.smhrd.hometraining.crew.entity.CrewMember;
@@ -55,6 +57,7 @@ public class CrewBattleService {
     private final CrewBattleContributionService contributionService;
     private final CrewExperienceService crewExperienceService;
     private final EntityManager entityManager;
+    private final SimpMessagingTemplate messagingTemplate;
 
     /**
      * 자동 매칭을 신청합니다.
@@ -161,6 +164,9 @@ public class CrewBattleService {
                 continue;
             }
 
+            Set<Long> opponentTeamUserIds =
+                    candidate.getChallengerUserIds();
+
             candidate.matchOpponent(
                     requesterCrew,
                     participantUserIds
@@ -168,13 +174,32 @@ public class CrewBattleService {
 
             saveBattleParticipants(
                     candidate,
-                    candidate.getChallengerUserIds(),
+                    opponentTeamUserIds,
                     participantUserIds
             );
 
             candidate.start();
 
-            return toResponse(candidate);
+            CrewBattleDto.Response matchedResponse =
+                    toResponse(candidate);
+
+            /*
+             * REST 응답은 나(신청자)만 받는다. 같은 파티의 나머지 팀원과, 이미 대기 중이던
+             * 상대 크루 전원(상대편 신청자 포함)에게도 매칭이 잡혔다는 걸 실시간으로 알려야
+             * 각자 화면이 대기/대전 상태로 따라 들어간다.
+             */
+            notifyParticipants(
+                    participantUserIds,
+                    userId,
+                    matchedResponse
+            );
+            notifyParticipants(
+                    opponentTeamUserIds,
+                    null,
+                    matchedResponse
+            );
+
+            return matchedResponse;
         }
 
         CrewBattle waitingBattle =
@@ -190,7 +215,52 @@ public class CrewBattleService {
                         waitingBattle
                 );
 
-        return toResponse(savedBattle);
+        CrewBattleDto.Response waitingResponse =
+                toResponse(savedBattle);
+
+        /*
+         * 아직 상대를 못 찾아 대기 상태로 저장만 된 경우에도, 같은 파티의 나머지 팀원들은
+         * 이 사실을 몰라 계속 크루 페이지에 머물게 된다 — 대기 화면으로 같이 들어가도록 알린다.
+         */
+        notifyParticipants(
+                participantUserIds,
+                userId,
+                waitingResponse
+        );
+
+        return waitingResponse;
+    }
+
+    /**
+     * 신청자 본인(excludeUserId)을 뺀 나머지 대상들에게 지금 이 크루대전 상태를
+     * 개인 큐로 실시간 전달합니다. 대상이 크루원이 아니면 조용히 건너뜁니다.
+     */
+    private void notifyParticipants(
+            Set<Long> userIds,
+            Long excludeUserId,
+            CrewBattleDto.Response battle
+    ) {
+
+        for (Long targetUserId : userIds) {
+
+            if (excludeUserId != null
+                    && excludeUserId.equals(targetUserId)) {
+                continue;
+            }
+
+            crewMemberRepository
+                    .findByUserId(targetUserId)
+                    .ifPresent(member ->
+                            messagingTemplate.convertAndSendToUser(
+                                    member.getUser().getLoginId(),
+                                    "/queue/crew-events",
+                                    new CrewBattleSyncEventDto(
+                                            "BATTLE_SYNC",
+                                            battle
+                                    )
+                            )
+                    );
+        }
     }
 
     /**
