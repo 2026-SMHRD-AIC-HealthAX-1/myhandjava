@@ -8,6 +8,17 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+/**
+ * [담당] 로그인/소셜 로그인/토큰 발급 — 회원가입(signup)·아이디비번 로그인(login)은 프론트에서
+ *        더 이상 안 부르지만(SNS 전용으로 전환), 백엔드는 그대로 살아있다.
+ * [프론트 연동] ounhome-f/js/auth.js — doSocialLogin()이 카카오/구글로 리다이렉트한 뒤
+ *              handleKakaoRedirect()/handleGoogleRedirect()가 POST /api/auth/kakao/login,
+ *              /api/auth/google/login을 호출한다.
+ * [DB] 여기서 직접 쿼리하지 않고 AuthService → UserRepository → users 테이블.
+ * [주의] 로그인 성공 시 JwtTokenProvider가 토큰을 발급하는데, AuthService.issueToken() 전에
+ *        assertNotSuspended()로 정지 계정 로그인을 막고 있다 — 이 순서를 바꾸면 정지 계정이
+ *        출석 포인트를 먼저 받아버릴 수 있다.
+ */
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -20,16 +31,6 @@ public class AuthController {
         return ApiResponse.ok(authService.signup(req));
     }
 
-    @PostMapping("/check-id")
-    public ApiResponse<Map<String, Boolean>> checkId(@RequestBody Map<String, String> body) {
-        return ApiResponse.ok(Map.of("duplicate", authService.isLoginIdTaken(body.get("loginId"))));
-    }
-
-    @PostMapping("/check-nickname")
-    public ApiResponse<Map<String, Boolean>> checkNickname(@RequestBody Map<String, String> body) {
-        return ApiResponse.ok(Map.of("duplicate", authService.isNicknameTaken(body.get("nickname"))));
-    }
-
     @PostMapping("/login")
     public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest req) {
         return ApiResponse.ok(authService.login(req));
@@ -40,22 +41,6 @@ public class AuthController {
             @RequestBody Map<String, String> body) {
         return ApiResponse.ok(
                 authService.socialLogin(provider, body.get("providerUserId"), body.get("email"), body.get("nickname")));
-    }
-
-    @PostMapping("/find-id")
-    public ApiResponse<Map<String, String>> findId(@Valid @RequestBody FindIdRequest req) {
-        return ApiResponse.ok(Map.of("loginId", authService.findLoginIdByEmail(req)));
-    }
-
-    /** 실제 서비스에서는 임시 비밀번호를 이메일로만 발송하고 응답에는 담지 않아야 한다. */
-    @PostMapping("/find-password")
-    public ApiResponse<Map<String, String>> findPassword(@Valid @RequestBody FindPasswordRequest req) {
-        return ApiResponse.ok(Map.of("temporaryPassword", authService.issueTemporaryPassword(req)));
-    }
-
-    @PostMapping("/check-email")
-    public ApiResponse<Map<String, Boolean>> checkEmail(@RequestBody Map<String, String> body) {
-        return ApiResponse.ok(Map.of("duplicate", authService.isEmailTaken(body.get("email"))));
     }
 
     @PostMapping("/kakao/login")

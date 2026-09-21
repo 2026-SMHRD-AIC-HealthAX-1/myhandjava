@@ -33,6 +33,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * [담당] 내 프로필 조회/수정, 소셜 온보딩, 캘리브레이션, 경험치/레벨 부여, 공개 프로필,
+ *        관리자 회원 관리(검색/정지/활성화), 회원탈퇴.
+ * [DB] users 테이블 중심 + 회원탈퇴(withdraw)는 CrewService.cleanupAndLeaveForWithdrawal로
+ *      크루 정리까지 연쇄로 위임한 뒤 여러 테이블을 순서대로 지우고 마지막에 users 행을 삭제한다.
+ * [주의] ⚠️ withdraw()는 되돌릴 수 없는 삭제다 — 삭제 순서를 바꾸면 FK 제약으로 실패할 수 있으니
+ *        새 사용자 관련 테이블을 추가하면 이 메서드의 삭제 순서에도 반드시 추가할 것.
+ */
 @Service
 @RequiredArgsConstructor
 public class UserService {

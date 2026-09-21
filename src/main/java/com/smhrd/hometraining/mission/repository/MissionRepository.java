@@ -11,6 +11,7 @@ import com.smhrd.hometraining.mission.entity.Mission;
 
 import jakarta.persistence.LockModeType;
 
+// [DB 접근 지점] missions 테이블(사용자별로 배정된 오늘의 미션).
 public interface MissionRepository
         extends JpaRepository<Mission, Long> {
 

@@ -12,6 +12,7 @@ import com.smhrd.hometraining.crew.entity.CrewBattleContribution;
 
 import jakarta.persistence.LockModeType;
 
+// [DB 접근 지점] crew_battle_contributions 테이블(크루대전 누적 기여도).
 public interface CrewBattleContributionRepository
         extends JpaRepository<CrewBattleContribution, Long> {
 

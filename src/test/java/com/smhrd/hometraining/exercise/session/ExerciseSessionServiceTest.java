@@ -433,7 +433,6 @@ class ExerciseSessionServiceTest {
         user.setSetsResetDate(LocalDate.now());
 
         user.setRetakeTickets(1);
-        user.setExtraSets(0);
 
         return user;
     }

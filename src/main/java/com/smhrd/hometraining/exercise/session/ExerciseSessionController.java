@@ -20,6 +20,16 @@ import com.smhrd.hometraining.security.CustomUserPrincipal;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * [담당] 운동 "세션"(시작~종료) 생명주기 관리 — 오늘 무료 운동 가능 횟수 확인도 여기.
+ * [프론트 연동] ounhome-f/js/exercise.js — 카메라 켤 때 POST(생성)/PATCH .../start,
+ *              중간에 실패하면 .../fail, .../abort. 결과 저장(POST /api/exercise-records)은
+ *              이 컨트롤러가 아니라 ExerciseController가 담당 — 세션과 결과는 분리된 API다.
+ * [DB] ExerciseSessionService → exercise_sessions 테이블(status로 생성/시작/완료/실패/중단 추적).
+ * [주의] 세션 생성 직후 바로 결과를 저장하려 하면 트랜잭션 타이밍 상 실패할 수 있어, 프론트에서
+ *        재시도 로직(exercise.js saveExerciseResult)으로 방어하고 있다 — 여기 상태 전이 규칙을
+ *        바꾸면 그 재시도 로직도 같이 확인할 것.
+ */
 @RestController
 @RequestMapping("/api/exercise-sessions")
 @RequiredArgsConstructor

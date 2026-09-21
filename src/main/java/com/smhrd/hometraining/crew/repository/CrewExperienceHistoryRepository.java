@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 import com.smhrd.hometraining.crew.entity.CrewExperienceHistory;
 import com.smhrd.hometraining.crew.entity.CrewExperienceHistory.SourceType;
 
+// [DB 접근 지점] crew_experience_history 테이블(크루 경험치 변동 이력).
 public interface CrewExperienceHistoryRepository
         extends JpaRepository<CrewExperienceHistory, Long> {
 

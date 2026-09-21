@@ -12,6 +12,7 @@ import com.smhrd.hometraining.crew.entity.CrewWeeklyMission;
 
 import jakarta.persistence.LockModeType;
 
+// [DB 접근 지점] crew_weekly_missions 테이블(크루 단위 주간 공동 미션).
 public interface CrewWeeklyMissionRepository
         extends JpaRepository<CrewWeeklyMission, Long> {
 

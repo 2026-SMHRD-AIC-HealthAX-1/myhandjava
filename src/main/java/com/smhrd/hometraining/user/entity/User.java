@@ -202,18 +202,6 @@ public class User {
     )
     private int nicknameTickets = 2;
 
-    /**
-     * 기존 상점 및 사용자 응답과의 호환성을 위해 유지합니다.
-     *
-     * 현재 하루 무료 3회 계산에는 사용하지 않습니다.
-     * 추가 세트 상품 정책이 확정되면 별도로 연결합니다.
-     */
-    @Column(
-            name = "extra_sets",
-            nullable = false
-    )
-    private int extraSets = 0;
-
     @Column(
             name = "sets_used_today",
             nullable = false
@@ -298,7 +286,7 @@ public class User {
     /**
      * 하루 무료 운동 한도를 반환합니다.
      *
-     * 레벨과 extraSets 값에 관계없이 3회입니다.
+     * 레벨과 관계없이 3회입니다.
      */
     public int getDailySetLimit() {
         return DAILY_FREE_SET_LIMIT;

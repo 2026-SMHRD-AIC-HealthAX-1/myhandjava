@@ -12,7 +12,16 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.interceptor.TransactionAspectSupport;
 
-/** script.js의 EXS·shopItems 목업 데이터를 최초 기동 시 DB에 그대로 반영한다(이미 있으면 건너뜀). */
+/**
+ * script.js의 EXS·shopItems 목업 데이터를 최초 기동 시 DB에 그대로 반영한다(이미 있으면 건너뜀).
+ *
+ * [담당] 서버 기동 시 초기 데이터 시딩 — exercise_definitions, shop_items 테이블.
+ * [주의] ⚠️ 이 프로젝트는 application.yml의 ddl-auto: none이라 테이블/컬럼은 자동 생성되지
+ *        않는다 — 새 컬럼/테이블이 필요하면 공유 DB에 직접 ALTER TABLE/CREATE TABLE을 실행해야
+ *        한다(엔티티만 고치면 실제 DB와 안 맞아 런타임 SQL 에러가 난다).
+ *        seedShopItems()는 실패해도 서버 전체가 죽지 않도록 try/catch + rollback-only 처리돼
+ *        있다(공유 DB에 옛날 스키마가 남아있는 환경 대비) — 이 방어 로직을 지우지 말 것.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -56,44 +65,44 @@ public class DataSeeder implements CommandLineRunner {
         userItemRepository.deleteAllInBatch();
         shopItemRepository.deleteAllInBatch();
         shopItemRepository.saveAll(java.util.List.of(
-                ShopItem.of("운동 추가권", 80, ShopItem.Category.기타, true, null, 1,
+                ShopItem.of("운동 추가권", 80, ShopItem.Category.기타, true, null,
                         "운동 1회 추가", "운동 기회를 1회 추가할 수 있는 이용권입니다."),
-                ShopItem.of("닉네임 변경권", 150, ShopItem.Category.기타, true, null, 1,
+                ShopItem.of("닉네임 변경권", 150, ShopItem.Category.기타, true, null,
                         "닉네임 변경 1회", "닉네임을 한 번 변경할 수 있습니다."),
                 // 보유/착용 개념 없이 구매 즉시 색을 골라 적용하는 소모 아이템(shop.js buyItem 참고).
-                ShopItem.of("닉네임 컬러 이펙트", 180, ShopItem.Category.기타, true, "nickname", 2,
+                ShopItem.of("닉네임 컬러 이펙트", 180, ShopItem.Category.기타, true, "nickname",
                         "닉네임 컬러 변경 1회", "구매하면 바로 원하는 닉네임 색상을 골라 적용할 수 있습니다. 보유 아이템으로 쌓이지 않고, 다시 구매하면 색상을 또 바꿀 수 있어요."),
 
-                ShopItem.of("네이비 스포츠 캡", 220, ShopItem.Category.헤어, false, "head", 2,
+                ShopItem.of("네이비 스포츠 캡", 220, ShopItem.Category.헤어, false, "head",
                         "능력치 없음 · 외형 전용", "차분한 네이비 컬러의 스포츠 캡입니다."),
 
-                ShopItem.of("오렌지 트랙 재킷", 320, ShopItem.Category.상의, false, "top", 3,
+                ShopItem.of("오렌지 트랙 재킷", 320, ShopItem.Category.상의, false, "top",
                         "능력치 없음 · 외형 전용", "활기찬 오렌지 컬러의 집업 트랙 재킷입니다."),
-                ShopItem.of("라벤더 후디", 340, ShopItem.Category.상의, false, "top", 3,
+                ShopItem.of("라벤더 후디", 340, ShopItem.Category.상의, false, "top",
                         "능력치 없음 · 외형 전용", "부드러운 라벤더색 후드 운동복입니다."),
 
-                ShopItem.of("차콜 트랙 팬츠", 280, ShopItem.Category.하의, false, "bottom", 2,
+                ShopItem.of("차콜 트랙 팬츠", 280, ShopItem.Category.하의, false, "bottom",
                         "능력치 없음 · 외형 전용", "오렌지 라인이 들어간 차콜 트레이닝 팬츠입니다."),
-                ShopItem.of("라벤더 조거 팬츠", 300, ShopItem.Category.하의, false, "bottom", 3,
+                ShopItem.of("라벤더 조거 팬츠", 300, ShopItem.Category.하의, false, "bottom",
                         "능력치 없음 · 외형 전용", "편안한 핏의 라벤더 조거 팬츠입니다."),
 
-                ShopItem.of("민트 운동화", 260, ShopItem.Category.신발, false, "shoes", 2,
+                ShopItem.of("민트 운동화", 260, ShopItem.Category.신발, false, "shoes",
                         "능력치 없음 · 외형 전용", "민트 포인트가 들어간 산뜻한 운동화입니다."),
-                ShopItem.of("라벤더 하이탑", 310, ShopItem.Category.신발, false, "shoes", 3,
+                ShopItem.of("라벤더 하이탑", 310, ShopItem.Category.신발, false, "shoes",
                         "능력치 없음 · 외형 전용", "발목까지 올라오는 라벤더 하이탑 운동화입니다."),
 
-                ShopItem.of("네이비 스마트워치", 240, ShopItem.Category.기타, false, "accessory", 2,
+                ShopItem.of("네이비 스마트워치", 240, ShopItem.Category.기타, false, "accessory",
                         "능력치 없음 · 외형 전용", "운동 기록을 확인하는 네이비 스마트워치입니다."),
-                ShopItem.of("골드 메달", 380, ShopItem.Category.기타, false, "accessory", 4,
+                ShopItem.of("골드 메달", 380, ShopItem.Category.기타, false, "accessory",
                         "능력치 없음 · 외형 전용", "꾸준한 운동을 기념하는 골드 메달입니다."),
 
-                ShopItem.of("배경 - 맑은 강변 산책로", 250, ShopItem.Category.배경, false, "background", 1,
+                ShopItem.of("배경 - 맑은 강변 산책로", 250, ShopItem.Category.배경, false, "background",
                         "능력치 없음 · 외형 전용", "푸른 하늘과 강변 러닝 코스가 펼쳐진 밝은 낮 배경입니다."),
-                ShopItem.of("배경 - 노을빛 강변", 300, ShopItem.Category.배경, false, "background", 2,
+                ShopItem.of("배경 - 노을빛 강변", 300, ShopItem.Category.배경, false, "background",
                         "능력치 없음 · 외형 전용", "주황빛 노을이 물든 강변 러닝 코스 배경입니다."),
-                ShopItem.of("배경 - 가을 호수 공원", 350, ShopItem.Category.배경, false, "background", 3,
+                ShopItem.of("배경 - 가을 호수 공원", 350, ShopItem.Category.배경, false, "background",
                         "능력치 없음 · 외형 전용", "단풍과 호수가 어우러진 따뜻한 가을 공원 배경입니다."),
-                ShopItem.of("배경 - 비 오는 가로수길", 320, ShopItem.Category.배경, false, "background", 3,
+                ShopItem.of("배경 - 비 오는 가로수길", 320, ShopItem.Category.배경, false, "background",
                         "능력치 없음 · 외형 전용", "가로등 불빛이 비치는 차분한 빗속 공원 배경입니다.")
         ));
     }

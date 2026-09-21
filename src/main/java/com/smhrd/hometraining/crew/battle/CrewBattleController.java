@@ -20,6 +20,14 @@ import com.smhrd.hometraining.security.CustomUserPrincipal;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * [담당] 크루대전 매칭 신청/취소/조회(REST) — 실시간 렙 판정 반영은 CrewBattleSocketController(STOMP).
+ * [프론트 연동] ounhome-f/js/crew.js의 크루대전 파트(requestCrewBattle 등) → /api/crew-battles/**.
+ * [DB] CrewBattleService → CrewBattleRepository/CrewBattleParticipantRepository →
+ *      crew_battles, crew_battle_participants 테이블.
+ * [주의] 매칭 로직(대기 중인 상대 찾기)은 동시 요청 경합이 있는 구간이라 CrewBattleService에서
+ *        비관적 락(findByIdForUpdate 등)을 쓴다 — 락 순서를 바꾸면 데드락 위험이 있다.
+ */
 @RestController
 @RequestMapping("/api/crew-battles")
 @RequiredArgsConstructor

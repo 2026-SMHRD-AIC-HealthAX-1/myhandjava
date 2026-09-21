@@ -599,23 +599,6 @@ public class CrewBattle {
                 true;
     }
 
-    /**
-     * 기존 코드와 테스트 호환을 위한 종료 메서드입니다.
-     */
-    @Deprecated
-    public void finish() {
-
-        if (status == Status.FINISHED) {
-            return;
-        }
-
-        this.status =
-                Status.FINISHED;
-
-        this.finishedAt =
-                LocalDateTime.now();
-    }
-
     public int getTeamSize() {
         return challengerUserIds.size();
     }
@@ -636,69 +619,4 @@ public class CrewBattle {
         return status == Status.FINISHED;
     }
 
-    /**
-     * 기존 상대 지정 대전 코드 호환용 메서드입니다.
-     */
-    @Deprecated
-    public static CrewBattle request(
-            Crew challenger,
-            Crew opponent,
-            String exerciseType,
-            int durationMinutes,
-            Set<Long> challengerUserIds
-    ) {
-
-        CrewBattle battle =
-                new CrewBattle();
-
-        battle.challenger =
-                challenger;
-
-        battle.opponent =
-                opponent;
-
-        battle.exerciseType =
-                exerciseType;
-
-        battle.durationMinutes =
-                durationMinutes;
-
-        battle.status =
-                Status.REQUESTED;
-
-        battle.challengerUserIds.addAll(
-                challengerUserIds
-        );
-
-        return battle;
-    }
-
-    /**
-     * 기존 상대 지정 대전 코드 호환용 메서드입니다.
-     */
-    @Deprecated
-    public void accept(
-            Set<Long> opponentUserIds
-    ) {
-
-        this.opponentUserIds.clear();
-
-        this.opponentUserIds.addAll(
-                opponentUserIds
-        );
-
-        this.matchedAt =
-                LocalDateTime.now();
-
-        this.startedAt =
-                matchedAt;
-
-        this.endsAt =
-                startedAt.plusMinutes(
-                        durationMinutes
-                );
-
-        this.status =
-                Status.ACTIVE;
-    }
 }

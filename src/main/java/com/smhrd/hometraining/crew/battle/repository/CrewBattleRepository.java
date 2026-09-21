@@ -14,6 +14,8 @@ import com.smhrd.hometraining.crew.battle.entity.CrewBattle;
 
 import jakarta.persistence.LockModeType;
 
+// [DB 접근 지점] crew_battles 테이블. findByIdForUpdate 등은 비관적 락(PESSIMISTIC_WRITE) 쿼리이니
+// 동시성 관련 버그 수정 시 이 파일부터 확인할 것.
 public interface CrewBattleRepository
         extends JpaRepository<CrewBattle, Long> {
 

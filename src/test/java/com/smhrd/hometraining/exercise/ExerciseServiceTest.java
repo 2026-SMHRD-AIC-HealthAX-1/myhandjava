@@ -590,7 +590,6 @@ class ExerciseServiceTest {
         user.setExp(0);
         user.setPoints(0);
         user.setGrade(UserGrade.IRON);
-        user.setExtraSets(0);
 
         user.setSetsUsedToday(1);
         user.setSetsResetDate(LocalDate.now());

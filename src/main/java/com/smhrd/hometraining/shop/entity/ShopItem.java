@@ -36,9 +36,6 @@ public class ShopItem {
     @Column(length = 20)
     private String slot;
 
-    @Column(name = "level_req", nullable = false)
-    private int levelReq;
-
     @Column(length = 60)
     private String effect;
 
@@ -46,14 +43,13 @@ public class ShopItem {
     private String effectDesc;
 
     public static ShopItem of(String name, int price, Category category, boolean consumable,
-                               String slot, int levelReq, String effect, String effectDesc) {
+                               String slot, String effect, String effectDesc) {
         ShopItem item = new ShopItem();
         item.name = name;
         item.price = price;
         item.category = category;
         item.consumable = consumable;
         item.slot = slot;
-        item.levelReq = levelReq;
         item.effect = effect;
         item.effectDesc = effectDesc;
         return item;

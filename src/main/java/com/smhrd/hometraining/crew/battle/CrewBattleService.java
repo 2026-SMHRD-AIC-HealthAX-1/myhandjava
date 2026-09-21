@@ -35,6 +35,14 @@ import jakarta.persistence.LockModeType;
 import lombok.RequiredArgsConstructor;
 import com.smhrd.hometraining.crew.battle.dto.CrewBattleResultResponse;
 
+/**
+ * [담당] 크루대전 매칭(대기열)·진행·실시간 렙 반영·결과 확정·보상 지급.
+ * [DB] crew_battles, crew_battle_participants, crew_battle_contributions +
+ *      크루 경험치 반영은 CrewExperienceService에 위임.
+ * [주의] ⚠️ 동시성이 가장 중요한 서비스다 — 두 크루가 거의 동시에 매칭을 신청하면 서로를
+ *        놓치는 race가 날 수 있어 findByIdForUpdate 등 비관적 락을 쓴다. TARGET_SCORE_PER_MEMBER
+ *        (CrewBattle.java)를 너무 낮추면 렙 1회만으로 대전이 바로 끝나버리니 값 조정 시 주의.
+ */
 @Service
 @RequiredArgsConstructor
 public class CrewBattleService {

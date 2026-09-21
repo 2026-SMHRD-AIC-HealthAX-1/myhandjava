@@ -8,9 +8,9 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
 
+// [DB 접근 지점] users 테이블 — 이 프로젝트에서 가장 많이 참조되는 핵심 테이블.
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByLoginId(String loginId);
-    Optional<User> findByNickname(String nickname);
     Optional<User> findByEmail(String email);
     boolean existsByEmail(String email);
     boolean existsByLoginId(String loginId);

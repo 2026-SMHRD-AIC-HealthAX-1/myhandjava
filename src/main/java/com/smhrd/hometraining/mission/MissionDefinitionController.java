@@ -19,6 +19,12 @@ import com.smhrd.hometraining.mission.dto.MissionDefinitionResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * [담당] 관리자용 미션 "원본"(정의) CRUD — 개인/크루 미션이 배정될 때 이 정의를 기준으로 뽑힌다.
+ * [프론트 연동] ounhome-f/js/admin.js 관리자모드 '미션 관리' 탭(loadAdminMissions/submitAdminMission
+ *              /toggleAdminMissionActive) → /api/admin/mission-definitions.
+ * [DB] MissionDefinitionService → MissionDefinitionRepository → mission_definitions 테이블.
+ */
 @RestController
 @RequestMapping("/api/admin/mission-definitions")
 @RequiredArgsConstructor

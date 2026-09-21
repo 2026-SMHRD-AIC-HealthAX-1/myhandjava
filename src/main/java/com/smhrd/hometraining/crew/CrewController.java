@@ -30,6 +30,16 @@ import com.smhrd.hometraining.security.CustomUserPrincipal;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * [담당] '홈크루' 카테고리 REST API 대부분 — 생성/조회/가입신청/승인/탈퇴/해체/공지/채팅기록/
+ *        주간미션/경험치이력/대전기여도. (실시간 채팅 발신·크루대전 자체는 별도 컨트롤러 참고)
+ * [프론트 연동] ounhome-f/js/crew.js가 이 컨트롤러의 거의 모든 엔드포인트를 호출한다(fetch로 직접).
+ * [DB] 대부분 CrewService 한 곳을 거쳐 crews/crew_members/crew_join_requests/crew_notices 등
+ *      크루 관련 테이블에 접근한다 — 다른 크루 관련 컨트롤러(AdminCrewChatReportController,
+ *      CrewChatController, CrewBattlePartyController)도 같은 CrewService를 공유한다.
+ * [주의] CrewService가 이 프로젝트에서 가장 큰 "갓 서비스"라 메서드가 아주 많다 — 여기서 새
+ *        엔드포인트를 추가할 땐 비슷한 기존 메서드가 있는지 먼저 찾아볼 것.
+ */
 @RestController
 @RequestMapping("/api/crews")
 @RequiredArgsConstructor

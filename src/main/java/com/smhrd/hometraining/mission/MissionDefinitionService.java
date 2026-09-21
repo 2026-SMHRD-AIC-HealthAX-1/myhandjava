@@ -10,7 +10,6 @@ import com.smhrd.hometraining.common.exception.BusinessException;
 import com.smhrd.hometraining.mission.dto.MissionDefinitionRequest;
 import com.smhrd.hometraining.mission.dto.MissionDefinitionResponse;
 import com.smhrd.hometraining.mission.entity.MissionDefinition;
-import com.smhrd.hometraining.mission.entity.MissionScope;
 import com.smhrd.hometraining.mission.repository.MissionDefinitionRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -92,22 +91,6 @@ public class MissionDefinitionService {
                 .toList();
     }
 
-    /**
-     * 활성화된 미션만 조회합니다.
-     *
-     * 사용자 일일 미션 배정에서 사용합니다.
-     */
-    @Transactional(readOnly = true)
-    public List<MissionDefinitionResponse> getActiveDefinitions(
-            MissionScope scope
-    ) {
-
-        return missionDefinitionRepository
-                .findByScopeAndActiveTrueOrderByIdAsc(scope)
-                .stream()
-                .map(MissionDefinitionResponse::from)
-                .toList();
-    }
 
     /**
      * 기존 관리자 미션 원본을 수정합니다.

@@ -12,6 +12,7 @@ import com.smhrd.hometraining.exercise.session.entity.ExerciseSession;
 
 import jakarta.persistence.LockModeType;
 
+// [DB 접근 지점] exercise_sessions 테이블(운동 시작~종료 진행 상태).
 public interface ExerciseSessionRepository
         extends JpaRepository<ExerciseSession, Long> {
 

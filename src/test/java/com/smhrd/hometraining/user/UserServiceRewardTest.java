@@ -231,7 +231,6 @@ class UserServiceRewardTest {
         user.setLevel(1);
         user.setExp(0);
         user.setPoints(0);
-        user.setExtraSets(0);
         user.setGrade(UserGrade.IRON);
 
         return user;

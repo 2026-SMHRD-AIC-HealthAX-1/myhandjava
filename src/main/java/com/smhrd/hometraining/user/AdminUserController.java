@@ -15,7 +15,14 @@ import com.smhrd.hometraining.user.dto.AdminUserResponse;
 
 import lombok.RequiredArgsConstructor;
 
-/** 관리자 "전체 사용자 관리" 화면 전용 API — 전체 회원 조회/검색과 정지·활성 처리. */
+/**
+ * 관리자 "전체 사용자 관리" 화면 전용 API — 전체 회원 조회/검색과 정지·활성 처리.
+ *
+ * [프론트 연동] ounhome-f/js/admin.js loadAdminUsers()/suspendAdminUser()/activateAdminUser().
+ * [DB] UserService → UserRepository → users 테이블(status 컬럼을 ACTIVE/SUSPENDED로 갱신).
+ * [주의] ⚠️ suspend() 이후 정지된 계정은 AuthService.assertNotSuspended()에서 다음 로그인
+ *        시도부터 거부된다(이미 발급된 토큰은 만료 전까지 유효 — 즉시 강제 로그아웃은 아님).
+ */
 @RestController
 @RequestMapping("/api/admin/users")
 @RequiredArgsConstructor

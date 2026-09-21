@@ -23,6 +23,13 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * [담당] 상점 아이템 조회/구매/착용·해제 로직.
+ * [DB] shop_items, user_items, users(포인트 차감) → UserResourceHistoryService로 재화 변동 이력도 남김.
+ * [주의] 레벨 제한(levelReq) 관련 코드는 이번에 완전히 제거됐다 — 포인트 잔액만으로 구매 가능.
+ *        상점 데이터는 서버 기동 시 DataSeeder가 채우니, 새 아이템 추가는 여기가 아니라
+ *        config/DataSeeder.java를 수정할 것.
+ */
 @Service
 @RequiredArgsConstructor
 public class ShopService {

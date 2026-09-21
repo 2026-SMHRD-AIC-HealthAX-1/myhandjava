@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
+// [DB 접근 지점] crews 테이블 — 여기 메서드가 실제 SQL(JPQL)을 실행한다.
 public interface CrewRepository extends JpaRepository<Crew, Long> {
     boolean existsByName(String name);
 

@@ -12,6 +12,7 @@ import com.smhrd.hometraining.crew.entity.CrewWeeklyContribution;
 
 import jakarta.persistence.LockModeType;
 
+// [DB 접근 지점] crew_weekly_contributions 테이블(크루원별 주간 미션 기여도).
 public interface CrewWeeklyContributionRepository
         extends JpaRepository<CrewWeeklyContribution, Long> {
 

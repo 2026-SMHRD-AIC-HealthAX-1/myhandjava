@@ -31,11 +31,18 @@ import java.time.ZoneId;
 
 import java.security.SecureRandom;
 
+/**
+ * [담당] 로그인 인증 로직(비밀번호 검증, 소셜 OAuth 코드 교환, JWT 발급).
+ * [DB] UserRepository → users 테이블 조회/생성만 하고, 프로필 갱신 등은 UserService가 담당.
+ * [주의] ⚠️ JWT 서명 키는 application.yml의 app.jwt.secret(JwtTokenProvider가 사용) — 운영에서는
+ *        반드시 환경변수로 실제 값을 넣어야 한다(기본값은 개발용 더미 문자열).
+ *        정지된 계정 로그인 차단(assertNotSuspended)은 출석 포인트 지급(applyDailyAttendance)
+ *        전에 호출해야 한다 — 순서를 바꾸면 정지 계정이 포인트부터 받아버린다.
+ */
 @Service
 @RequiredArgsConstructor
 public class AuthService {
 
-    private static final String TEMP_PW_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
     private static final ZoneId KOREA_ZONE_ID =
             ZoneId.of("Asia/Seoul");
 
@@ -205,24 +212,6 @@ public class AuthService {
         }
     }
 
-    @Transactional(readOnly = true)
-    public String findLoginIdByEmail(FindIdRequest req) {
-        User user = userRepository.findByEmail(req.email())
-                .orElseThrow(() -> new BusinessException("가입된 계정을 찾을 수 없습니다."));
-        return maskLoginId(user.getLoginId());
-    }
-
-    /** 임시 비밀번호를 발급한다. 실제 서비스에서는 이 값을 응답으로 내려주지 않고 이메일로만 발송해야 한다. */
-    @Transactional
-    public String issueTemporaryPassword(FindPasswordRequest req) {
-        User user = userRepository.findByLoginId(req.loginId())
-                .filter(u -> u.getEmail().equalsIgnoreCase(req.email()))
-                .orElseThrow(() -> new BusinessException("일치하는 계정 정보를 찾을 수 없습니다."));
-        String tempPassword = generateTempPassword();
-        user.setPasswordHash(passwordEncoder.encode(tempPassword));
-        return tempPassword;
-    }
-
     private void applyDailyAttendance(User user) {
 
         /*
@@ -315,34 +304,6 @@ public class AuthService {
                 gender,
                 user.getAvatarIndex()
         );
-    }
-
-    private String maskLoginId(String loginId) {
-        if (loginId.length() <= 2)
-            return loginId;
-        return loginId.substring(0, 2) + "*".repeat(loginId.length() - 2);
-    }
-
-    private String generateTempPassword() {
-        StringBuilder sb = new StringBuilder(10);
-        for (int i = 0; i < 10; i++)
-            sb.append(TEMP_PW_CHARS.charAt(random.nextInt(TEMP_PW_CHARS.length())));
-        return sb.toString();
-    }
-
-    @Transactional(readOnly = true)
-    public boolean isLoginIdTaken(String loginId) {
-        return userRepository.existsByLoginId(loginId);
-    }
-
-    @Transactional(readOnly = true)
-    public boolean isNicknameTaken(String nickname) {
-        return userRepository.existsByNickname(nickname);
-    }
-
-    @Transactional(readOnly = true)
-    public boolean isEmailTaken(String email) {
-        return userRepository.existsByEmail(email);
     }
 
 }

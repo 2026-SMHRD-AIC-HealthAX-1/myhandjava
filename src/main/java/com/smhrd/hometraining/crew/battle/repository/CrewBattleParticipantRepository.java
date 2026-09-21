@@ -12,6 +12,7 @@ import com.smhrd.hometraining.crew.battle.entity.CrewBattleParticipant;
 
 import jakarta.persistence.LockModeType;
 
+// [DB 접근 지점] crew_battle_participants 테이블.
 public interface CrewBattleParticipantRepository
         extends JpaRepository<CrewBattleParticipant, Long> {
 
@@ -134,4 +135,6 @@ public interface CrewBattleParticipantRepository
     );
 
     void deleteByUser_Id(Long userId);
+
+    void deleteByBattle_Id(Long battleId);
 }

@@ -13,6 +13,9 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
  * 클라이언트 구독: /topic/crews/{crewId}/chat
  * 클라이언트 발행: /app/crews/{crewId}/chat  →  CrewChatController가 처리
  * CONNECT 프레임에 Authorization: Bearer &lt;JWT&gt; 네이티브 헤더를 실어 보내야 한다(StompAuthChannelInterceptor 참고).
+ *
+ * [담당] 실시간 통신(크루채팅/크루대전 렙 반영/파티 초대/멤버십 변경) 전부의 WebSocket 인프라 설정.
+ * [DB] 없음 — 순수 인프라 설정. 실제 메시지 저장은 CrewChatController 등 개별 컨트롤러가 담당.
  */
 @Configuration
 @EnableWebSocketMessageBroker

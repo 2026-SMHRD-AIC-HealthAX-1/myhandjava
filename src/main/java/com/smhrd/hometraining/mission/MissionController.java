@@ -16,6 +16,12 @@ import com.smhrd.hometraining.security.CustomUserPrincipal;
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * [담당] 사용자용 "오늘의 미션" 조회/수령 — 미션 원본 등록은 MissionDefinitionController(관리자용).
+ * [프론트 연동] ounhome-f/js/mission.js — GET /api/missions/today, POST /api/missions/{id}/claim.
+ * [DB] MissionService → missions(사용자별 배정), mission_counters(진행도 집계),
+ *      mission_definitions(원본) 테이블.
+ */
 @RestController
 @RequestMapping("/api/missions")
 @RequiredArgsConstructor

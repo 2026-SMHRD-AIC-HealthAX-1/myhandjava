@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 
+// [DB 접근 지점] crew_join_requests 테이블.
 public interface CrewJoinRequestRepository extends JpaRepository<CrewJoinRequest, Long> {
     List<CrewJoinRequest> findByCrewIdOrderByRequestedAtAsc(Long crewId);
     boolean existsByCrewIdAndRequesterId(Long crewId, Long requesterId);

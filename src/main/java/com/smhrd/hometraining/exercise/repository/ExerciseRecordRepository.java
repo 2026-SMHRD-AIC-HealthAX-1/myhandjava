@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 
 import com.smhrd.hometraining.exercise.entity.ExerciseRecord;
 
+// [DB 접근 지점] exercise_records 테이블(완료된 운동 결과). 랭킹/마이페이지 히스토리도 여기서 조회.
 public interface ExerciseRecordRepository
         extends JpaRepository<ExerciseRecord, Long> {
 

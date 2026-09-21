@@ -20,6 +20,14 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
+/**
+ * [담당] 인증/인가 전체 설정 — 어떤 API가 로그인 없이도 열려있는지(permitAll), CORS 허용 오리진,
+ *        JWT 필터 연결, 관리자 전용 메서드 보안(@EnableMethodSecurity + 각 컨트롤러의 @PreAuthorize).
+ * [DB] 없음 — 순수 설정 클래스.
+ * [주의] ⚠️ 새 프론트 배포 주소(예: 새 devtunnel URL)를 추가하면 여기 CORS 허용 목록도 같이
+ *        고쳐야 브라우저에서 요청이 안 막힌다. permitAll 경로를 늘릴 땐 정말 로그인 없이
+ *        접근해도 되는 API인지 신중히 판단할 것(랭킹, 공개 프로필처럼 원래 그런 용도만).
+ */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity

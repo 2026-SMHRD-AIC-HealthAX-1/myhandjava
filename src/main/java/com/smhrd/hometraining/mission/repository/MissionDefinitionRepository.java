@@ -8,6 +8,7 @@ import com.smhrd.hometraining.mission.entity.MissionDefinition;
 import com.smhrd.hometraining.mission.entity.MissionMetric;
 import com.smhrd.hometraining.mission.entity.MissionScope;
 
+// [DB 접근 지점] mission_definitions 테이블(관리자가 등록하는 미션 원본).
 public interface MissionDefinitionRepository
         extends JpaRepository<MissionDefinition, Long> {
 

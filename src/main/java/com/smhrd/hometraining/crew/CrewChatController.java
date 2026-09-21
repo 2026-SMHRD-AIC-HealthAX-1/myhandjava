@@ -12,6 +12,12 @@ import org.springframework.stereotype.Controller;
 
 import java.security.Principal;
 
+/**
+ * [담당] 크루채팅 메시지 "발신"(전송) 전용 STOMP 엔드포인트. 조회는 REST(CrewController
+ *        GET /api/crews/me/chat), 신고는 별도 REST(CrewController POST .../report)로 나뉜다.
+ * [프론트 연동] ounhome-f/js/crew.js sendCrewChat() → STOMP publish /app/crews/{crewId}/chat.
+ * [DB] CrewService.sendChat() → CrewChatMessageRepository → crew_chat_messages 테이블.
+ */
 @Controller
 @RequiredArgsConstructor
 public class CrewChatController {

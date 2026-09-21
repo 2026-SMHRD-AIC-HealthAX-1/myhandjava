@@ -32,7 +32,9 @@ import com.smhrd.hometraining.crew.entity.CrewChatReport;
 import com.smhrd.hometraining.crew.entity.CrewJoinRequest;
 import com.smhrd.hometraining.crew.entity.CrewMember;
 import com.smhrd.hometraining.crew.entity.CrewNotice;
+import com.smhrd.hometraining.crew.battle.entity.CrewBattle;
 import com.smhrd.hometraining.crew.battle.repository.CrewBattleParticipantRepository;
+import com.smhrd.hometraining.crew.battle.repository.CrewBattleRepository;
 import com.smhrd.hometraining.crew.repository.CrewChatMessageRepository;
 import com.smhrd.hometraining.crew.repository.CrewChatReportRepository;
 import com.smhrd.hometraining.crew.repository.CrewExperienceHistoryRepository;
@@ -53,6 +55,16 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * [담당] 홈크루 카테고리의 거의 모든 비즈니스 로직(생성/가입/탈퇴/해체/공지/채팅/신고/주간미션/
+ *        경험치/크루대전 매칭 보조) — CrewController, AdminCrewChatReportController,
+ *        CrewChatController, CrewBattlePartyController가 전부 이 서비스를 공유한다.
+ * [DB] crews, crew_members, crew_join_requests, crew_notices, crew_chat_messages,
+ *      crew_chat_reports, crew_weekly_missions, crew_battles 등 크루 관련 테이블 거의 전부.
+ * [주의] ⚠️ 이 프로젝트에서 가장 큰 파일("갓 서비스") — 크루 해체/회원탈퇴 시 여러 테이블을
+ *        순서대로 지워야 FK 오류가 안 난다(deleteCrewChildData 참고, 크루대전 이력 정리 빠뜨려서
+ *        한 번 해체가 막혔던 적 있음). 새 크루 관련 테이블을 추가하면 이 정리 순서에도 반영할 것.
+ */
 @Service
 @RequiredArgsConstructor
 public class CrewService {
@@ -67,6 +79,7 @@ public class CrewService {
     private final CrewWeeklyMissionRepository crewWeeklyMissionRepository;
     private final CrewWeeklyContributionRepository crewWeeklyContributionRepository;
     private final CrewBattleParticipantRepository crewBattleParticipantRepository;
+    private final CrewBattleRepository crewBattleRepository;
     private final ExerciseRecordRepository exerciseRecordRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final UserRepository userRepository;
@@ -851,6 +864,19 @@ public class CrewService {
         crewNoticeRepository.deleteByCrewId(crewId);
         crewExperienceHistoryRepository.deleteByCrewId(crewId);
         crewWeeklyMissionRepository.deleteByCrewId(crewId);
+
+        /*
+         * 이 크루가 한 번이라도 크루대전을 했다면 crew_battles.challenger_crew_id/
+         * opponent_crew_id가 이 크루를 참조하고 있어서, 그 행을 먼저 지우지 않으면 아래에서
+         * crews 행을 지울 때 FK 위반으로 실패한다(크루 해체·회원탈퇴 둘 다 막혔던 원인 —
+         * 대전 이력이 있는 크루는 해체 자체가 안 됐다). battle_id를 참조하는 참가자 기록
+         * (crew_battle_participants)도 먼저 지워야 한다.
+         */
+        List<CrewBattle> battles = crewBattleRepository.findMine(crewId);
+        for (CrewBattle battle : battles) {
+            crewBattleParticipantRepository.deleteByBattle_Id(battle.getId());
+        }
+        crewBattleRepository.deleteAll(battles);
     }
 
     /**

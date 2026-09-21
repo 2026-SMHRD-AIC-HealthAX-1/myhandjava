@@ -13,6 +13,14 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * [담당] 운동 종목 카탈로그 조회 + 운동 결과 저장(캘리브레이션 이후 최종 기록).
+ * [프론트 연동] ounhome-f/js/exercise.js — GET /api/exercises(종목 목록),
+ *              POST /api/exercise-records(saveExerciseResult), GET /api/exercise-records(히스토리).
+ * [DB] ⚠️ catalog()는 서비스를 거치지 않고 exerciseDefinitionRepository를 컨트롤러에서 직접
+ *      호출한다(단순 조회라 예외적으로 허용된 패턴) — exercise_definitions 테이블.
+ *      결과 저장은 ExerciseService → exercise_records/exercise_sessions/missions 등 연쇄 갱신.
+ */
 @RestController
 @RequiredArgsConstructor
 public class ExerciseController {

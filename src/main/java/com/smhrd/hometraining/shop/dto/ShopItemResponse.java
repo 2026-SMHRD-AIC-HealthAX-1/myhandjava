@@ -9,7 +9,6 @@ public record ShopItemResponse(
         String category,
         boolean consumable,
         String slot,
-        int levelReq,
         String effect,
         String effectDesc,
         boolean owned,
@@ -20,7 +19,7 @@ public record ShopItemResponse(
     // 쓰이지 않지만, 호출부(ShopService)가 이미 레벨을 넘겨주고 있어 시그니처는 그대로 둔다.
     public static ShopItemResponse of(ShopItem item, boolean owned, boolean equipped, int userLevel) {
         return new ShopItemResponse(item.getId(), item.getName(), item.getPrice(), item.getCategory().name(),
-                item.isConsumable(), item.getSlot(), item.getLevelReq(), item.getEffect(), item.getEffectDesc(),
+                item.isConsumable(), item.getSlot(), item.getEffect(), item.getEffectDesc(),
                 owned, equipped, false);
     }
 }

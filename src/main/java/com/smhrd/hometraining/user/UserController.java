@@ -13,6 +13,13 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+/**
+ * [담당] 로그인한 "내" 계정 정보 조회/수정 — 프로필, 소셜 온보딩, 캘리브레이션, 출석, 회원탈퇴.
+ * [프론트 연동] ounhome-f/js/auth.js(loadMyProfile), profile.js(계정관리 탭, doWithdraw),
+ *              calibration.js(캘리브레이션 저장) 등 다수 파일이 /api/users/me/**를 호출한다.
+ * [DB] UserService → users, calibration_profiles 테이블. 회원탈퇴(DELETE)는 CrewService의
+ *      크루 정리까지 연쇄로 타는 되돌릴 수 없는 동작이니 로직 변경 시 특히 조심할 것.
+ */
 @RestController
 @RequestMapping("/api/users/me")
 @RequiredArgsConstructor

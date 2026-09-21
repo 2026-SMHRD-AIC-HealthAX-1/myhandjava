@@ -14,7 +14,14 @@ import com.smhrd.hometraining.crew.dto.CrewChatReportResponse;
 
 import lombok.RequiredArgsConstructor;
 
-/** 관리자 "크루채팅 신고 관리" 화면 전용 API. */
+/**
+ * 관리자 "크루채팅 신고 관리" 화면 전용 API.
+ *
+ * [담당] 크루채팅 신고 목록 조회 + 처리완료 표시(정지는 AdminUserController가 담당).
+ * [프론트 연동] ounhome-f/js/admin.js loadAdminCrewChatReports()/resolveAdminReport()
+ *              → GET/PATCH /api/admin/crew-chat-reports.
+ * [DB] CrewService → CrewChatReportRepository → crew_chat_reports 테이블.
+ */
 @RestController
 @RequestMapping("/api/admin/crew-chat-reports")
 @RequiredArgsConstructor

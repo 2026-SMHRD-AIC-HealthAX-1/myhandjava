@@ -32,7 +32,6 @@ public record UserResponse(
 
         int retakeTickets,
         int nicknameTickets,
-        int extraSets,
         int setsUsedToday,
 
         String bio,
@@ -96,7 +95,6 @@ public record UserResponse(
 
                 user.getRetakeTickets(),
                 user.getNicknameTickets(),
-                user.getExtraSets(),
                 user.getSetsUsedToday(),
 
                 user.getBio(),
