@@ -188,6 +188,10 @@ button{font-family:inherit;}
 .field input:focus,.field select:focus,.field textarea:focus,button:focus-visible,.tab:focus-visible,.navitem:focus-visible{
   outline:2px solid var(--accent);outline-offset:2px;
 }
+/* 관리자 "전체 사용자 관리" 검색창 — 일반 .field input과 달리 둥근 알약 모양 + 옆에 검색 버튼. */
+.admin-search-bar{display:flex;gap:8px;max-width:360px;width:100%;}
+.admin-search-bar input{flex:1;padding:10px 16px;border-radius:999px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);font-size:14px;font-family:inherit;}
+.admin-search-bar input:focus{outline:2px solid var(--accent);outline-offset:2px;}
 .field-row{display:flex;gap:10px;}
 .field-row .field{flex:1;}
 .hint{font-size:11.5px;color:var(--ink-faint);margin-top:4px;}
@@ -206,7 +210,11 @@ button{font-family:inherit;}
 .btn-secondary:hover{background:var(--line);}
 .btn-ghost{background:transparent;color:var(--ink-dim);border-color:var(--line);box-shadow:none;}
 .btn-ghost:active{transform:none;}
-.btn-danger{background:var(--danger-soft);color:var(--danger);border-color:var(--outline);}
+/* 예전엔 --danger-soft(연한 파스텔) 배경이라 눌러지는 버튼처럼 안 보이고 비활성화된
+   것처럼 보였다 — 회원탈퇴·크루탈퇴·강퇴처럼 진짜 파괴적인 동작이니 다른 버튼들처럼
+   진하게 채워서 확실히 눌리는 버튼으로 보이게 한다. */
+.btn-danger{background:var(--danger);color:#fff;border-color:var(--outline);}
+.btn-danger:hover{filter:brightness(1.08);}
 .btn-block{width:100%;}
 .btn-sm{padding:6px 12px;font-size:12.5px;box-shadow:1.5px 1.5px 0 var(--outline);}
 
@@ -261,9 +269,9 @@ button{font-family:inherit;}
 }
 .user-avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;
   color:#fff;font-family:var(--font-display);font-size:14px;border:2px solid var(--outline);}
-.topbar-nick{font-size:13px;font-weight:700;color:var(--ink);display:flex;flex-direction:column;line-height:1.25;}
-.topbar-nick small{font-size:10.5px;font-weight:600;margin-top:2px;white-space:nowrap;}
-.topbar-avatar{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;}
+.topbar-grade-badge{display:flex;align-items:center;}
+.topbar-nick{font-size:13px;font-weight:700;color:var(--ink);white-space:nowrap;}
+.topbar-avatar{display:flex;align-items:center;cursor:pointer;}
 .topbar-avatar canvas{width:36px;height:36px;border-radius:50%;border:2px solid var(--outline);display:block;background:var(--surface-2);}
 .topbar-avatar .mono{font-size:10px;color:var(--ink-faint);}
 
@@ -273,12 +281,14 @@ button{font-family:inherit;}
 .view-head h1{font-size:30px;margin:0 0 4px;}
 .view-head p{color:var(--ink-dim);font-size:13.5px;margin:0 auto;max-width:60ch;line-height:1.55;}
 
-/* subtabs: 색종이 알약 토글 */
-.subtabs{display:flex;gap:2px;flex-wrap:wrap;margin:0 auto 22px;background:var(--surface-2);padding:4px;border-radius:999px;border:2px solid var(--outline);width:fit-content;max-width:100%;justify-content:center;}
+/* subtabs — 고객센터(support.js)의 filter-bar 버튼들처럼 각 탭을 따로 떨어진 알약 버튼으로 보여준다. */
+.subtabs{display:flex;gap:10px;flex-wrap:wrap;margin:0 auto 22px;width:fit-content;max-width:100%;justify-content:center;}
 .tab{
-  padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;color:var(--ink-faint);
-  cursor:pointer;border:none;
+  padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;color:var(--ink);
+  cursor:pointer;border:2px solid var(--outline);background:var(--surface-2);
+  box-shadow:1.5px 1.5px 0 var(--outline);transition:background .15s ease;
 }
+.tab:hover{background:var(--line);}
 .tab.active{color:var(--gold-ink);background:var(--gold);}
 
 /* cards & grids */
@@ -290,6 +300,9 @@ button{font-family:inherit;}
    만들어서 카드가 좁아지고 옆에 빈 공간이 남는다). 목록처럼 개수가 가변적인 곳은 기존
    .grid-2/.grid-3(auto-fill)를 그대로 쓴다. 모바일에서는 아래 미디어쿼리가 1열로 되돌린다. */
 .glance-grid{grid-template-columns:repeat(3,1fr);}
+.glance-row-3{grid-template-columns:repeat(3,1fr);}
+/* 메인 대시보드 2번째 줄(최근 운동 히스토리 · 크루 카드) — 히스토리가 더 넓게, 크루 카드는 좁게. */
+.glance-row-hist{grid-template-columns:3fr 2fr;}
 .grid-fixed-2{grid-template-columns:repeat(2,1fr);}
 .cal-grid{grid-template-columns:3fr 2fr;align-items:start;}
 .card{
@@ -350,6 +363,29 @@ button{font-family:inherit;}
 .exercise-card.selected{background:var(--gold-soft);box-shadow:4px 5px 0 var(--gold);}
 .ex-badge{width:46px;height:46px;border-radius:12px;background:var(--sky-soft);color:var(--accent);border:2px solid var(--outline);
   display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:19px;margin-bottom:10px;}
+/* 종목 선택 카드의 스쿼트 아이콘 — 앉았다 일어서는 동작처럼 보이도록 세로로 눌렸다 펴지는
+   2D 애니메이션을 반복 재생한다. 발이 바닥에 붙어있는 느낌을 주려고 아래쪽을 기준점으로 둔다. */
+@keyframes squatBob{
+  0%,100%{transform:translateY(0) scaleY(1);}
+  50%{transform:translateY(5px) scaleY(.8);}
+}
+.squat-anim-figure{transform-origin:50% 100%;animation:squatBob 1.3s ease-in-out infinite;}
+@media (prefers-reduced-motion: reduce){
+  .squat-anim-figure{animation:none;}
+}
+
+/* 종목 선택 화면 — 카드 한 장 + 좌우 화살표로 넘기는 캐러셀(여러 장 그리드 대신). */
+.ex-carousel{display:flex;align-items:center;justify-content:center;gap:10px;}
+.ex-carousel-arrow{flex:none;width:36px;height:36px;border-radius:50%;border:2px solid var(--outline);background:var(--surface);
+  color:var(--ink);font-size:20px;line-height:1;cursor:pointer;box-shadow:2px 2px 0 var(--outline);
+  display:flex;align-items:center;justify-content:center;}
+.ex-carousel-arrow:hover{background:var(--sky-soft);}
+.exercise-card-single{cursor:default;width:220px;padding:14px;text-align:center;}
+.exercise-card-single .ex-badge{margin-left:auto;margin-right:auto;}
+.exercise-card-single:hover{transform:none;box-shadow:var(--shadow);}
+.ex-carousel-dots{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:10px;}
+.ex-carousel-dot{width:6px;height:6px;border-radius:50%;background:var(--line);}
+.ex-carousel-dot.active{background:var(--accent);}
 
 .progress{height:8px;border-radius:99px;background:var(--surface-2);overflow:hidden;}
 .progress > span{display:block;height:100%;background:var(--accent);border-radius:99px;}
@@ -469,6 +505,10 @@ tr:last-child td{border-bottom:none;}
 .table-wrap{overflow-x:auto;border:2px solid var(--outline);border-radius:var(--radius);background:var(--surface);}
 .table-wrap table{margin:0;}
 .table-wrap th,.table-wrap td{padding:12px 16px;}
+/* 열이 많은 표(랭킹 4위~, 크루원 정보 등)는 여백을 좁혀서 티어·정보보기 같은 열이 추가돼도
+   한 줄에 다 들어오게 한다. */
+.compact-table th,.compact-table td{padding:8px 10px;font-size:12.5px;white-space:nowrap;}
+.compact-table td:nth-child(2){white-space:normal;}
 
 .chat-wrap{display:flex;flex-direction:column;height:600px;background:var(--surface);border:2px solid var(--outline);border-radius:var(--radius);overflow:hidden;}
 .chat-log{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:10px;}
@@ -476,6 +516,7 @@ tr:last-child td{border-bottom:none;}
 .bubble.me{align-self:flex-end;background:var(--accent);color:var(--accent-ink);border-bottom-right-radius:3px;}
 .bubble.them{align-self:flex-start;background:var(--surface-2);border-bottom-left-radius:3px;}
 .bubble .who{font-size:10.5px;opacity:.7;margin-bottom:2px;font-weight:700;}
+.bubble .chat-time{font-size:9.5px;opacity:.6;margin-top:3px;text-align:right;}
 .chat-input{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line);}
 .chat-input input{flex:1;}
 
@@ -528,24 +569,38 @@ tr:last-child td{border-bottom:none;}
 .att-day{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;border-radius:8px;
   background:var(--surface-2);color:var(--ink-dim);font-family:var(--font-mono);font-size:11.5px;}
 .att-day.empty{background:transparent;}
-.att-day.checked{background:var(--accent-soft, var(--surface-2));color:var(--accent);font-weight:700;}
+/* 출석한 날짜는 채움색 대신 금색 테두리로 표시하고, 오늘 날짜는 기존 강조색 채움을 그대로 유지한다. */
+.att-day.checked{background:var(--surface-2);color:var(--ink);font-weight:700;}
 .att-day.today{background:var(--accent);color:#fff;font-weight:700;}
 .section-label{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--ink-faint);margin:0 0 10px;font-family:var(--font-mono);}
 .flex-between{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
 .filter-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
 .filter-bar select{padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:12.5px;}
 
-/* 마이페이지: 두 카드는 같은 크기로 두고, 왼쪽 카드 안은 캐릭터 55%·자기소개 45%로 나눈다. */
+/* 마이페이지: 오른쪽 "보유 아이템" 카드가 항상 4칸(2x2) 분량의 고정 높이를 갖게 만들고
+   (아이템 텍스트 길이가 달라도 칸마다 높이가 똑같도록 .cosmetic-item-card를 고정 height로),
+   왼쪽 "내 캐릭터" 카드는 grid align-items:stretch로 그 높이를 그대로 따라가게 한다 —
+   즉 기준은 항상 "아이템 4개가 꽉 찬 오른쪽 카드"고, 왼쪽이 거기에 맞춰 늘어난다. */
 .profile-page-grid{grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch;}
-.profile-main-card{text-align:left;}
-.profile-avatar-layout{display:grid;grid-template-columns:minmax(0,11fr) minmax(0,9fr);align-items:stretch;gap:18px;}
+.profile-main-card{text-align:left;display:flex;flex-direction:column;}
+.profile-avatar-layout{display:grid;grid-template-columns:minmax(0,11fr) minmax(0,9fr);align-items:stretch;gap:18px;flex:1;min-height:0;}
 .profile-character-block{width:100%;text-align:center;justify-self:start;align-self:start;}
 .profile-character-canvas{width:300px;max-width:100%;height:auto;aspect-ratio:18/22;margin:4px auto 10px;display:block;border-radius:14px;image-rendering:auto;}
 .profile-character-block h3{margin:0 0 8px;}
-.profile-bio-block{width:100%;min-width:0;align-self:stretch;display:flex;align-items:center;}
-.profile-bio-block .field{width:100%;margin:0;}
-.profile-bio-block textarea{min-height:320px;resize:vertical;}
-.profile-stats-block{text-align:left;margin-top:36px;}
+/* 자기소개 칸은 왼쪽 아바타 박스(캐릭터 캔버스+닉네임+등급)와 높이를 맞춰야 해서, 고정 px
+   대신 옆 블록의 실제 높이만큼 늘어나는 flex 세로 배치로 만든다 — textarea가 라벨/버튼을
+   뺀 나머지 공간을 그대로 채우므로 아바타 박스 높이가 바뀌어도 항상 맞는다. 사용자가 직접
+   드래그로 늘리고 줄이지 못하게 resize도 꺼둔다. */
+.profile-bio-block{width:100%;min-width:0;align-self:stretch;display:flex;flex-direction:column;}
+.profile-bio-block .field{width:100%;margin:0;flex:1;display:flex;flex-direction:column;min-height:0;}
+.profile-bio-block textarea{flex:1;min-height:0;resize:none;}
+/* 아이템 그리드는 항상 2행을 고정폭(각 행 230px)으로 예약해서, 현재 페이지에 아이템이
+   1개뿐이어도(마지막 페이지) 칸이 줄어들지 않고 빈 칸으로 남는다 — 이게 왼쪽 카드가 맞춰야 할
+   "기준" 높이가 된다. */
+.profile-items-card .profile-items-grid{grid-template-rows:repeat(2,230px);}
+.cosmetic-item-card{border:1px solid var(--line);border-radius:10px;padding:12px;height:100%;display:flex;flex-direction:column;overflow:hidden;}
+.cosmetic-item-card .desc{flex:1;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+.cosmetic-item-card .btn{margin-top:8px;flex:none;}
 
 @media (max-width:1120px){
   .profile-page-grid{grid-template-columns:1fr;}
@@ -569,8 +624,15 @@ tr:last-child td{border-bottom:none;}
 @media (max-width:720px){
   .profile-avatar-layout{grid-template-columns:1fr;gap:18px;}
   .profile-character-block{justify-self:center;}
-  .profile-bio-block textarea{min-height:220px;}
-  .profile-stats-block{margin-top:28px;}
+  /* 화면 폭 전체를 다 쓰던 캐릭터가 모바일에서 너무 크게 보여서 폭을 줄인다(가로세로 비율은
+     aspect-ratio가 그대로 지켜준다). */
+  .profile-character-canvas{width:190px;}
+  /* 1열로 쌓이는 모바일에서는 옆 블록과 높이를 맞출 대상이 없어(그리드 stretch가 의미 없음)
+     flex:1로 채우면 0에 가깝게 찌그러지므로, 고정 높이로 되돌린다 — 자기소개는 3줄 정도만
+     보이는 높이로 줄인다. */
+  .profile-bio-block{align-self:auto;}
+  .profile-bio-block .field{flex:none;}
+  .profile-bio-block textarea{flex:none;min-height:84px;}
 }
 
 .map-box{
@@ -633,7 +695,7 @@ tr:last-child td{border-bottom:none;}
   .replay-cam-stage{aspect-ratio:3/4;}
   /* 운동 스텝 탭(1.종목선택~4.결과저장)이 좁은 화면에서 두 줄로 밀리지 않게 한 줄로 압축하고,
      그래도 안 맞으면 가로 스크롤되게 한다 — 카메라가 커진 만큼 위쪽 공간을 아껴야 한다. */
-  .subtabs-compact{flex-wrap:nowrap;overflow-x:auto;gap:1px;margin-bottom:14px;}
+  .subtabs-compact{flex-wrap:nowrap;overflow-x:auto;gap:5px;margin-bottom:14px;}
   .subtabs-compact .tab{padding:7px 9px;font-size:10.5px;white-space:nowrap;flex:none;}
   .confirm-box{max-height:92vh;overflow-y:auto;}
 }
@@ -646,7 +708,7 @@ tr:last-child td{border-bottom:none;}
   .auth-title{font-size:23px;}
   .topbar-title{font-size:17px;}
   .view-head h1{font-size:18px;}
-  .grid-2,.grid-3,.glance-grid,.grid-fixed-2{grid-template-columns:1fr;}
+  .grid-2,.grid-3,.glance-grid,.glance-row-3,.glance-row-hist,.grid-fixed-2{grid-template-columns:1fr;}
   .stat-row{grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:8px;}
   .stat-box{padding:10px;}
   .stat-box .num{font-size:18px;}
@@ -684,22 +746,23 @@ tr:last-child td{border-bottom:none;}
   .battle-history-columns{grid-template-columns:1fr;}
 }
 
-/* 프로필 캐릭터 등급별 레벨 표시 */
+.profile-nickname{font-size:24px;margin:8px 0 2px;}
+
+/* 프로필 캐릭터 등급별 레벨 표시 — 테두리/회색 배경 없이 티어 아이콘을 크게 보여주고
+   그 아래에 등급명·Lv를 표시한다. */
 .profile-grade-level{
-  display:inline-flex;
+  display:flex;
+  flex-direction:column;
   align-items:center;
   justify-content:center;
-  gap:7px;
-  margin-top:4px;
-  padding:6px 11px;
-  border:1.5px solid;
-  border-radius:999px;
-  background:var(--profile-grade-bg);
+  gap:4px;
+  margin-top:6px;
   color:var(--profile-grade-color);
-  font-size:12px;
+  font-size:15px;
   font-weight:700;
 }
-.profile-grade-level b{font-family:var(--font-mono);font-size:12px;}
+.profile-grade-level .rank-icon{width:56px;height:56px;}
+.profile-grade-level b{font-family:var(--font-mono);font-size:17px;}
 
 .attendance-reward-guide{color:var(--ink-dim);}
 .attendance-reward-guide b{color:var(--ink);}
@@ -794,6 +857,7 @@ tr:last-child td{border-bottom:none;}
 .shop-item-title{min-height:32px;margin-top:10px;align-items:flex-start;}
 .shop-item-effect{margin-top:8px;align-self:flex-start;}
 .shop-item-owned{margin:4px 0 0;font-size:11.5px;}
+.shop-item-comingsoon{color:var(--ink-faint);font-size:12.5px;font-weight:600;text-align:center;padding:0 12px;}
 .shop-item-desc{margin-top:8px;min-height:0;flex:1;overflow-y:auto;overflow-x:hidden;padding-right:4px;color:var(--ink-dim);font-size:13px;line-height:1.55;word-break:keep-all;overflow-wrap:break-word;}
 .shop-item-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;flex:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);}
 .shop-item-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:nowrap;}
@@ -806,13 +870,25 @@ tr:last-child td{border-bottom:none;}
 .nickname-preview-swatch.selected{border-color:var(--outline);box-shadow:2px 2px 0 var(--outline);background:var(--surface);}
 .mission-reward-fixed{color:var(--gold);font-weight:700;}
 .att-day{position:relative;}
-.att-day.checked{background:var(--accent-soft, var(--surface-2));color:var(--accent);font-weight:700;}
+.att-day.checked{background:var(--surface-2);color:var(--ink);font-weight:700;}
 .att-day.today.checked{background:var(--accent);color:#fff;}
-.att-check-ring{position:absolute;inset:4px;border:2px solid currentColor;border-radius:50%;pointer-events:none;}
+/* 출석 표시는 금색 테두리 링으로 — 오늘 날짜는 채움색이 이미 있으니 링을 숨긴다. */
+.att-check-ring{position:absolute;inset:3px;border:2px solid var(--gold);border-radius:7px;pointer-events:none;}
+.att-day.today .att-check-ring{display:none;}
 .att-day-number{position:relative;z-index:1;}
+/* 3일/10일 연속출석 보너스(+20P)가 지급된 날 — 날짜 숫자 뒤에 작은 별표를 붙인다. */
+.att-day-star{font-size:7px;color:var(--gold);margin-left:1px;vertical-align:super;}
 .main-nickname-effect{word-break:keep-all;}
 @media(max-width:720px){
   .shop-item-card{height:410px;min-height:410px;}
   .shop-item-actions .btn{padding-left:8px;padding-right:8px;font-size:11.5px;}
   .nickname-preview-palette{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+
+/* ==============================
+   오운홈 등급 아이콘 — assets/ranks/*.png (utils.js의 rankBadgeIcon())
+   ============================== */
+.rank-icon {
+  object-fit: contain;
+  flex-shrink: 0;
 }

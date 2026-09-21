@@ -30,7 +30,7 @@ function renderLandingBottomNav(){
     {icon:'🏠', label:'홈', action:"window.scrollTo({top:0,behavior:'smooth'})"},
     {icon:'🎯', label:'AI 자세판정', action:'startGuestExercise()'},
     {icon:'⚔️', label:'크루대전', action:'startGuestCrew()'},
-    {icon:'👤', label:'회원가입/로그인', action:"goto('login')"},
+    {icon:'👤', label:'로그인', action:"goto('login')"},
   ];
   return `
   <nav class="landing-bottomnav">
@@ -87,7 +87,7 @@ function startGuestHistory(){
   state.guestMode=true;
   state.screen='app';
   state.menu='profile';
-  state.subtabs.profile=2; // '운동 히스토리' 탭
+  state.subtabs.profile=2; // '히스토리' 탭
   render();
 }
 function startGuestRanking(){

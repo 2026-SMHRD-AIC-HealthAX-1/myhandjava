@@ -1,6 +1,6 @@
 // profile.js — '마이페이지' 카테고리 전체(캐릭터 꾸미기, 미션 달성 현황, 운동 히스토리, 계정관리).
 
-const PROFILE_TABS = ['프로필·캐릭터 꾸미기', '미션 달성 현황', '운동 히스토리', '계정관리'];
+const PROFILE_TABS = ['프로필·캐릭터 꾸미기', '미션 달성 현황', '히스토리', '계정관리'];
 function renderProfile() {
   const i = state.subtabs.profile;
   const body = i === 0 ? renderMissionAvatar() :
@@ -27,7 +27,10 @@ function getProfileStats() {
   return {
     total: totalScore(),
     expToNext: Math.round((100 - state.user.exp) / 100 * EXP_PER_LEVEL),
-    myRank: getRegionRanking(state.user.region.trim().split(/\s+/).pop()).find(r => r.isMe).rank,
+    // 예전엔 이름 해시로 지어낸 가짜 이웃 순위(getRegionRanking, ranking.js)였다 — 이제
+    // 로그인 직후 실제 GET /api/rankings/region으로 받아온 값(ranking.js loadMyRegionRank)을
+    // 그대로 쓴다. 아직 못 불러왔거나 동네 미설정이면 null.
+    myRank: state.user.regionRank,
     perfectPct: Math.round(gc.PERFECT / gcTotal * 100),
     greatPct: Math.round(gc.GREAT / gcTotal * 100),
     missPct: Math.round(gc.MISS / gcTotal * 100),
@@ -77,14 +80,14 @@ function renderGradeDonut(segments, centerLabel) {
 function renderCosmeticCard(it) {
   const idx = state.shopItems.indexOf(it);
   return `
-  <div style="border:1px solid var(--line);border-radius:10px;padding:12px;">
-    <img src="${itemIconDataURL(it.name)}" alt="${it.name}" style="width:64px;height:64px;object-fit:contain;border-radius:6px;display:block;margin:0 auto 8px;">
-    <div class="flex-between"><b style="font-size:12.5px;">${it.name}</b>
+  <div class="cosmetic-item-card">
+    <img src="${itemIconDataURL(it.name)}" alt="${it.name}" style="width:64px;height:64px;object-fit:contain;border-radius:6px;display:block;margin:0 auto 8px;flex:none;">
+    <div class="flex-between" style="flex:none;"><b style="font-size:12.5px;">${it.name}</b>
       ${it.owned ? (it.equipped ? '<span class="pill pill-accent">착용중</span>' : '<span class="pill pill-muted">보유</span>') : '<span class="pill pill-gold">' + it.price + 'P</span>'}
     </div>
-    <span class="pill ${it.name==='닉네임 컬러 이펙트' ? 'pill-accent' : (it.effect.startsWith('능력치 없음') ? 'pill-muted' : 'pill-accent')}" style="margin-top:6px;">효과 · ${it.name==='닉네임 컬러 이펙트' ? '닉네임 컬러 변경' : it.effect}</span>
+    <span class="pill ${it.name==='닉네임 컬러 이펙트' ? 'pill-accent' : (it.effect.startsWith('능력치 없음') ? 'pill-muted' : 'pill-accent')}" style="margin-top:6px;flex:none;">효과 · ${it.name==='닉네임 컬러 이펙트' ? '닉네임 컬러 변경' : it.effect}</span>
     <p class="desc" style="margin-top:6px;font-size:11.5px;">${it.effectDesc}</p>
-    <button class="btn btn-sm ${it.owned ? 'btn-ghost' : 'btn-secondary'}" style="margin-top:8px;width:100%;" onclick="${it.owned ? `toggleEquip(${idx})` : `goToShopFor(${idx})`}">${it.owned ? (it.equipped ? '착용 해제' : '착용하기') : '상점에서 구매'}</button>
+    <button class="btn btn-sm ${it.owned ? 'btn-ghost' : 'btn-secondary'}" style="width:100%;" onclick="${it.owned ? `toggleEquip(${idx})` : `goToShopFor(${idx})`}">${it.owned ? (it.equipped ? '착용 해제' : '착용하기') : '상점에서 구매'}</button>
   </div>`;
 }
 function goToShopFor(idx) {
@@ -93,64 +96,89 @@ function goToShopFor(idx) {
 }
 function renderMissionAvatar() {
   const cosmetics = state.shopItems.filter(it => it.slot);
-  const nickColor = getEquipState().nickname ? 'var(--gold)' : 'inherit';
-  const stats = getProfileStats();
+  const nickColor = (typeof getNicknameEffectColor === 'function') ? getNicknameEffectColor() : 'inherit';
   return `
   <div class="grid profile-page-grid">
     <div class="card profile-main-card">
-      <p class="section-label">내 캐릭터</p>
       <div class="profile-avatar-layout">
         <div class="profile-character-block">
+          <p class="section-label" style="text-align:left;">내 캐릭터</p>
           <canvas id="avatar-char-canvas" class="profile-character-canvas"></canvas>
-          <h3 style="color:${nickColor};">${state.user.nickname || '홈트초보'}</h3>
-          <span class="profile-grade-level" style="--profile-grade-color:${currentGrade().color};--profile-grade-bg:${currentGrade().color}22;border-color:${currentGrade().color};color:${currentGrade().color};">
-            <span>${currentGrade().icon} ${currentGrade().name}</span>
-            <b>Lv.${Math.min(500, state.user.level)}</b>
+          <h3 class="profile-nickname" style="color:${nickColor};">${state.user.nickname || '홈트초보'}</h3>
+          <span class="profile-grade-level" style="--profile-grade-color:${userGradeColor(state.user.grade)};color:${userGradeColor(state.user.grade)};">
+            ${rankBadgeIcon(state.user.grade, state.user.gradeName, 56)}
+            <span>${state.user.gradeName || USER_GRADE_NAMES[state.user.grade] || '아이언'} <b>Lv.${Math.min(500, state.user.level)}</b></span>
           </span>
         </div>
         <div class="profile-bio-block">
+          <label for="profile-bio-input" class="section-label" style="display:block;">자기소개</label>
           <div class="field">
-            <label for="profile-bio-input">자기소개</label>
             <textarea id="profile-bio-input" rows="6" maxlength="80" placeholder="나를 소개하는 한마디를 남겨보세요">${state.user.bio || ''}</textarea>
             <button class="btn btn-sm btn-secondary" style="margin-top:8px;width:100%;" onclick="saveProfileBio()">자기소개 저장</button>
           </div>
         </div>
       </div>
-      <div class="profile-stats-block">
-        <p class="section-label">누적 성과</p>
-        <p class="desc mono" style="margin:0;">누적 점수 <b>${stats.total.toLocaleString()} 점</b> · 동네 랭킹 <b>#${stats.myRank}</b> · 레벨업까지 <b>100 exp</b></p>
-        <div class="progress" style="margin-top:10px;"><span style="width:${state.user.exp}%"></span></div>
-        <p class="hint" style="margin-top:4px;">Lv.${state.user.level} 진행도 ${state.user.exp}%</p>
-        <p class="section-label" style="margin-top:14px;">등급 비율 (전체 세션 기준)</p>
-        <div style="margin-top:8px;">
-          ${renderGradeDonut([
-    { label: 'PERFECT', value: stats.gc.PERFECT, color: gradeColor('PERFECT') },
-    { label: 'GREAT', value: stats.gc.GREAT, color: gradeColor('GREAT') },
-    { label: 'GOOD', value: stats.gc.GOOD, color: gradeColor('GOOD') },
-    { label: 'MISS', value: stats.gc.MISS, color: gradeColor('MISS') },
-  ], '총 횟수')}
-        </div>
-        <p class="section-label" style="margin-top:14px;">운동 종류별 누적 횟수</p>
-        <p class="desc mono" style="margin:0;">${stats.exCounts.length ? stats.exCounts.map(([ex, cnt]) => `${ex} ${cnt}회`).join(' · ') : '아직 기록이 없습니다.'}</p>
-        <p class="section-label" style="margin-top:14px;">장착 아이템 보정 효과</p>
-        ${stats.activeEffects.length ? stats.activeEffects.map(e => `<span class="pill pill-accent" style="margin:0 6px 6px 0;display:inline-block;">${e}</span>`).join('') : '<p class="hint">착용 중인 능력치 아이템이 없습니다.</p>'}
-      </div>
     </div>
-    <div class="card">
-      <p class="section-label">보유 아이템</p>
-      <div class="grid" style="grid-template-columns:repeat(2,1fr);">
-        ${cosmetics.filter(it => it.owned).map(it => renderCosmeticCard(it)).join('') || '<p class="empty-note" style="grid-column:1/-1;">아직 보유한 꾸미기 아이템이 없어요.</p>'}
-      </div>
-      <p class="hint" style="margin-top:14px;">보유 아이템을 착용/해제하면 캐릭터에 바로 반영됩니다. 새 아이템은 포인트 상점에서 구매할 수 있어요.</p>
-    </div>
+    ${renderOwnedItemsCard(cosmetics)}
   </div>`;
 }
-function saveProfileBio() {
+// 아이템이 늘어날수록 그리드 줄 수가 늘어나서 카드가 계속 길어지고, 옆의 "내 캐릭터" 카드까지
+// (같은 그리드 행이라 align-items:stretch로) 덩달아 늘어났다 — 한 페이지에 4개(2x2)만 보여주는
+// 것만으로는 부족했다(4개 찬 페이지와 1개만 있는 마지막 페이지의 내용 높이가 서로 달라서,
+// 페이지를 넘길 때마다 두 카드 높이가 또 같이 바뀌었다). 그래서 style.css에서 아이템 한 칸
+// (.cosmetic-item-card)을 고정 높이로 만들고, 그리드는 아이템 개수와 상관없이 항상 2행을
+// 예약한다(.profile-items-grid grid-template-rows) — 이렇게 "4칸 꽉 찬 오른쪽 카드" 높이가
+// 페이지마다 항상 똑같아지고, 왼쪽 "내 캐릭터" 카드는 grid align-items:stretch로 그 높이를
+// 그대로 따라간다.
+const PROFILE_ITEMS_PAGE_SIZE = 4;
+function renderOwnedItemsCard(cosmetics){
+  const owned = cosmetics.filter(it => it.owned);
+  const pageCount = Math.max(1, Math.ceil(owned.length / PROFILE_ITEMS_PAGE_SIZE));
+  const page = Math.min(state.profileItemsPage || 0, pageCount - 1);
+  const pageItems = owned.slice(page * PROFILE_ITEMS_PAGE_SIZE, page * PROFILE_ITEMS_PAGE_SIZE + PROFILE_ITEMS_PAGE_SIZE);
+  return `
+  <div class="card profile-items-card">
+    <div class="flex-between">
+      <p class="section-label" style="margin:0;">보유 아이템</p>
+      ${owned.length > PROFILE_ITEMS_PAGE_SIZE ? `
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button type="button" class="btn btn-sm btn-ghost" style="padding:4px 10px;" ${page <= 0 ? 'disabled style="opacity:.4;"' : ''} onclick="changeProfileItemsPage(-1)">‹</button>
+        <span class="hint mono" style="margin:0;">${page + 1} / ${pageCount}</span>
+        <button type="button" class="btn btn-sm btn-ghost" style="padding:4px 10px;" ${page >= pageCount - 1 ? 'disabled style="opacity:.4;"' : ''} onclick="changeProfileItemsPage(1)">›</button>
+      </div>` : ''}
+    </div>
+    <div class="grid profile-items-grid" style="grid-template-columns:repeat(2,1fr);align-content:start;margin-top:10px;">
+      ${pageItems.map(it => renderCosmeticCard(it)).join('') || '<p class="empty-note" style="grid-column:1/-1;">아직 보유한 꾸미기 아이템이 없어요.</p>'}
+    </div>
+    <p class="hint" style="margin-top:14px;">보유 아이템을 착용/해제하면 캐릭터에 바로 반영됩니다. 새 아이템은 포인트 상점에서 구매할 수 있어요.</p>
+  </div>`;
+}
+function changeProfileItemsPage(delta){
+  state.profileItemsPage = Math.max(0, (state.profileItemsPage || 0) + delta);
+  render();
+}
+// 예전엔 여기서 state.user.bio만 바꾸고 끝이라 화면엔 저장된 것처럼 보였지만 서버에는 전혀
+// 반영이 안 됐다 — 그래서 로그아웃 후 다시 로그인해 loadMyProfile()이 서버 값(빈 문자열)으로
+// 덮어쓰면 방금 쓴 소개글이 사라졌다. saveAccount()가 이미 쓰고 있는 것과 같은
+// PATCH /api/users/me로 실제 저장한다.
+async function saveProfileBio() {
   const el = document.getElementById('profile-bio-input');
   if (!el) return;
-  state.user.bio = el.value.trim();
-  toast('자기소개를 저장했습니다');
-  render();
+  const bio = el.value.trim();
+  try {
+    const res = await fetch(`${API_BASE}/api/users/me`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.token },
+      body: JSON.stringify({ bio })
+    });
+    const body = await res.json();
+    if (!body.success) { toast(body.message || '저장에 실패했습니다'); return; }
+    state.user.bio = bio;
+    toast('자기소개를 저장했습니다');
+    render();
+  } catch (err) {
+    toast('서버에 연결할 수 없습니다 (백엔드가 켜져 있는지 확인해주세요)');
+  }
 }
 function getEquipState() {
   const bySlot = {};
@@ -212,6 +240,22 @@ function drawPixelCharacter(canvas, equip, gender) {
   ctx.setTransform(RENDER_SCALE, 0, 0, RENDER_SCALE, 0, 0);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
+
+  // 모자+후디+조거팬츠 조합이 실제로 그려둔 전신 사진과 일치하면, 기본 캐릭터+개별 레이어
+  // 합성 대신 그 사진을 통째로 쓴다. 사진 자체가 흰 배경(또는 riverside-day 배경이 이미
+  // 그려진 사진)이라 이 경우엔 drawAvatarBackground를 따로 호출하지 않는다.
+  const combo = (typeof getAvatarComboKey === 'function') ? getAvatarComboKey(equip, gender) : null;
+  if (combo) {
+    const overlay = loadAvatarItemSprite(combo.src);
+    if (overlay && overlay.complete && overlay.naturalWidth) {
+      const sw = overlay.naturalWidth, sh = overlay.naturalHeight;
+      const scale = Math.min(logicalWidth / sw, logicalHeight / sh);
+      const dw = sw * scale, dh = sh * scale;
+      ctx.drawImage(overlay, (logicalWidth - dw) / 2, logicalHeight - dh, dw, dh);
+      drawAvatarWearables(ctx, equip, gender, { skipIds: ['head-cap', 'top-lavender-hoodie', 'bottom-lavender-joggers'] });
+      return;
+    }
+  }
 
   drawAvatarBackground(ctx, equip.background, logicalWidth, logicalHeight);
 
@@ -293,10 +337,11 @@ function drawAvatarBackground(ctx, backgroundItem, width, height) {
   ctx.restore();
 }
 
-function drawAvatarWearables(ctx, equip, gender) {
+function drawAvatarWearables(ctx, equip, gender, opts) {
+  const skipIds = (opts && opts.skipIds) || [];
   const items = (typeof AVATAR_WEARABLE_SLOTS === 'undefined' ? [] : AVATAR_WEARABLE_SLOTS)
     .map(slot => equip[slot])
-    .filter(item => item && (item.fullCanvas || item.asset))
+    .filter(item => item && (item.fullCanvas || item.asset) && !skipIds.includes(item.id))
     .sort((a, b) => (a.z || 0) - (b.z || 0));
 
   items.forEach(item => {
@@ -656,12 +701,38 @@ function getScoreBonusPct() {
   const m = badge.effect.match(/\+(\d+)/);
   return m ? +m[1] : 0;
 }
+// 예전엔 '프로필·캐릭터 꾸미기' 탭 안에 있었다 — 캐릭터 꾸미기랑은 성격이 다른 운동 성과
+// 통계라 날짜별 기록이 쌓이는 이 '히스토리' 탭으로 옮겼다(renderMissionAvatar 참고).
+function renderHistorySummaryCard() {
+  const stats = getProfileStats();
+  return `
+  <div class="card">
+    <p class="section-label">누적 성과</p>
+    <p class="desc mono" style="margin:0;">누적 점수 <b>${stats.total.toLocaleString()} 점</b> · 동네 랭킹 <b>${stats.myRank ? '#'+stats.myRank : '-'}</b> · 레벨업까지 <b>100 exp</b></p>
+    <div class="progress" style="margin-top:10px;"><span style="width:${state.user.exp}%"></span></div>
+    <p class="hint" style="margin-top:4px;">Lv.${state.user.level} 진행도 ${state.user.exp}%</p>
+    <p class="section-label" style="margin-top:14px;">등급 비율 (전체 세션 기준)</p>
+    <div style="margin-top:8px;">
+      ${renderGradeDonut([
+    { label: 'PERFECT', value: stats.gc.PERFECT, color: gradeColor('PERFECT') },
+    { label: 'GREAT', value: stats.gc.GREAT, color: gradeColor('GREAT') },
+    { label: 'GOOD', value: stats.gc.GOOD, color: gradeColor('GOOD') },
+    { label: 'MISS', value: stats.gc.MISS, color: gradeColor('MISS') },
+  ], '총 횟수')}
+    </div>
+    <p class="section-label" style="margin-top:14px;">운동 종류별 누적 횟수</p>
+    <p class="desc mono" style="margin:0;">${stats.exCounts.length ? stats.exCounts.map(([ex, cnt]) => `${ex} ${cnt}회`).join(' · ') : '아직 기록이 없습니다.'}</p>
+    <p class="section-label" style="margin-top:14px;">장착 아이템 보정 효과</p>
+    ${stats.activeEffects.length ? stats.activeEffects.map(e => `<span class="pill pill-accent" style="margin:0 6px 6px 0;display:inline-block;">${e}</span>`).join('') : '<p class="hint">착용 중인 능력치 아이템이 없습니다.</p>'}
+  </div>`;
+}
 function renderHistory() {
   const groups = groupHistoryByDate();
   const bonusPct = getScoreBonusPct();
-  if (!groups.length) return `<div class="empty-note">아직 운동 기록이 없습니다.</div>`;
+  if (!groups.length) return `${renderHistorySummaryCard()}<div class="empty-note" style="margin-top:16px;">아직 운동 기록이 없습니다.</div>`;
   return `
   <div style="display:flex;flex-direction:column;gap:16px;">
+    ${renderHistorySummaryCard()}
     ${groups.map(([date, entries]) => `
       <div class="card">
         <div class="flex-between" style="margin-bottom:10px;">
@@ -725,11 +796,13 @@ async function loadMyCrew() {
     if (!c) {
       state.crew.created = false;
       state.crew.leaderRegion = '';
+      state.crew.myDongRank = null;
       return;
     }
     state.crew.id = c.id;
     state.crew.created = true;
     state.crew.joinEnabled = c.joinEnabled !== false && c.recruiting !== false;
+    state.crew.autoApprove = c.autoApprove === true;
     state.crew.name = c.name;
     state.crew.desc = c.description;
     state.crew.concepts = typeof normalizeCrewConcepts === 'function' ? normalizeCrewConcepts(c.concepts, c.concept) : (Array.isArray(c.concepts) ? c.concepts : [c.concept].filter(Boolean));
@@ -748,8 +821,28 @@ async function loadMyCrew() {
     state.crew.members = completeMembers.map(m => ({
       userId: m.userId, n: m.nickname, role: m.role === 'LEADER' ? '팀장' : '팀원', level: m.level, score: m.points
     }));
+    await loadCrewBattleContributions();
+    if (typeof loadMyDongCrewRank === 'function') await loadMyDongCrewRank();
   } catch (err) {
     console.error('내 크루 정보 불러오기 실패', err);
+  }
+}
+// 크루 메인 화면의 "크루대전 기여도" 랭킹은 각 크루원의 포인트(m.points)가 아니라, 그 크루원이
+// 실제로 참가한 크루대전에서 쌓은 누적 점수(CrewBattleContribution)여야 한다 — 이걸 불러와서
+// state.crew.members[].score를 실제 기여도 값으로 덮어쓴다. 아직 한 번도 대전에 참가하지 않은
+// 크루원은 서버 응답에 없으므로 0점으로 남는다.
+async function loadCrewBattleContributions() {
+  if (!state.token) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/crews/me/battle-contributions`, {
+      headers: { 'Authorization': 'Bearer ' + state.token }
+    });
+    const body = await res.json();
+    if (!body.success) return;
+    const byUserId = new Map(body.data.map(c => [Number(c.userId), c.totalScore]));
+    state.crew.members.forEach(m => { m.score = byUserId.get(Number(m.userId)) || 0; });
+  } catch (err) {
+    console.error('크루대전 기여도 불러오기 실패', err);
   }
 }
 
@@ -894,7 +987,7 @@ function renderSetLogout() {
     <div class="card">
       <p class="section-label">회원 탈퇴</p>
       <p class="desc">모든 운동 기록과 포인트가 삭제되며 복구할 수 없습니다.</p>
-      <button class="btn btn-danger" onclick="askConfirm('회원탈퇴','정말 회원탈퇴를 진행하시겠습니까?\n\n회원탈퇴를 진행하면 현재 계정으로 이용하던 서비스가 종료됩니다.\n탈퇴 시 처리되는 정보는 현재 서비스의 회원탈퇴 정책과 API 응답을 기준으로 적용됩니다.\n\n탈퇴 후에는 현재 계정으로 이용하던 기능과 정보를 다시 이용하기 어려울 수 있습니다.\n\n신중하게 확인한 후 회원탈퇴를 진행해주세요.',doWithdraw,'회원탈퇴',true)">회원 탈퇴</button>
+      <button class="btn btn-danger" onclick="openWithdrawConfirm()">회원 탈퇴</button>
     </div>
   </div>`;
 }
@@ -909,10 +1002,67 @@ function doLogout() {
   state.guestMode = false;
   state.screen = 'intro';
   state.menu = 'main';
+  // state.user는 로그인 여부와 무관하게 항상 존재하는 하나의 공유 객체라, 로그아웃해도
+  // calibration 값이 그대로 남아있었다 — 그 상태로 "지금 체험하기"(비회원) 카드를 누르면
+  // 실제로는 캘리브레이션을 한 적 없는 비회원인데도 운동 시작하기가 바로 눌려버렸다.
+  // 로그아웃 시점에 지워서 다음 비회원 체험이 항상 캘리브레이션부터 다시 요구하게 한다.
+  state.user.calibration = null;
+  // "동네를 설정해주세요" 같은 확인창은 로그인 중이던 계정 얘기라 로그아웃하면 의미가
+  // 없어지는데, 안 지우면 render()가 화면(screen)과 무관하게 계속 띄워서 랜딩페이지
+  // 위에까지 남아있었다.
+  state.confirm = null;
   render();
 }
+// 예전엔 그냥 예/아니오 확인창이라 실수로 눌러도 바로 탈퇴됐다 — 되돌릴 수 없는 동작이라
+// 내 닉네임을 정확히 입력해야만 탈퇴 버튼이 눌리도록 바꿨다(state.withdrawConfirm).
+function openWithdrawConfirm() {
+  state.withdrawConfirm = { open: true, input: '' };
+  render();
+}
+function closeWithdrawConfirm() {
+  state.withdrawConfirm = { open: false, input: '' };
+  render();
+}
+// 매 글자마다 render()를 다시 부르면 입력창 포커스/커서 위치가 날아가므로, 버튼 활성화
+// 상태만 DOM에서 직접 패치한다(updatePartyStatusModal 등과 같은 방식).
+function setWithdrawConfirmInput(v) {
+  state.withdrawConfirm.input = v;
+  const btn = document.getElementById('withdraw-confirm-btn');
+  if (!btn) return;
+  const matched = v === state.user.nickname;
+  btn.disabled = !matched;
+  btn.style.opacity = matched ? '1' : '.5';
+  btn.style.cursor = matched ? 'pointer' : 'not-allowed';
+}
+function confirmWithdraw() {
+  if (state.withdrawConfirm.input !== state.user.nickname) return;
+  closeWithdrawConfirm();
+  doWithdraw();
+}
+function renderWithdrawConfirmModal() {
+  const w = state.withdrawConfirm;
+  if (!w.open) return '';
+  const matched = w.input === state.user.nickname;
+  return `
+  <div class="confirm-backdrop" onclick="if(event.target===this) closeWithdrawConfirm()">
+    <div class="confirm-box" style="max-width:380px;">
+      <h3 style="margin:0 0 8px;">회원탈퇴</h3>
+      <p class="desc" style="margin:0 0 12px;white-space:pre-line;">회원탈퇴를 진행하면 현재 계정으로 이용하던 서비스가 종료됩니다.
+탈퇴 시 처리되는 정보는 현재 서비스의 회원탈퇴 정책과 API 응답을 기준으로 적용됩니다.
+
+탈퇴 후에는 현재 계정으로 이용하던 기능과 정보를 다시 이용하기 어려울 수 있습니다.</p>
+      <div class="field" style="margin-bottom:0;">
+        <label for="withdraw-confirm-input">계속하려면 내 닉네임 <b>${escapeHtml(state.user.nickname)}</b>을(를) 그대로 입력하세요</label>
+        <input id="withdraw-confirm-input" value="${escapeHtml(w.input)}" placeholder="${escapeHtml(state.user.nickname)}" oninput="setWithdrawConfirmInput(this.value)" autocomplete="off">
+      </div>
+      <div class="confirm-actions" style="margin-top:14px;">
+        <button class="btn btn-ghost btn-sm" onclick="closeWithdrawConfirm()">취소</button>
+        <button id="withdraw-confirm-btn" class="btn btn-danger btn-sm" ${matched ? '' : 'disabled style="opacity:.5;cursor:not-allowed;"'} onclick="confirmWithdraw()">회원탈퇴</button>
+      </div>
+    </div>
+  </div>`;
+}
 async function doWithdraw() {
-  closeConfirm();
   try {
     const res = await fetch(`${API_BASE}/api/users/me`, {
       method: 'DELETE',

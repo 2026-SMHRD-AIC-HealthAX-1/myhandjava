@@ -2,23 +2,32 @@
 
 function render() {
   const root = document.getElementById('app');
+  // 로그인 세션에 딸린 팝업(동네설정 확인창, 소셜 온보딩, 회원탈퇴 확인, 채팅 차단/신고)은
+  // 로그아웃 경로를 안 거치고 남아있는 경우가 있어도(예: 뒤로가기, 오래된 상태) 로그인 전
+  // 랜딩페이지에서는 절대 뜨면 안 된다 — 화면이 intro면 여기서 한 번 더 확실히 지운다.
+  if (state.screen === 'intro') {
+    state.confirm = null;
+    state.socialOnboarding.open = false;
+    state.withdrawConfirm.open = false;
+    state.chatModeration.open = false;
+  }
   if (state.screen === 'intro') root.innerHTML = renderIntro();
-  else if (state.screen === 'signup') root.innerHTML = renderSignup();
   else if (state.screen === 'login') root.innerHTML = renderLogin();
+  else if (state.screen === 'admin') root.innerHTML = renderAdminApp();
   else root.innerHTML = renderApp(); // 'app' 화면은 실제 로그인 사용자와 게스트(guestMode)를 구분하지 않고 동일하게 그린다
 
   if (state.confirm) root.innerHTML += renderConfirm();
-  if (state.findIdModal.open) root.innerHTML += renderFindIdModal();
-  if (state.findPwModal.open) root.innerHTML += renderFindPwModal();
   if (state.itemPreview.open) root.innerHTML += renderItemPreviewModal();
   if (state.crewParty.open) root.innerHTML += renderPartyInviteModal();
   if (state.crewParty.statusOpen) root.innerHTML += renderPartyStatusModal();
   if (state.crewConceptEditor.open) root.innerHTML += renderCrewConceptEditorModal();
   if (state.publicProfileModal.open) root.innerHTML += renderPublicProfileModal();
   if (state.chatModeration.open) root.innerHTML += renderChatModerationModal();
+  if (state.withdrawConfirm.open) root.innerHTML += renderWithdrawConfirmModal();
+  if (state.socialOnboarding.open) { root.innerHTML += renderSocialOnboardingModal(); setTimeout(drawOnboardingAvatar, 0); }
   if (state.exercise.replayOpen) root.innerHTML += renderReplayPopup();
-  // 캘리브레이션 모달은 회원가입 화면뿐 아니라, 운동 탭에서 "캘리브레이션 필수" 조건에 걸려
-  // 열릴 수도 있으므로 화면(screen)과 무관하게 calModalOpen 플래그만 본다.
+  // 캘리브레이션 모달은 마이페이지 계정관리나 운동 탭의 "캘리브레이션 필수" 조건 등
+  // 여러 곳에서 열릴 수 있으므로 화면(screen)과 무관하게 calModalOpen 플래그만 본다.
   if (state.signup.calModalOpen) root.innerHTML += renderCalibrationModal();
 
   if (state.signup.calModalOpen && state.signup.calStage === 'done') {
@@ -62,13 +71,17 @@ function render() {
   if (state.screen === 'app' && state.menu === 'main') {
     setTimeout(drawMainCharCanvas, 0);
   }
+  if (state.screen === 'app' && state.menu === 'shop') {
+    setTimeout(drawCleanShopAssets, 0);
+  }
 }
 
 /* ---------- 소개(랜딩) 페이지 ---------- */
-// 로그인 전 첫 진입 화면. 비회원은 로그인/회원가입 창을 바로 보는 대신 여기서 서비스를
-// 먼저 둘러본 뒤, 상단 버튼으로 회원가입 또는 로그인으로 이동한다.
+// 로그인 전 첫 진입 화면. 비회원은 로그인 창을 바로 보는 대신 여기서 서비스를 먼저 둘러본 뒤,
+// 하단 네비게이션의 "로그인"으로 이동한다 — 로그인 화면은 SNS 계정(카카오/구글) 전용이라
+// 별도의 회원가입 화면은 없다(auth.js renderLogin 참고).
 // 로그인 전 방문자에게 "운동하면 이렇게 기록이 쌓인다"를 미리 보여주는 예시 이미지 —
-// 실제 내 기록은 회원가입 후에나 생기므로, 임의의 샘플 히스토리 화면 이미지를 보여준다.
+// 실제 내 기록은 로그인 후에나 생기므로, 임의의 샘플 히스토리 화면 이미지를 보여준다.
 /* ---------- 앱 셸 ---------- */
 const MENUS = [
   { id: 'main', label: '메인', icon: '🏠' },
@@ -78,7 +91,6 @@ const MENUS = [
   { id: 'ranking', label: '랭킹', icon: '🏆' },
   { id: 'profile', label: '마이페이지', icon: '👤' },
   { id: 'support', label: '고객센터', icon: '💬' },
-  { id: 'adminMission', label: '미션 관리', icon: '🛠️', adminOnly: true },
 ];
 function renderApp() {
   return `
@@ -93,6 +105,10 @@ function renderApp() {
           <span class="navicon"></span><span class="navicon-emoji">${m.icon}</span><span class="navlabel">${m.label}</span>
         </div>`).join('')}
       <div class="sidebar-footer">
+        ${!state.guestMode && state.user.role === 'ADMIN' ? `
+        <div class="navitem" onclick="openAdminPanel()">
+          <span class="navicon"></span><span class="navicon-emoji">🛠️</span><span class="navlabel">관리자모드</span>
+        </div>` : ''}
         <div class="navitem" onclick="${state.guestMode ? "goto('login')" : 'doLogout()'}">
           <span class="navicon"></span><span class="navicon-emoji">🚪</span><span class="navlabel">${state.guestMode ? '로그인' : '로그아웃'}</span>
         </div>
@@ -110,10 +126,10 @@ function renderApp() {
             🔔
             ${pendingPartyInviteCount() > 0 ? `<span class="notif-badge">${pendingPartyInviteCount()}</span>` : ''}
           </div>`}
+          <span class="topbar-grade-badge">${state.guestMode ? '<span class="mono">Lv.0</span>' : userLevelBadge(state.user.grade, state.user.gradeName, state.user.level, true)}</span>
           <span class="topbar-nick">${state.guestMode ? '비회원' : (state.user.nickname || '홈트초보')}</span>
           <div class="topbar-avatar" onclick="setMenu('profile');setSub('profile',0);" title="마이페이지 · 캐릭터 꾸미기">
             <canvas id="topbar-avatar-canvas"></canvas>
-            ${state.guestMode ? '<span class="mono">Lv.0</span>' : userLevelBadge(state.user.grade, state.user.gradeName, state.user.level, true)}
           </div>
         </div>
         ${state.notifPanelOpen ? renderNotifPanel() : ''}
@@ -126,7 +142,6 @@ function renderApp() {
             state.menu === 'crew' ? renderCrew() :
               state.menu === 'crewBattle' ? renderCrewBattle() :
                 state.menu === 'ranking' ? renderRanking() :
-                  state.menu === 'adminMission' ? renderAdminMissionManagement() :
                   renderSupport()}
       </div>
     </div>
@@ -178,9 +193,13 @@ function goto(screen) { state.guestMode = false; state.screen = screen; render()
 function setSub(key, idx) {
   state.subtabs[key] = idx;
   if(key==='crew' && getMyCrewRole()==='팀장') loadCrewJoinRequests();
+  // 탭 순서는 getCrewPageTabs()가 유일한 기준이다(크루대전 탭이 끼어들며 인덱스가 바뀌었으므로
+  // 하드코딩한 숫자로 비교하면 어긋난다) — 이름으로 어떤 탭인지 확인한다.
+  const crewTab = key === 'crew' ? getCrewPageTabs()[idx] : null;
   // 채팅·크루원 실시간 소켓 자체는 홈크루 메뉴에 들어와 있는 동안 계속 연결돼 있다(setMenu
   // 참고) — 여기서는 채팅 탭을 열 때 최근 대화 내역만 REST로 새로 불러온다.
-  if (key === 'crew' && idx === 1) loadCrewChatHistory();
+  if (crewTab === '크루채팅') loadCrewChatHistory();
+  if (crewTab === '크루대전') loadCrewBattleHistory();
   if (key === 'ranking') {
     if (idx === 0) loadRegionRanking();
     else if (idx === 1) loadExerciseRanking();

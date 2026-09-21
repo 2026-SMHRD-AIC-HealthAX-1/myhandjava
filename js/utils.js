@@ -17,6 +17,7 @@ function loadCharSprite(gender, src){
   img.onload=()=>{
     CHAR_SPRITES[gender]=img;
     drawAvatarCanvas(); drawTopbarAvatar(); drawPodiumChars(); drawMainCharCanvas();
+    if (typeof drawOnboardingAvatar === 'function') drawOnboardingAvatar();
   };
   img.src=src;
 }
@@ -47,10 +48,29 @@ if (typeof AVATAR_ITEM_CATALOG !== 'undefined') {
     (item.layers || []).forEach(layer => loadAvatarItemSprite(layer.asset));
   });
 }
+if (typeof AVATAR_COMBO_FULL_CANVAS !== 'undefined') {
+  Object.values(AVATAR_COMBO_FULL_CANVAS).forEach(entry => {
+    if (entry.male) loadAvatarItemSprite(entry.male);
+    if (entry.female) loadAvatarItemSprite(entry.female);
+  });
+}
+if (typeof AVATAR_COMBO_BG_RIVERSIDE_DAY !== 'undefined') {
+  Object.values(AVATAR_COMBO_BG_RIVERSIDE_DAY).forEach(entry => {
+    if (entry.male) loadAvatarItemSprite(entry.male);
+    if (entry.female) loadAvatarItemSprite(entry.female);
+  });
+}
 
 /* ========================================================================
    유틸
    ======================================================================== */
+// 크루채팅처럼 사용자가 직접 입력한 문자열을 템플릿 문자열로 그대로 끼워 넣는 곳에서
+// XSS를 막기 위한 이스케이프. <script>나 onerror= 같은 걸 메시지에 넣어도 그냥 텍스트로만 보인다.
+function escapeHtml(str){
+  return String(str == null ? '' : str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
 function toast(msg){
   const t=document.getElementById('toast');
   t.textContent=msg;
@@ -75,8 +95,8 @@ function gradePill(g){
   return `<span class="pill ${cls}">${g}</span>`;
 }
 
-// 사용자 등급(레벨 1~500, 500레벨을 다 채우면 다음 등급으로 승급하고 다시 1레벨부터 시작 —
-// 백엔드 UserGrade/UserLevelPolicy 참고) 색상. 리그오브레전드 티어와 같은 순서·색감을 쓴다.
+// 사용자 등급(레벨 10단위로 자동 결정 — 1~10 아이언, 11~20 브론즈 ... 91~100(이상) 챌린저.
+// 백엔드 UserGrade.forLevel/UserLevelPolicy 참고) 색상. 리그오브레전드 티어와 같은 순서·색감을 쓴다.
 const USER_GRADE_COLORS = {
   IRON: '#6B6B6B',
   BRONZE: '#A9702F',
@@ -90,19 +110,50 @@ const USER_GRADE_COLORS = {
   CHALLENGER: '#7EE7E8',
 };
 function userGradeColor(grade){ return USER_GRADE_COLORS[grade] || USER_GRADE_COLORS.IRON; }
+// 랭킹 목록처럼 레벨만 내려오고 등급 문자열은 안 내려오는 응답에서, 백엔드 UserGrade.forLevel과
+// 똑같은 규칙(레벨 10단위 구간, 91+는 챌린저 고정)으로 등급 코드를 그대로 계산해낸다.
+function gradeFromLevel(level){
+  const codes = Object.keys(USER_GRADE_COLORS);
+  const bucket = Math.max(0, Math.floor((Number(level || 1) - 1) / 10));
+  return codes[Math.min(codes.length - 1, bucket)];
+}
 // 백엔드 UserGrade.koreanName과 동일한 한글 표기 — 고객센터 FAQ의 등급 목록 등에서 재사용한다.
 const USER_GRADE_NAMES = {
   IRON: '아이언', BRONZE: '브론즈', SILVER: '실버', GOLD: '골드', PLATINUM: '플래티넘',
   EMERALD: '에메랄드', DIAMOND: '다이아몬드', MASTER: '마스터', GRANDMASTER: '그랜드마스터', CHALLENGER: '챌린저',
 };
-// 레벨 앞에 붙는 등급 배지 — 알통(💪) 이모지 자체는 CSS color로 다시 칠할 수 없어서, 팔각형
-// 배지의 배경색을 등급 색으로 채우고 그 위에 이모지를 얹는 방식으로 표현한다(.level-badge-icon,
-// style.css 참고). compact=true면 topbar처럼 좁은 자리에 맞게 배지·글자를 조금 작게 그린다.
+// 등급별 레벨 구간(백엔드 UserGrade.forLevel과 동일한 10레벨 단위 규칙) — 고객센터 FAQ의
+// 등급 목록에 "Lv.1~10"처럼 함께 보여줄 때 쓴다.
+const USER_GRADE_LEVEL_RANGE = {
+  IRON: '1~10', BRONZE: '11~20', SILVER: '21~30', GOLD: '31~40', PLATINUM: '41~50',
+  EMERALD: '51~60', DIAMOND: '61~70', MASTER: '71~80', GRANDMASTER: '81~90', CHALLENGER: '91~100',
+};
+// 등급별 완성된 배지 아트(헥사곤+보석+월계관/왕관까지 그려진 이미지) — assets/ranks/*.png.
+// CSS로 직접 그리기엔 디테일이 많아 시안 이미지를 그대로 쓴다.
+const RANK_ICONS = {
+  IRON: 'assets/ranks/iron.png',
+  BRONZE: 'assets/ranks/bronze.png',
+  SILVER: 'assets/ranks/silver.png',
+  GOLD: 'assets/ranks/gold.png',
+  PLATINUM: 'assets/ranks/platinum.png',
+  EMERALD: 'assets/ranks/emerald.png',
+  DIAMOND: 'assets/ranks/diamond.png',
+  MASTER: 'assets/ranks/master.png',
+  GRANDMASTER: 'assets/ranks/grandmaster.png',
+  CHALLENGER: 'assets/ranks/challenger.png',
+};
+// 등급 아이콘만(레벨 텍스트 없이) — 이미 옆에 "Lv.X"를 따로 보여주는 자리(메인
+// 대시보드 캐릭터 카드 등)에서 쓴다. size는 px 한 변 길이.
+function rankBadgeIcon(grade, gradeName, size){
+  const src = RANK_ICONS[grade] || RANK_ICONS.IRON;
+  return `<img class="rank-icon" src="${src}" alt="${gradeName || ''}" title="${gradeName || ''}" style="width:${size}px;height:${size}px;object-fit:contain;flex-shrink:0;vertical-align:middle;">`;
+}
+// 레벨 앞에 붙는 등급 배지 — 등급 아이콘 이미지 옆에 "Lv.X" 텍스트를 붙인다.
+// compact=true면 topbar처럼 좁은 자리에 맞게 배지·글자를 조금 작게 그린다.
 function userLevelBadge(grade, gradeName, level, compact){
-  const color = userGradeColor(grade);
   const size = compact ? 24 : 32;
-  const icon = `<span class="level-badge-icon" style="width:${size}px;height:${size}px;font-size:${compact ? 13 : 17}px;background:${color};" title="${gradeName || ''}">💪</span>`;
-  return `<span style="display:inline-flex;align-items:center;gap:5px;vertical-align:middle;">${icon}<span class="mono" style="color:${color};font-weight:700;font-size:${compact ? 13 : 15}px;">Lv.${level}</span></span>`;
+  const badge = rankBadgeIcon(grade, gradeName, size);
+  return `<span style="display:inline-flex;align-items:center;gap:5px;vertical-align:middle;">${badge}<span class="mono" style="color:${userGradeColor(grade)};font-weight:700;font-size:${compact ? 13 : 15}px;">Lv.${level}</span></span>`;
 }
 
 /* ========================================================================

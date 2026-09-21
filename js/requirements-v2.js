@@ -1,17 +1,10 @@
 // requirements-v2.js — 2026-09-16 화면/정책 개편.
 // 서버 응답이 있는 값은 서버 값을 우선하고, 아직 없는 값은 MOCK 표시된 데이터로 동작한다.
 
-const OUNHOME_GRADES = [
-  ['아이언','#77808f','⬟'],['브론즈','#b56b3d','◆'],['실버','#9aa7b6','✦'],['골드','#d99a16','★'],
-  ['플래티넘','#36a9a1','✧'],['에메랄드','#23a66f','⬢'],['다이아몬드','#4e93e6','◈'],
-  ['마스터','#8a5bd5','♛'],['그랜드마스터','#d94d78','♜'],['챌린저','#ee6c2f','🏆']
-];
+// 등급 이름·색·배지는 실제 서버 값(state.user.grade/gradeName)과 utils.js의
+// USER_GRADE_COLORS/NAMES/rankBadgeIcon을 쓴다 — 여기 있던 gradeIndex 기반 목데이터는 제거함.
 const SCORE_EXP_TABLE = [[249,0],[499,50],[749,150],[899,250],[1049,300],[1199,350],[1349,400],[1499,450],[1500,500]];
 function mockExpForScore(score){ return (SCORE_EXP_TABLE.find(([max])=>score<=max)||[1500,500])[1]; }
-function currentGrade(){
-  const tier=Math.max(0,Math.min(OUNHOME_GRADES.length-1,Number(state.user.gradeIndex||0)));
-  const [name,color,icon]=OUNHOME_GRADES[tier]; return {tier,name,color,icon};
-}
 function calculatedNextLevelExp(level){
   const safeLevel=Math.max(1,Number(level)||1);
   if(safeLevel<=10)return 100;
@@ -22,7 +15,6 @@ function currentExpValue(){ return Number(state.user.currentExp ?? state.user.ex
 function levelProgressPct(){ return Math.min(100,Math.round(currentExpValue()/Math.max(1,nextLevelExp())*100)); }
 
 Object.assign(state.user, {
-  gradeIndex: state.user.gradeIndex || 0,
   currentExp: Number.isFinite(state.user.currentExp) ? state.user.currentExp : state.user.exp,
   nextLevelExp: state.user.nextLevelExp ?? calculatedNextLevelExp(state.user.level),
   freeWorkoutsUsed: state.user.freeWorkoutsUsed || 0,
@@ -30,16 +22,10 @@ Object.assign(state.user, {
   attendanceRewardClaimed: !!state.user.attendanceRewardClaimed,
 });
 state.crew.joinEnabled = state.crew.joinEnabled !== false;
+state.crew.autoApprove = state.crew.autoApprove === true;
 state.crew.maxMembers = 5;
-state.crew.weeklyMission = state.crew.weeklyMission || {target:300,progress:120,rewardExp:500,contributions:{나:52,써니핏:68,헬스왕:44}};
 state.crew.battleHistory = state.crew.battleHistory || [];
 state.crew.battleRequest = state.crew.battleRequest || {size:2,status:'idle'};
-state.adminMissions = state.adminMissions || [
-  {id:1,type:'개인',exercise:'스쿼트',metric:'운동 세트',target:1,min:1,max:3,points:50,exp:50,active:true},
-  {id:2,type:'개인',exercise:'스쿼트',metric:'GOOD 이상',target:10,min:5,max:15,points:50,exp:50,active:true},
-  {id:3,type:'크루',exercise:'전체',metric:'주간 운동 횟수',target:300,min:40,max:80,points:0,exp:500,active:true},
-];
-
 function kstDateKey(){ return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()); }
 function syncDailyFreeWorkouts(){
   const today=kstDateKey();
@@ -69,7 +55,7 @@ function syncAttendanceStatus(){
     const [y,m,d]=saved.date.split('-').map(Number);
     const [ty,tm,td]=today.split('-').map(Number);
     const gap=Math.round((Date.UTC(ty,tm-1,td)-Date.UTC(y,m-1,d))/86400000);
-    if(gap>1) state.user.streak=1;
+    if(gap>1){ state.user.streak=1; setMilestoneState({m3:false,m10:false}); }
     state.user.attendanceRewardClaimed = saved.date===today ? !!saved.claimed : false;
   }else{
     state.user.attendanceRewardClaimed=false;
@@ -91,6 +77,34 @@ function storeAttendanceDate(date){
   const dates=getStoredAttendanceDates(); dates.add(date);
   try{ localStorage.setItem(`ounhome_attendance_dates_${uid}`,JSON.stringify(Array.from(dates).sort())); }catch(_e){}
 }
+// 3일/10일 연속출석 보너스(각 +20P)가 지급된 날짜 — 출석 캘린더에 별표(★)로 표시한다.
+function getStoredBonusDates(){
+  if(state.guestMode) return new Set();
+  const uid=state.user.id || state.user.nickname || 'local';
+  try{
+    const arr=JSON.parse(localStorage.getItem(`ounhome_attendance_bonus_dates_${uid}`)||'[]');
+    return new Set(Array.isArray(arr)?arr:[]);
+  }catch(_e){ return new Set(); }
+}
+function storeBonusDate(date){
+  if(state.guestMode) return;
+  const uid=state.user.id || state.user.nickname || 'local';
+  const dates=getStoredBonusDates(); dates.add(date);
+  try{ localStorage.setItem(`ounhome_attendance_bonus_dates_${uid}`,JSON.stringify(Array.from(dates).sort())); }catch(_e){}
+}
+// 지금 이어지고 있는 연속출석 구간에서 3일/10일 마일스톤을 이미 받았는지 — 연속출석이
+// 끊기면(gap>1, syncAttendanceStatus 참고) 다시 받을 수 있게 초기화된다.
+function getMilestoneState(){
+  if(state.guestMode) return {m3:false,m10:false};
+  const uid=state.user.id || state.user.nickname || 'local';
+  try{ return JSON.parse(localStorage.getItem(`ounhome_attendance_milestones_${uid}`)||'null') || {m3:false,m10:false}; }
+  catch(_e){ return {m3:false,m10:false}; }
+}
+function setMilestoneState(m){
+  if(state.guestMode) return;
+  const uid=state.user.id || state.user.nickname || 'local';
+  try{ localStorage.setItem(`ounhome_attendance_milestones_${uid}`,JSON.stringify(m)); }catch(_e){}
+}
 function calculateAttendanceStreak(){
   if(state.guestMode) return 0;
   const dates=getStoredAttendanceDates(), today=kstDateKey();
@@ -108,7 +122,7 @@ function calculateAttendanceStreak(){
 renderAttendanceCalendar=function(){
   const DOW=['월','화','수','목','금','토','일'];
   const now=new Date(),year=now.getFullYear(),month=now.getMonth(),todayDate=now.getDate();
-  const stored=getStoredAttendanceDates(),fallbackStreak=calculateAttendanceStreak();
+  const stored=getStoredAttendanceDates(),bonus=getStoredBonusDates(),fallbackStreak=calculateAttendanceStreak();
   const firstDow=(new Date(year,month,1).getDay()+6)%7,daysInMonth=new Date(year,month+1,0).getDate();
   const cells=[]; for(let i=0;i<firstDow;i++)cells.push(null); for(let d=1;d<=daysInMonth;d++)cells.push(d);
   while(cells.length%7!==0)cells.push(null);
@@ -117,39 +131,30 @@ renderAttendanceCalendar=function(){
     if(d==null)return '<div class="att-day empty"></div>';
     const iso=`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const isToday=d===todayDate,isStored=stored.has(iso),isFallback=!stored.size&&d<=todayDate&&(todayDate-d)<fallbackStreak,checked=isStored||isFallback;
+    const isBonus=bonus.has(iso);
     const cls=isToday?`att-day today${checked?' checked':''}`:checked?'att-day checked':'att-day';
-    return `<div class="${cls}" aria-label="${iso}${checked?' 출석':''}"><span class="att-day-number">${d}</span>${checked?'<span class="att-check-ring" aria-hidden="true"></span>':''}</div>`;
+    // 별표(★)는 그날 3일/10일 연속출석 보너스(+20P)가 지급됐다는 표시 — 날짜 숫자 뒤에 작게 붙인다.
+    return `<div class="${cls}" aria-label="${iso}${checked?' 출석':''}${isBonus?' 보너스지급':''}"><span class="att-day-number">${d}${isBonus?'<span class="att-day-star">★</span>':''}</span>${checked?'<span class="att-check-ring" aria-hidden="true"></span>':''}</div>`;
   }).join('');
   return `<div style="margin:10px 0;"><p class="hint mono" style="margin:0 0 8px;font-weight:700;color:var(--ink);">${year}년 ${month+1}월</p><div class="att-month-grid">${dowRow}${dayCells}</div></div>`;
 };
 
-// 1. 회원가입 성별 선택 UI 및 사용자 요약
-const _renderSignupV1 = renderSignup;
-renderSignup = function(){
-  const html=_renderSignupV1();
-  const gender=`<div class="field"><label>성별 및 기본 캐릭터</label><div class="gender-choice">
-    <button type="button" class="btn ${state.signup.gender==='male'?'btn-primary':'btn-secondary'}" onclick="state.signup.gender='male';render()">남성</button>
-    <button type="button" class="btn ${state.signup.gender==='female'?'btn-primary':'btn-secondary'}" onclick="state.signup.gender='female';render()">여성</button>
-  </div><p class="hint">가입 후 선택한 성별의 기본 캐릭터가 적용됩니다.</p></div>`;
-  return html.replace('<div class="field">\n        <label>활동 지역',gender+'<div class="field">\n        <label>활동 지역')
-    .replaceAll('스마트폰 카메라','스마트폰 카메라');
-};
 function renderUserProgressSummary(){
-  const g=currentGrade();
+  const grade=state.user.grade||'IRON';
+  const gradeName=state.user.gradeName||USER_GRADE_NAMES[grade]||'아이언';
+  const color=userGradeColor(grade);
+  const total=(typeof getProfileStats==='function') ? getProfileStats().total : 0;
+  const expToNext=Math.max(0, nextLevelExp()-currentExpValue());
+  // 예전엔 이 자리에 "EXP·P·성별" 한 줄만 있었는데, 메인 대시보드의 누적성과 카드를 없애고
+  // 그 내용(누적 점수·레벨업까지 남은 EXP)을 여기로 옮겼다 — 레벨업 바는 그대로 위에 있는 걸 쓴다.
   return `<div class="user-progress-summary">
-    <span class="grade-mark" style="color:${g.color};border-color:${g.color};">${g.icon}</span>
-    <div><b>${g.name} · Lv.${Math.min(500,state.user.level)}</b><div class="progress"><span style="width:${levelProgressPct()}%;background:${g.color};"></span></div>
-    <small>${currentExpValue().toLocaleString()} / ${nextLevelExp().toLocaleString()} EXP · P ${state.user.points.toLocaleString()} · ${state.user.gender==='female'?'여성':'남성'}</small></div>
+    ${rankBadgeIcon(grade, gradeName, 32)}
+    <div><b>${gradeName} · Lv.${Math.min(500,state.user.level)}</b><div class="progress"><span style="width:${levelProgressPct()}%;background:${color};"></span></div>
+    <small>누적 점수 ${total.toLocaleString()}점 · 레벨업까지 ${expToNext.toLocaleString()} EXP 남았어요</small></div>
   </div>`;
 }
 
 // 2~3. 캘리브레이션은 신체정보 입력과 무관하며, 서버 calibration 여부만 사용한다.
-calUpdateBmiLabel=function(){
-  const startBtn=document.getElementById('cal-start-btn');
-  if(startBtn){startBtn.disabled=false;startBtn.style.opacity='1';startBtn.style.cursor='pointer';}
-  const hint=document.getElementById('cal-start-hint');if(hint)hint.style.display='none';
-  const lbl=document.getElementById('cal-bmi-label');if(lbl){const b=calGetBodyInfo();lbl.textContent=b.bmi?`BMI ${b.bmi.toFixed(1)} · 입력 정보를 선택적으로 반영합니다.`:'키와 몸무게 없이도 캘리브레이션을 진행할 수 있습니다.';}
-};
 goToTutorial = function(){
   syncDailyFreeWorkouts();
   if(state.guestMode){ goExStep(1); return; }
@@ -230,21 +235,32 @@ if(!state.missions.today.length) state.missions.today=[
 ];
 const _renderMissionCardV1=renderMissionCard;
 renderMissionCard=m=>_renderMissionCardV1(m).replace(/\+[^<\s]+P\s*<\/span>/, '+50P / +50 EXP</span>').replace('일간','개인 일일');
-claimStreakReward=function(){
+// 로그인/세션복원 시 자동으로 호출된다(버튼 없음, bootstrap.js·auth.js 참고) — 출석 자체는
+// 매일 그냥 기록만 되고, 포인트는 3일/10일 연속출석을 "처음" 달성한 날에만 지급된다(3일 +20P, 10일 +300P).
+// 같은 연속출석 구간 안에서는 한 번만 지급되고(getMilestoneState), 끊기면 다시 받을 수 있다.
+function autoClaimAttendance(){
+  if(state.guestMode) return;
   syncAttendanceStatus();
-  if(state.user.attendanceRewardClaimed){toast('오늘 출석 보상을 이미 받았습니다');return;}
+  if(state.user.attendanceRewardClaimed) return;
   const today=kstDateKey();
   storeAttendanceDate(today);
   const streak=Math.max(1,calculateAttendanceStreak());
   state.user.streak=streak;
-  const reward=streak>=3?15:5;
-  state.user.points+=reward;
+  const milestones=getMilestoneState();
+  let reward=0;
+  if(streak>=3 && !milestones.m3){ reward+=20; milestones.m3=true; }
+  if(streak>=10 && !milestones.m10){ reward+=300; milestones.m10=true; }
+  if(reward>0){
+    state.user.points+=reward;
+    storeBonusDate(today);
+    setMilestoneState(milestones);
+    toast(`연속 출석 ${streak}일차 · 보너스 +${reward}P`);
+  }
   state.user.attendanceRewardClaimed=true;
   const uid=state.user.id || state.user.nickname || 'local';
-  try{localStorage.setItem(`ounhome_attendance_${uid}`,JSON.stringify({date:kstDateKey(),claimed:true}));}catch(_e){}
-  toast(`출석 ${streak}일차 · 오늘 보상 +${reward}P`);
+  try{localStorage.setItem(`ounhome_attendance_${uid}`,JSON.stringify({date:today,claimed:true}));}catch(_e){}
   render();
-};
+}
 
 // 12~19. 크루 정책/주간미션/관리/자동매칭
 renderCrewNoticeCard=()=>'';
@@ -253,23 +269,23 @@ renderJoinButton=function(c){
   const current=Number(c.currentMembers??c.memberCount??4),max=Number(c.maxMembers??5),enabled=c.joinEnabled!==false&&c.recruiting!==false&&current<max;
   return `<p class="hint">현재 인원 <b>${current}/${max}</b></p>`+(enabled?_renderJoinButtonV1(c):'<button class="btn btn-ghost btn-block" disabled>가입 불가</button>');
 };
-async function toggleCrewJoinEnabled(){
-  if(getMyCrewRole()!=='팀장'){toast('크루장만 가입 활성 상태를 변경할 수 있습니다');return;}
-  const previous=state.crew.joinEnabled!==false;
+async function toggleCrewAutoApprove(){
+  if(getMyCrewRole()!=='팀장'){toast('크루장만 자동가입승인 상태를 변경할 수 있습니다');return;}
+  const previous=state.crew.autoApprove===true;
   const next=!previous;
   try{
-    const res=await fetch(`${API_BASE}/api/crews/me/join-status`,{
+    const res=await fetch(`${API_BASE}/api/crews/me/join-setting`,{
       method:'PATCH',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+state.token},
-      body:JSON.stringify({joinEnabled:next})
+      body:JSON.stringify({autoApprove:next})
     });
     const body=await res.json();
-    if(!body.success){toast(body.message||'가입 활성 상태 변경에 실패했습니다');return;}
-    state.crew.joinEnabled=body.data && typeof body.data.joinEnabled==='boolean' ? body.data.joinEnabled : next;
-    toast(`가입을 ${state.crew.joinEnabled?'활성화':'비활성화'}했습니다`);
+    if(!body.success){toast(body.message||'자동가입승인 상태 변경에 실패했습니다');return;}
+    state.crew.autoApprove=body.data && typeof body.data.autoApprove==='boolean' ? body.data.autoApprove : next;
+    toast(`자동가입승인을 ${state.crew.autoApprove?'켰습니다':'껐습니다'}`);
     render();
   }catch(err){
-    state.crew.joinEnabled=previous;
+    state.crew.autoApprove=previous;
     toast('서버에 연결할 수 없습니다');
   }
 }
@@ -308,22 +324,10 @@ async function disbandCrew(){
 }
 function renderCrewManagementV2(){
   const leader=getMyCrewRole()==='팀장',members=state.crew.members,others=members.filter(m=>!isCurrentCrewMember(m)&&m.role!=='팀장'),requests=state.crew.joinRequests||[];
-  return `<div class="card"><div class="flex-between"><h3>크루 관리</h3>${leader?`<div class="crew-join-toggle"><span class="crew-join-toggle-label">가입 활성</span><button type="button" class="switch ${state.crew.joinEnabled?'on':''}" role="switch" aria-checked="${state.crew.joinEnabled?'true':'false'}" aria-label="가입 활성 ${state.crew.joinEnabled?'ON':'OFF'}" onclick="toggleCrewJoinEnabled()"><span class="switch-state">${state.crew.joinEnabled?'ON':'OFF'}</span><span class="knob"></span></button></div>`:''}</div>
+  return `<div class="card"><div class="flex-between"><h3>크루 관리</h3>${leader?`<div class="crew-join-toggle"><span class="crew-join-toggle-label">자동가입승인</span><button type="button" class="switch ${state.crew.autoApprove?'on':''}" role="switch" aria-checked="${state.crew.autoApprove?'true':'false'}" aria-label="자동가입승인 ${state.crew.autoApprove?'ON':'OFF'}" onclick="toggleCrewAutoApprove()"><span class="switch-state">${state.crew.autoApprove?'ON':'OFF'}</span><span class="knob"></span></button></div>`:''}</div>
   ${leader?`<p class="section-label" style="margin-top:16px;">가입 신청 대기 (${requests.length})</p><div class="grid grid-2">${requests.length?requests.map(r=>`<div class="card"><div class="flex-between"><b>${r.n}</b><span class="pill pill-gold">PENDING</span></div><p class="hint">Lv.${r.level}${r.requestedAt?` · ${new Date(r.requestedAt).toLocaleString('ko-KR')}`:''}</p><p class="desc">${r.msg||'가입 메시지가 없습니다.'}</p><div class="crew-join-actions"><button class="btn btn-sm btn-secondary" onclick="rejectJoinRequest(${r.id})" aria-label="${r.n} 가입 요청 거절">거절</button><button class="btn btn-sm btn-primary" onclick="approveJoinRequest(${r.id})" aria-label="${r.n} 가입 요청 승인">승인</button></div></div>`).join(''):'<div class="empty-note" style="grid-column:1/-1;">대기 중인 가입 신청이 없습니다.</div>'}</div>`:''}
   <p class="hint">최대 인원 5명 · 현재 ${members.length}/5명</p>${leader?`<div class="table-wrap"><table><thead><tr><th>크루원</th><th>역할</th><th>레벨</th><th>관리</th></tr></thead><tbody>${members.map(m=>`<tr><td>${m.n}${isCurrentCrewMember(m)?' <span class="pill pill-accent">나</span>':''}${m.role==='팀장'?' <span class="pill pill-gold">크루장</span>':''}</td><td>${crewRoleLabel(m.role)}</td><td>Lv.${m.level}</td><td>${!isCurrentCrewMember(m)&&m.role!=='팀장'?`<button class="btn btn-sm btn-secondary" onclick="transferCrewLeader(${m.userId||0})">크루장 양도</button> <button class="btn btn-sm btn-danger" onclick="kickMember(${m.userId})">강퇴</button>`:'<span class="hint">관리 제외</span>'}</td></tr>`).join('')}</tbody></table></div>`:''}
   <div class="crew-management-danger-zone"><button class="btn btn-danger" ${leader&&others.length?'disabled style="opacity:.5"':''} onclick="leaveOrDisbandCrew()">크루 해체</button>${leader&&others.length?'<p class="hint">다른 크루원이 있는 동안 해체할 수 없습니다.</p>':''}</div></div>`;
-}
-const CREW_BATTLE_RESULT_SAMPLES = [
-  {image:'assets/crew-battle-demo-preview.png', alt:'5대5 크루대전 실시간 점수 화면 예시', title:'5대5 팀 대전', score:'1,240 : 1,180', result:'승리'},
-  {image:'assets/ranking-demo-preview.png', alt:'크루대전 결과 순위 화면 예시', title:'3대3 자동 매칭', score:'860 : 910', result:'패배'},
-  {image:'assets/history-demo-preview.png', alt:'크루대전 운동 기록 화면 예시', title:'2대2 빠른 대전', score:'520 : 480', result:'승리'},
-];
-function renderCrewBattleResultCard(){
-  const history=state.crew.battleHistory||[];
-  const content=history.length
-    ? `<div class="battle-result-list">${history.map(x=>`<div class="battle-result-row"><span>${x.at} · vs ${x.opponent}</span><b>${x.ourScore}:${x.oppScore} · ${x.result}</b><span class="pill pill-accent">+${x.exp} EXP</span></div>`).join('')}</div>`
-    : `<p class="hint">아직 실제 대전 데이터가 없어 레이아웃 확인용 예시를 표시합니다.</p><div class="battle-result-samples">${CREW_BATTLE_RESULT_SAMPLES.map(x=>`<article class="battle-result-sample"><img src="${x.image}" alt="${x.alt}" loading="lazy"><div><b>${x.title}</b><p class="mono">${x.score}</p><span class="pill ${x.result==='승리'?'pill-accent':'pill-muted'}">${x.result} · 예시</span></div></article>`).join('')}</div>`;
-  return `<div class="card"><div class="flex-between"><h3>대전 결과</h3>${history.length?'<span class="pill pill-accent">실제 기록</span>':'<span class="pill pill-muted">샘플 미리보기</span>'}</div>${content}</div>`;
 }
 const _renderCrewBattleV1=renderCrewBattle;
 renderCrewBattle=function(){
@@ -331,13 +335,28 @@ renderCrewBattle=function(){
   const our=(b.myScore||0)+(b.teammates||[]).reduce((s,x)=>s+(x.score||0),0),opp=b.oppScore||0;
   return `<div class="card crew-battle-live-head"><div class="flex-between"><div><p class="section-label">${state.crew.name}</p><b class="mono" style="font-size:34px;">${our.toLocaleString()}</b><small> · 누적 운동 ${(b.myGradeCounts?Object.values(b.myGradeCounts).reduce((a,c)=>a+c,0):0)}회</small></div><div><b>제한시간</b><div class="mono" style="font-size:28px;">02:00</div></div><div style="text-align:right;"><p class="section-label">${b.oppName||'상대 크루'}</p><b class="mono" style="font-size:34px;">${opp.toLocaleString()}</b><small> · 누적 운동 ${b.oppReps||0}회</small></div></div><p class="hint">화면 하단 참가자별 운동 횟수와 점수 · 종료 후 대전 결과로 자동 이동</p></div>`+_renderCrewBattleV1();
 };
+// 예전엔 여기서 "크루 주간 미션" 카드를 하나 더 붙였는데, state.crew.weeklyMission 자체가
+// 목데이터(진행도 120/300 고정값, 크루원별 40~80회 가짜 범위)였고 실제 크루원 닉네임과도
+// 안 맞아서 누가 뭘 했든 상관없이 "40회"만 떴다 — 진짜 크루 주간 미션은 이미 위(원본
+// renderCrewOverview)의 "개인운동에서 OO 하기" 카드가 서버 값(groupMission)으로 보여주고
+// 있으므로, 라벨만 "일일"→"주간"으로 맞추고 가짜 카드는 제거한다.
 const _renderCrewOverviewV1=renderCrewOverview;
-renderCrewOverview=function(){const w=state.crew.weeklyMission;const members=state.crew.members;return _renderCrewOverviewV1().replace('크루 미션 누적점수','크루대전 기여도').replace('오늘의 크루미션','크루 주간 미션').replace('일일','주간')+`<div class="card"><div class="flex-between"><h3>크루 주간 미션</h3><span class="pill pill-accent">보상 +500 크루 EXP</span></div><div class="gauge"><span class="fill" style="width:${Math.min(100,w.progress/w.target*100)}%"></span><span class="gauge-label">${w.progress} / ${w.target}</span></div><p class="hint">크루원별 주간 적용 범위 40~80회</p>${members.map(m=>`<p>${m.n}: ${Math.max(40,Math.min(80,w.contributions[m.n]||m.weeklyReps||40))}회</p>`).join('')}</div>`;};
+renderCrewOverview=function(){return _renderCrewOverviewV1().replace('크루 미션 누적점수','크루대전 기여도').replace('오늘의 크루미션','크루 주간 미션').replace('일일','주간');};
+// getCrewPageTabs()를 크루대전 탭이 포함된 순서로 바꾼다 — router.js의 setSub()/render() 훅이
+// 전부 이 함수로 "지금 몇 번째 탭이 무슨 탭인지" 이름으로 찾으므로, renderCrew도 아래에서
+// 직접 배열을 다시 만들지 않고 이 함수를 그대로 쓴다(하드코딩된 배열이 두 군데서 따로
+// 놀면 나중에 또 어긋난다 — setSub의 '크루채팅' 인덱스가 이 배열 변경 전 기준(1번)으로 굳어있던
+// 게 바로 그 사례라 router.js도 같이 고쳤다).
+getCrewPageTabs=function(){
+  const tabs=['크루 메인','크루대전','크루채팅','크루원 정보'];
+  tabs.push(getMyCrewRole()==='팀장' ? '크루관리' : '크루탈퇴');
+  return tabs;
+};
 const _renderCrewV1=renderCrew;
 renderCrew=function(){
   if(!state.crew.created)return _renderCrewV1();
   const leader=getMyCrewRole()==='팀장';
-  const tabs=['크루 메인','크루대전','크루채팅','크루원 정보',leader?'크루관리':'크루탈퇴'];
+  const tabs=getCrewPageTabs();
   const i=Math.min(state.subtabs.crew,tabs.length-1),t=tabs[i];
   return `<div class="view-head"><h1>${state.crew.name}</h1></div><div class="subtabs subtabs-compact">${tabs.map((x,n)=>`<div class="tab ${n===i?'active':''}" onclick="setSub('crew',${n})">${x}</div>`).join('')}</div>${t==='크루 메인'?renderCrewOverview():t==='크루채팅'?renderCrewChat():t==='크루원 정보'?renderCrewMembers():t==='크루대전'?renderCrewBattleMenu():leader?renderCrewManagementV2():renderCrewLeave()}`;
 };
@@ -346,16 +365,6 @@ renderCrew=function(){
 const _renderRankingV1=renderRanking;
 renderRanking=function(){state.rank.crew.sort((a,b)=>(b.level-a.level)-0||(b.currentExp||b.exp||0)-(a.currentExp||a.exp||0)||String(a.reachedAt||'').localeCompare(String(b.reachedAt||'')));return _renderRankingV1();};
 
-// 21. 관리자 미션 관리
-function renderAdminMissionManagement(){
-  if(state.user.role!=='ADMIN')return '<div class="empty-note">관리자만 접근할 수 있습니다.</div>';
-  return `<div class="view-head"><h1>미션 관리</h1><p>개인 미션과 크루 미션을 등록·수정·조회하고 활성 상태를 관리합니다.</p></div><div class="card admin-mission-form"><div class="grid grid-3"><div class="field"><label>구분</label><select id="am-type"><option>개인</option><option>크루</option></select></div><div class="field"><label>운동 종류</label><select id="am-ex"><option>스쿼트</option><option>전체</option></select></div><div class="field"><label>목표 항목</label><input id="am-metric" value="운동 횟수"></div><div class="field"><label>목표 횟수</label><input id="am-target" type="number" value="10"></div><div class="field"><label>최소/최대 횟수</label><div class="field-row"><input id="am-min" type="number" value="5"><input id="am-max" type="number" value="15"></div></div><div class="field"><label>보상(P/EXP)</label><div class="field-row"><input id="am-points" type="number" value="50"><input id="am-exp" type="number" value="50"></div></div></div><button class="btn btn-primary" onclick="addAdminMission()">미션 등록</button></div>
-  <div class="table-wrap"><table><thead><tr><th>구분</th><th>운동</th><th>목표</th><th>범위</th><th>보상</th><th>상태/관리</th></tr></thead><tbody>${state.adminMissions.map(m=>`<tr><td>${m.type}</td><td>${m.exercise}</td><td>${m.metric} ${m.target}회</td><td>${m.min}~${m.max}</td><td>${m.points}P / ${m.exp}EXP</td><td><button class="btn btn-sm ${m.active?'btn-primary':'btn-ghost'}" onclick="toggleAdminMission(${m.id})">${m.active?'활성':'비활성'}</button> <button class="btn btn-sm btn-secondary" onclick="editAdminMission(${m.id})">수정</button></td></tr>`).join('')}</tbody></table></div>`;
-}
-function addAdminMission(){state.adminMissions.push({id:Date.now(),type:document.getElementById('am-type').value,exercise:document.getElementById('am-ex').value,metric:document.getElementById('am-metric').value,target:+document.getElementById('am-target').value,min:+document.getElementById('am-min').value,max:+document.getElementById('am-max').value,points:+document.getElementById('am-points').value,exp:+document.getElementById('am-exp').value,active:true,mock:true});toast('미션을 등록했습니다 (목데이터)');render();}
-function toggleAdminMission(id){const m=state.adminMissions.find(x=>x.id===id);if(m)m.active=!m.active;render();}
-function editAdminMission(id){const m=state.adminMissions.find(x=>x.id===id);if(!m)return;m.target=Number(prompt('목표 횟수',m.target))||m.target;toast('미션을 수정했습니다 (목데이터)');render();}
-
 // 공통 화면에 사용자 진행 요약을 추가한다.
 const _renderMainV1=renderMain;
 renderMain=function(){
@@ -363,9 +372,4 @@ renderMain=function(){
   if(state.guestMode)return html;
   const anchor='<p class="hint" style="margin:4px 0 0;font-size:13px;">Lv.'+state.user.level+' · 꾸준함을 키우는 중</p>';
   return html.replace(anchor,anchor+renderUserProgressSummary());
-};
-const _renderAppV1=renderApp;
-renderApp=function(){
-  const g=currentGrade();
-  return _renderAppV1().replace(/<span class="topbar-nick">([\s\S]*?)<\/span>/,`<span class="topbar-nick"><span>$1</span><small style="display:block;color:${g.color};">${g.icon} ${g.name} · ${currentExpValue()}/${nextLevelExp()} EXP</small></span>`);
 };

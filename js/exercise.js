@@ -69,7 +69,9 @@ function renderExercise() {
 // 종목 카드 아이콘 — 이니셜 텍스트 대신 실제 자세(앉은 자세 등)를 알아볼 수 있는 작은
 // 스틱 피규어 SVG. 캐릭터 디자인과는 무관하게 자세만 표현하면 되므로 여기서 직접 그린다.
 const EX_ICONS = {
-  squat: `<svg viewBox="0 0 48 48" width="26" height="26" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+  // squat-anim-figure 클래스에 CSS 애니메이션(style.css의 @keyframes squatBob)을 걸어서
+  // 정지된 스틱 피규어가 실제로 앉았다 일어서는 스쿼트 동작처럼 반복 재생되게 한다.
+  squat: `<svg class="squat-anim-figure" viewBox="0 0 48 48" width="26" height="26" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="31" cy="9" r="5" fill="currentColor" stroke="none"/>
     <path d="M31 15 L25 28"/>
     <path d="M25 28 L13 32"/>
@@ -77,11 +79,26 @@ const EX_ICONS = {
     <path d="M28 18 L9 16"/>
   </svg>`,
 };
+// 종목 선택 화면(캐러셀)에서만 쓰는 목록 — 실제 측정 가능한 EXS(data.js)에 아직 판정 로직이
+// 없는 준비중 종목(런지·사이드크런치)을 더한 것. comingSoon 종목은 EXS 자체에는 넣지 않아
+// 랭킹 필터·세션 저장 등 다른 화면에는 영향이 없고, 이 캐러셀에서 카드만 보여준 뒤 "운동
+// 시작하기" 버튼을 비활성 처리한다.
+const EX_PICKER_LIST = [
+  ...EXS,
+  { id: 'lunge', name: '런지', target: '하체 · 둔근', level: '초급', comingSoon: true },
+  { id: 'side-crunch', name: '사이드크런치', target: '코어 · 옆구리', level: '초급', comingSoon: true },
+];
 function renderExStepPick() {
   const limit = getDailySetLimit();
   const used = state.user.setsUsedToday || 0;
   const remain = Math.max(0, limit - used);
   const noSetsLeft = !state.guestMode && remain <= 0 && (state.user.retakeTickets || 0) <= 0;
+
+  let idx = EX_PICKER_LIST.findIndex(e => e.id === state.exercise.picked);
+  if (idx < 0) idx = 0;
+  const e = EX_PICKER_LIST[idx];
+  const canStart = !e.comingSoon && !noSetsLeft;
+
   return `
   <div style="max-width:420px;margin:0 auto;">
     <div class="card" style="margin-bottom:16px;">
@@ -89,25 +106,41 @@ function renderExStepPick() {
       <p class="desc mono" style="margin:0;">${used} / ${limit}세트 사용 · ${remain > 0 ? `<b style="color:var(--accent);">${remain}세트 남음</b>` : '<b style="color:var(--danger);">모두 사용함</b>'}</p>
       ${noSetsLeft ? `<p class="hint" style="margin-top:6px;">포인트 상점에서 '세트 추가권'을 구매하면 오늘 바로 더 운동할 수 있어요.</p>` : `<p class="hint" style="margin-top:6px;">레벨업(5레벨마다 +1) 또는 '세트 추가권' 구매로 한도를 늘릴 수 있어요.</p>`}
     </div>
-    <div class="grid grid-3">
-      ${EXS.map(e => `
-        <div class="card exercise-card ${state.exercise.picked === e.id ? 'selected' : ''}" onclick="pickExercise('${e.id}')">
-          <div class="ex-badge">${EX_ICONS[e.id] || e.name.charAt(0)}</div>
-          <h3>${e.name}</h3>
-          <p class="desc">타겟: ${e.target}</p>
-          <button class="btn btn-primary btn-block" style="margin-top:12px;${(state.exercise.picked === e.id && !noSetsLeft) ? '' : 'opacity:.4;cursor:not-allowed;'}" ${(state.exercise.picked === e.id && !noSetsLeft) ? '' : 'disabled'} onclick="event.stopPropagation();goToTutorial()">운동 시작하기</button>
-        </div>`).join('')}
+    <div class="ex-carousel">
+      <button type="button" class="ex-carousel-arrow" aria-label="이전 운동" onclick="cycleExercisePick(-1)">‹</button>
+      <div class="card exercise-card exercise-card-single selected">
+        <div class="ex-badge">${EX_ICONS[e.id] || e.name.charAt(0)}</div>
+        <h3>${e.name}</h3>
+        <p class="desc">타겟: ${e.target}</p>
+        ${e.comingSoon ? `<p class="hint" style="margin:0 0 10px;">준비 중인 운동이에요</p>` : ''}
+        <button class="btn btn-primary btn-block" style="${canStart ? '' : 'opacity:.4;cursor:not-allowed;'}" ${canStart ? '' : 'disabled'} onclick="goToTutorial()">운동 시작하기</button>
+      </div>
+      <button type="button" class="ex-carousel-arrow" aria-label="다음 운동" onclick="cycleExercisePick(1)">›</button>
+    </div>
+    <div class="ex-carousel-dots">
+      ${EX_PICKER_LIST.map((_, i) => `<span class="ex-carousel-dot ${i === idx ? 'active' : ''}"></span>`).join('')}
     </div>
     <div style="margin-top:20px;">
       ${renderTutorialMissionList()}
     </div>
   </div>`;
 }
-function pickExercise(id) { state.exercise.picked = id; render(); }
+function cycleExercisePick(dir) {
+  let idx = EX_PICKER_LIST.findIndex(e => e.id === state.exercise.picked);
+  if (idx < 0) idx = 0;
+  idx = (idx + dir + EX_PICKER_LIST.length) % EX_PICKER_LIST.length;
+  state.exercise.picked = EX_PICKER_LIST[idx].id;
+  render();
+}
+// 운동 위저드의 초기 상태 — 랜딩 페이지 "지금 체험하기"(landing.js startGuestExercise)와
+// "나중에 할게요"(resetExerciseWizard) 둘 다 여기서 시작한다.
+function freshExerciseState() {
+  return { step: 0, picked: 'squat', camPhase: 'idle', camStream: null, timerId: null, seconds: 0, result: null, retakesUsed: 0, liveReps: [], replayOpen: false, sessionId: null, idempotencyKey: null };
+}
 // 게스트 모드에서 "나중에 할게요"를 누르면 게스트 상태는 유지한 채(다른 카테고리도 계속
 // 둘러볼 수 있게) 운동 위저드만 종목 선택 화면으로 되돌린다.
 function resetExerciseWizard() {
-  state.exercise = { step: 0, picked: null, camPhase: 'idle', camStream: null, timerId: null, seconds: 0, result: null, retakesUsed: 0, liveReps: [], replayOpen: false, sessionId: null, idempotencyKey: null };
+  state.exercise = freshExerciseState();
   render();
 }
 function goExStep(n) {
@@ -296,7 +329,10 @@ function setupCamera() {
   // setupCamera()는 render()가 다시 돌 때마다 setTimeout으로 반복 호출될 수 있어서(router.js
   // 참고), sessionId가 아직 없어도 이미 생성 요청을 보낸 상태(sessionCreating)라면 또 보내지
   // 않도록 막는다 — 안 막으면 devtunnel처럼 왕복이 느릴 때 세션이 여러 개 만들어질 수 있다.
-  if (state.exercise.picked && !state.exercise.sessionId && !state.exercise.sessionCreating && state.token && !state.guestMode) {
+  // 크루대전은 개인 운동 세션(ExerciseSession)을 전혀 안 쓴다 — 판정은 /app/crew-battles/reps로
+  // 따로 집계되므로(sendCrewBattleRep 참고), 여기서 세션을 만들면 크루대전 한 판이 개인 탭의
+  // 오늘 무료 운동 횟수까지 같이 깎아먹게 된다.
+  if (state.menu !== 'crewBattle' && state.exercise.picked && !state.exercise.sessionId && !state.exercise.sessionCreating && state.token && !state.guestMode) {
     state.exercise.sessionCreating = true;
     createExerciseSession(state.exercise.picked.toUpperCase()).then(id => {
       state.exercise.sessionCreating = false;
@@ -971,7 +1007,9 @@ function beginRecording() {
   const statusEl = document.getElementById('cam-status');
   const timerEl = document.getElementById('cam-timer');
   const isSquat = state.exercise.picked === 'squat';
-  if (!state.exercise.sessionConsumed && !state.exercise.cameraFailed && !state.guestMode) {
+  // 크루대전 중엔 개인 무료 운동 횟수·티켓을 건드리지 않는다(setupCamera의 크루대전 분기 참고) —
+  // 애초에 sessionId가 안 만들어지므로 startExerciseSession도 자연히 호출되지 않는다.
+  if (state.menu !== 'crewBattle' && !state.exercise.sessionConsumed && !state.exercise.cameraFailed && !state.guestMode) {
     if (state.exercise.sessionType === 'ticket') state.user.retakeTickets = Math.max(0, (state.user.retakeTickets || 0) - 1);
     else {
       state.user.freeWorkoutsUsed = Math.min(3, (state.user.freeWorkoutsUsed || 0) + 1);
@@ -1337,26 +1375,37 @@ async function saveExerciseResult() {
   const gc = { PERFECT: 0, GREAT: 0, GOOD: 0, MISS: 0 };
   r.reps.forEach(rp => gc[rp.grade]++);
 
+  const payload = {
+    sessionId: state.exercise.sessionId,
+    idempotencyKey: state.exercise.idempotencyKey,
+    exerciseType: (state.exercise.picked || '').toUpperCase(),
+    reps: r.total,
+    accuracy: r.acc,
+    score: r.score,
+    perfectCount: gc.PERFECT,
+    greatCount: gc.GREAT,
+    goodCount: gc.GOOD,
+    missCount: gc.MISS,
+    durationSeconds: r.dur,
+    sessionType: state.exercise.sessionType === 'ticket' ? 'TICKET' : 'FREE',
+  };
+
   try {
-    const res = await fetch(`${API_BASE}/api/exercise-records`, {
+    const postRecord = () => fetch(`${API_BASE}/api/exercise-records`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.token },
-      body: JSON.stringify({
-        sessionId: state.exercise.sessionId,
-        idempotencyKey: state.exercise.idempotencyKey,
-        exerciseType: (state.exercise.picked || '').toUpperCase(),
-        reps: r.total,
-        accuracy: r.acc,
-        score: r.score,
-        perfectCount: gc.PERFECT,
-        greatCount: gc.GREAT,
-        goodCount: gc.GOOD,
-        missCount: gc.MISS,
-        durationSeconds: r.dur,
-        sessionType: state.exercise.sessionType === 'ticket' ? 'TICKET' : 'FREE',
-      })
-    });
-    const body = await res.json();
+      body: JSON.stringify(payload)
+    }).then(res => res.json());
+
+    let body = await postRecord();
+    // beginRecording()이 /start 응답을 기다리지 않고 바로 진행하기 때문에(체감 딜레이 방지),
+    // 그 순간 네트워크가 잠깐 끊기면 서버에는 세션이 CREATED로 남아있을 수 있다 — 그러면 저장이
+    // "운동 중인 세션만 저장 가능"으로 거절된다. 애써 끝낸 운동 결과를 통째로 날리지 않도록,
+    // 여기서 시작 처리를 한 번 더 시도하고 저장을 재시도한다.
+    if (!body.success && state.exercise.sessionId) {
+      const started = await startExerciseSession(state.exercise.sessionId);
+      if (started) body = await postRecord();
+    }
     if (!body.success) { toast(body.message || '운동기록 저장에 실패했습니다'); return; }
 
     r.expAwarded = Number(body.data.experienceAwarded ?? body.data.expAwarded ?? 0);

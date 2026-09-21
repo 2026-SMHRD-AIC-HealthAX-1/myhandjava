@@ -6,6 +6,13 @@ function renderShop(){
   ${renderMissionShop()}`;
 }
 const SHOP_CATEGORIES=['전체','헤어','상의','하의','신발','배경','기타'];
+// 지금 실제로 판매 중인 아이템만 넣어둔 목록 — 나머지는 이미지가 멀쩡해도 "준비중"으로 표시하고
+// 구매/미리보기를 막는다(공개 범위를 좁혀둔 임시 조치, unavailable 계산 참고).
+const SHOP_ENABLED_ITEM_NAMES = new Set([
+  '네이비 스포츠 캡', '라벤더 후디', '라벤더 조거 팬츠', '라벤더 하이탑',
+  '배경 - 맑은 강변 산책로', '배경 - 노을빛 강변', '배경 - 가을 호수 공원', '배경 - 비 오는 가로수길',
+  '닉네임 컬러 이펙트', '닉네임 변경권', '운동 추가권',
+]);
 function renderMissionShop(){
   const f=SHOP_CATEGORIES.includes(state.shopFilter)?state.shopFilter:'전체';
   const items=state.shopItems.map((it,idx)=>({it,idx})).filter(({it})=>f==='전체'||it.category===f);
@@ -14,35 +21,38 @@ function renderMissionShop(){
     ${SHOP_CATEGORIES.map(c=>`<div class="tab ${f===c?'active':''}" onclick="setShopFilter('${c}')">${c}</div>`).join('')}
   </div>
   <div class="grid grid-3 shop-item-grid" style="max-width:640px;margin:0 auto;">
-    ${items.map(({it,idx})=>`
+    ${items.map(({it,idx})=>{
+      const unavailable = !it.asset || it.assetMissing || !SHOP_ENABLED_ITEM_NAMES.has(it.name);
+      return `
       <div class="card shop-item-card">
         <div class="feed-media shop-item-media" style="background:#f3f7ff;overflow:hidden;display:flex;align-items:center;justify-content:center;">
-          ${it.asset
-            ? ((it.slot==='shoes'||it.slot==='head')
-              ? `<canvas class="clean-shop-asset" data-src="${it.asset}" data-slot="${it.slot}" aria-label="${it.name}" style="width:100%;height:100%;display:block;"></canvas>`
-              : `<img src="${it.asset}" alt="${it.name}" style="width:100%;height:100%;object-fit:${it.slot==='background'?'cover':'contain'};padding:${it.slot==='background'?'0':'8px'};border-radius:8px;">`)
-            : it.name}
+          ${unavailable
+            ? `<span class="shop-item-comingsoon">준비중인 아이템이에요</span>`
+            : ((it.slot==='shoes'||it.slot==='head')
+              ? `<canvas class="clean-shop-asset" data-src="${it.asset}" data-slot="${it.slot}" data-idx="${idx}" aria-label="${it.name}" style="width:100%;height:100%;display:block;"></canvas>`
+              : `<img src="${it.asset}" alt="${it.name}" onerror="markShopAssetMissing(${idx})" style="width:100%;height:100%;object-fit:${it.slot==='background'?'cover':'contain'};padding:${it.slot==='background'?'0':'8px'};border-radius:8px;">`)}
         </div>
         <div class="shop-item-body">
           <div class="flex-between shop-item-title"><h3 style="margin:0;">${it.name}</h3></div>
           <span class="pill ${it.name==='닉네임 컬러 이펙트'?'pill-accent':(it.effect.startsWith('능력치 없음')?'pill-muted':'pill-accent')} shop-item-effect">효과 · ${it.name==='닉네임 컬러 이펙트'?'닉네임 컬러 변경':it.effect}</span>
-          ${it.consumable?`<p class="desc shop-item-owned">보유 수량: ${it.name==='닉네임 변경권'?(state.user.nicknameTickets||0):state.user.retakeTickets}장</p>`:''}
+          ${(it.consumable && it.name!=='닉네임 컬러 이펙트')?`<p class="desc shop-item-owned">보유 수량: ${it.name==='닉네임 변경권'?(state.user.nicknameTickets||0):state.user.retakeTickets}장</p>`:''}
           <div class="shop-item-desc">${it.effectDesc}</div>
           <div class="shop-item-footer">
             <span class="shop-price">P ${it.price}</span>
             <div class="shop-item-actions">
-              ${it.slot?`<button class="btn btn-sm btn-secondary" onclick="${state.guestMode ? "goto('login')" : `openItemPreview(${idx})`}">미리보기</button>`:''}
-              <button class="btn btn-sm ${(it.owned && !it.consumable)?'btn-ghost':'btn-primary'}" ${(it.owned && !it.consumable)||it.locked?'disabled style="opacity:.5;"':''} onclick="${state.guestMode ? "goto('login')" : `buyItem(${idx})`}">${(it.owned && !it.consumable)?'보유중':it.locked?`Lv.${it.levelReq} 필요`:'구매하기'}</button>
+              ${(it.slot && it.name!=='닉네임 컬러 이펙트')?`<button class="btn btn-sm btn-secondary" ${unavailable?'disabled style="opacity:.5;"':''} onclick="${state.guestMode ? "goto('login')" : `openItemPreview(${idx})`}">미리보기</button>`:''}
+              <button class="btn btn-sm ${(it.owned && !it.consumable)?'btn-ghost':'btn-primary'}" ${(it.owned && !it.consumable)||unavailable?'disabled style="opacity:.5;"':''} onclick="${state.guestMode ? "goto('login')" : (it.name==='닉네임 컬러 이펙트' ? `openItemPreview(${idx})` : `buyItem(${idx})`)}">${(it.owned && !it.consumable)?'보유중':unavailable?'준비중':'구매하기'}</button>
             </div>
           </div>
         </div>
-      </div>`).join('')}
+      </div>`;
+    }).join('')}
   </div>`;
 }
 function setShopFilter(c){ state.shopFilter=c; render(); }
 
-// 서버 카탈로그(구매 가능 아이템)를 불러와 로컬 카탈로그에 병합한다. 기본 지급 아이템(헤드밴드·
-// 민트 티셔츠 등, state.js에서 owned:true로 박아둔 것들)은 서버 카탈로그에 없으므로 그대로 둔다.
+// 서버 카탈로그(구매 가능 아이템)를 불러와 로컬 카탈로그에 병합한다. 서버 카탈로그에 없는
+// 이름(지금 판매 안 하는 아이템 등)은 매칭되는 로컬 항목이 없거나 그대로 owned:false로 둔다.
 async function loadShopItems(){
   if(!state.token) return;
   try{
@@ -57,7 +67,6 @@ async function loadShopItems(){
       local.serverId = server.id;
       local.owned = server.owned;
       local.equipped = server.equipped;
-      local.locked = server.locked;
       local.price = server.price;
     });
     render();
@@ -81,8 +90,18 @@ function drawCleanShopAssets(){
       c.drawImage(img,(W-dw)/2,(H-dh)/2,dw,dh);
       canvas.dataset.rendered='1';
     };
+    img.onerror=()=>markShopAssetMissing(Number(canvas.dataset.idx));
     img.src=canvas.dataset.src;
   });
+}
+// 이미지 파일이 실제로 없거나(경로 오류 등) 로드에 실패한 상품은 카드에 "준비중인
+// 아이템이에요"를 대신 보여주고 구매를 막는다 — asset 필드 자체가 비어있는 상품도 이 조건에
+// 걸린다(renderMissionShop의 unavailable 계산 참고).
+function markShopAssetMissing(idx){
+  const it=state.shopItems[idx];
+  if(!it || it.assetMissing) return;
+  it.assetMissing=true;
+  render();
 }
 const NICKNAME_PREVIEW_COLORS = [
   {name:'기본', value:'var(--gold)'},
@@ -92,13 +111,31 @@ const NICKNAME_PREVIEW_COLORS = [
   {name:'보라', value:'#8b6cff'},
   {name:'핑크', value:'#e85aa5'},
 ];
+// 닉네임 컬러 이펙트는 보유/착용 아이템이 아니라 소모 아이템이라, 적용된 색은 shopItems의
+// owned/equipped가 아니라 로컬에 직접 저장한다(서버에 별도 컬럼이 없음 — requirements-v2.js의
+// 출석 로컬 저장과 같은 방식, uid별 키).
+function getStoredNicknameColor(){
+  if(state.guestMode) return '';
+  const uid=state.user.id || state.user.nickname || 'local';
+  try{ return localStorage.getItem(`ounhome_nickname_color_${uid}`) || ''; }catch(_e){ return ''; }
+}
+function storeNicknameColor(color){
+  if(state.guestMode) return;
+  const uid=state.user.id || state.user.nickname || 'local';
+  try{ localStorage.setItem(`ounhome_nickname_color_${uid}`, color || ''); }catch(_e){}
+}
 function getNicknameEffectColor(){
-  const equipped=state.shopItems.find(it=>it.slot==='nickname' && it.owned && it.equipped);
-  return equipped ? 'var(--gold)' : 'inherit';
+  return getStoredNicknameColor() || 'inherit';
 }
 function openItemPreview(idx){ state.itemPreview={open:true,idx,color:getNicknameEffectColor()}; render(); }
 function closeItemPreview(){ state.itemPreview={open:false,idx:null,color:null}; render(); }
-function setNicknamePreviewColor(color){ if(state.itemPreview.open){ state.itemPreview.color=color; render(); } }
+// 스와치를 눌러도 아직 포인트는 안 쓴다 — 모달 안에서는 미리보기 색만 바뀌고, 실제 차감·적용은
+// 아래 "구매" 버튼(buyItem)을 눌러야 일어난다.
+function setNicknamePreviewColor(color){
+  if(!state.itemPreview.open) return;
+  state.itemPreview.color=color;
+  render();
+}
 function renderItemPreviewModal(){
   const it=state.shopItems[state.itemPreview.idx]; if(!it) return '';
   const isNickname=it.slot==='nickname', color=state.itemPreview.color||getNicknameEffectColor();
@@ -106,10 +143,10 @@ function renderItemPreviewModal(){
   return `
   <div class="confirm-backdrop" onclick="if(event.target===this) closeItemPreview()">
     <div class="confirm-box item-preview-modal" style="text-align:center;">
-      <h3>${isNickname?'닉네임 컬러 이펙트 미리보기':`${it.name} 착용 예시`}</h3>
+      <h3>${isNickname?'닉네임 컬러 선택':`${it.name} 착용 예시`}</h3>
       ${isNickname?`
         <div class="nickname-preview-name" style="color:${color};">${nickname}</div>
-        <p class="desc">색상을 선택하면 현재 닉네임에 적용된 모습을 미리 볼 수 있습니다.</p>
+        <p class="desc">색상을 고른 뒤 구매를 눌러야 실제로 적용돼요.</p>
         <div class="nickname-preview-palette" role="group" aria-label="닉네임 컬러 선택">
           ${NICKNAME_PREVIEW_COLORS.map(c=>`<button type="button" class="nickname-preview-swatch ${color===c.value?'selected':''}" style="--preview-color:${c.value};" title="${c.name}" aria-label="${c.name}" onclick="setNicknamePreviewColor('${c.value}')"><span></span><b>${c.name}</b></button>`).join('')}
         </div>
@@ -117,7 +154,10 @@ function renderItemPreviewModal(){
         <canvas id="item-preview-canvas" style="width:216px;height:264px;max-width:100%;margin:10px auto;display:block;border-radius:10px;image-rendering:auto;"></canvas>
         <p class="desc">${it.effectDesc}</p>
       `}
-      <div class="confirm-actions" style="justify-content:center;"><button class="btn btn-secondary" onclick="closeItemPreview()">닫기</button></div>
+      <div class="confirm-actions" style="justify-content:center;">
+        <button class="btn btn-secondary" onclick="closeItemPreview()">닫기</button>
+        ${isNickname?`<button class="btn btn-primary" onclick="buyItem(${state.itemPreview.idx})">구매 (P ${it.price})</button>`:''}
+      </div>
     </div>
   </div>`;
 }
@@ -130,7 +170,7 @@ function drawItemPreviewCanvas(){
 async function buyItem(idx){
   const it=state.shopItems[idx];
   if(it.owned && !it.consumable){toast('이미 보유한 아이템입니다'); return;}
-  if(it.locked){toast(`Lv.${it.levelReq}부터 구매할 수 있습니다`); return;}
+  if(!it.asset || it.assetMissing){toast('아직 준비 중인 아이템입니다'); return;}
   if(state.user.points<it.price){toast('포인트가 부족합니다'); return;}
   if(!it.serverId){toast('아직 구매할 수 없는 아이템입니다'); return;}
   try{
@@ -150,6 +190,14 @@ async function buyItem(idx){
     if(it.name==='닉네임 변경권'){
       state.user.nicknameTickets = (state.user.nicknameTickets||0) + 1;
       toast(`${it.name} 구매 완료 (보유 ${state.user.nicknameTickets}장)`);
+    } else if(it.name==='닉네임 컬러 이펙트'){
+      // 티켓처럼 쌓아두지 않는다 — 모달에서 고른 색(무료 미리보기 상태였던 값)을 결제가
+      // 끝난 지금 시점에 저장·적용하고 모달을 닫는다.
+      const color = state.itemPreview.open ? (state.itemPreview.color || getNicknameEffectColor()) : getNicknameEffectColor();
+      storeNicknameColor(color);
+      toast(`${it.name} 구매 완료 — 닉네임 색상이 적용됐어요`);
+      closeItemPreview();
+      return;
     } else {
       state.user.retakeTickets = (state.user.retakeTickets||0) + 1;
       toast(`${it.name} 구매 완료 (보유 ${state.user.retakeTickets}장)`);

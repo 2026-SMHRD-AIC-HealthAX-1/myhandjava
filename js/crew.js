@@ -114,6 +114,7 @@ async function loadJoinableCrews() {
         currentMembers: c.currentMembers ?? c.memberCount ?? 0,
         maxMembers: c.maxMembers ?? 5,
         joinEnabled: c.joinEnabled !== false && c.recruiting !== false,
+        autoApprove: c.autoApprove === true,
       };
     });
     // 서버가 "내가 이미 이 크루에 가입 신청을 보냈는지"를 알려주므로, 새로고침/재입장해도
@@ -161,7 +162,7 @@ function renderCrewCreate() {
       <div class="hint" style="padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);">${state.user.region} <span style="color:var(--ink-faint);">(캘리브레이션 시 등록된 활동 지역)</span></div>
     </div>
     <div class="field"><label for="cr-name">크루 이름</label><input id="cr-name" placeholder="예: 역삼동 스쿼트단" value="${state.crew.draftName || ''}" oninput="state.crew.draftName=this.value"></div>
-    <div class="field"><label for="cr-desc">크루 소개</label><textarea id="cr-desc" rows="3" placeholder="어떤 크루인지 소개해주세요" oninput="state.crew.draftDesc=this.value">${state.crew.draftDesc || ''}</textarea></div>
+    <div class="field"><label for="cr-desc">크루 소개</label><textarea id="cr-desc" rows="3" style="resize:none;" placeholder="어떤 크루인지 소개해주세요" oninput="state.crew.draftDesc=this.value">${state.crew.draftDesc || ''}</textarea></div>
     <div class="field">
       <label>크루 컨셉 (최대 ${CREW_CONCEPT_MAX}개 선택, 1개 이상 필수)</label>
       <div style="display:flex;flex-wrap:wrap;gap:8px;">
@@ -308,11 +309,12 @@ function setCrewJoinConcept(c) {
 }
 function setCrewJoinPage(p) { state.crew.joinPage = p; refreshCrewJoinResults(); }
 // 가입요청 버튼 자체(renderCrewJoinResults) — 대기중인 크루는 disabled + "승인대기중"으로 표시한다.
+// 크루장이 자동가입승인을 켜둔 크루는 승인 대기 없이 바로 가입되므로 버튼 문구도 다르게 보여준다.
 function renderJoinButton(c) {
   if (state.guestMode) return `<button class="btn btn-primary btn-block" style="margin-top:0;" onclick="goto('login')">가입요청하기</button>`;
   const pending = (state.crew.joinPendingIds || []).includes(c.id);
-  if (pending) return `<button class="btn btn-primary btn-block" style="margin-top:0;opacity:.5;cursor:not-allowed;" disabled>승인대기중</button>`;
-  return `<button class="btn btn-primary btn-block" style="margin-top:0;" onclick="joinCrew(${c.id})">가입요청하기</button>`;
+  if (pending) return `<button class="btn btn-primary btn-block" style="margin-top:0;opacity:.5;cursor:not-allowed;" disabled>${c.autoApprove ? '가입 처리중...' : '승인대기중'}</button>`;
+  return `<button class="btn btn-primary btn-block" style="margin-top:0;" onclick="joinCrew(${c.id})">${c.autoApprove ? '바로가입하기' : '가입요청하기'}</button>`;
 }
 async function joinCrew(crewId) {
   const crew = JOINABLE_CREWS.find(c => Number(c.id) === Number(crewId));
@@ -338,6 +340,16 @@ async function joinCrew(crewId) {
       state.crew.joinPendingIds = state.crew.joinPendingIds.filter(id => id !== crewId);
       refreshCrewJoinResults();
       toast(body.message || '가입 신청에 실패했습니다');
+      return;
+    }
+    if (crew.autoApprove) {
+      // 자동가입승인 크루는 신청과 동시에 서버가 바로 정식 크루원으로 등록해준다 —
+      // 승인을 기다릴 필요 없이 곧장 내 크루 화면으로 들어간다.
+      toast('바로 가입되었습니다! 크루에 오신 것을 환영해요 🎉');
+      await loadMyCrew();
+      connectCrewChat();
+      state.subtabs.crew = 0;
+      render();
       return;
     }
     toast('가입 신청을 보냈습니다. 크루장의 승인을 기다려주세요.');
@@ -433,7 +445,7 @@ function renderCrewOverview() {
       <div class="stat-row">
         <div class="stat-box"><div class="num mono">Lv.${state.crew.level}</div><div class="lbl">크루 레벨</div></div>
         <div class="stat-box"><div class="num mono">${(state.crew.exp || 0).toLocaleString()}</div><div class="lbl">누적 경험치</div></div>
-        <div class="stat-box"><div class="num mono">#${dongRank.rank}</div><div class="lbl">${dongRank.dong} 순위</div></div>
+        <div class="stat-box"><div class="num mono">${dongRank.rank ? '#'+dongRank.rank : '-'}</div><div class="lbl">${dongRank.dong} 순위</div></div>
       </div>
       ${(state.crew.concepts || []).length ? `
       <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:6px;">
@@ -468,26 +480,107 @@ function renderCrewOverview() {
 }
 
 /* ---------- 크루채팅 ----------
-   실제 서비스라면 WebSocket으로 다른 크루원의 진짜 메시지를 실시간으로 받아야 하지만,
-   이 프로토타입은 혼자 쓰는 목업이라 "내가 보내면 잠시 뒤 크루원 중 한 명이 랜덤 문구로
-   답장하는" 형태로 흉내낸다. 매 메시지마다 render()를 다시 부르면 스크롤 위치·입력창이
-   날아가므로, updateBattleUI()와 같은 방식으로 채팅 로그 DOM에만 말풍선을 append한다. */
-const CREW_CHAT_AUTO_REPLIES = ['오늘도 화이팅!', '저도 방금 시작했어요', '다들 페이스 좋으시네요 👍', '조금 이따 같이 인증해요', '오늘 미션 거의 다 채웠어요!'];
+   WebSocket(/topic/crews/{id}/chat)으로 다른 크루원의 실제 메시지를 실시간으로 받는다. 매
+   메시지마다 render()를 다시 부르면 스크롤 위치·입력창이 날아가므로, updateBattleUI()와
+   같은 방식으로 채팅 로그 DOM에만 말풍선을 append한다. */
+// 메시지 시각 표시용 — sentAt(서버, ISO 문자열)과 낙관적으로 먼저 그리는 내 메시지의
+// new Date() 둘 다 받아서 "HH:mm"으로 통일한다.
+function fmtChatTime(value) {
+  const d = value instanceof Date ? value : new Date(value);
+  if (isNaN(d.getTime())) return '';
+  const p = n => String(n).padStart(2, '0');
+  return `${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+// 채팅 차단은 서버에 저장할 곳이 없어서(state.chatModeration 주석 참고) 이 브라우저·이
+// 크루·이 계정 조합으로 로컬에만 저장한다 — 다른 기기에서는 차단이 유지되지 않는다.
+function getBlockedChatUserIds() {
+  if (!state.crew.id || !state.user.id) return new Set();
+  try {
+    const arr = JSON.parse(localStorage.getItem(`ounhome_crew_chat_blocked_${state.crew.id}_${state.user.id}`) || '[]');
+    return new Set(Array.isArray(arr) ? arr.map(Number) : []);
+  } catch (_e) { return new Set(); }
+}
+function blockChatUser(userId) {
+  if (!state.crew.id || !state.user.id) return;
+  const ids = getBlockedChatUserIds();
+  ids.add(Number(userId));
+  try { localStorage.setItem(`ounhome_crew_chat_blocked_${state.crew.id}_${state.user.id}`, JSON.stringify(Array.from(ids))); } catch (_e) {}
+  state.crew.chat.messages = state.crew.chat.messages.filter(m => Number(m.senderId) !== Number(userId));
+}
+// 남의 말풍선을 누르면 뜨는 차단/신고 팝업(renderChatModerationModal, router.js가 이미 이
+// 모달을 render()에 붙여두고 있었다 — state.chatModeration 주석 참고). 여기서 실제로 채운다.
+function openChatModeration(targetUserId, targetNickname, messageId) {
+  state.chatModeration = { open: true, messageId: messageId != null ? Number(messageId) : null, targetUserId: Number(targetUserId), targetNickname };
+  render();
+}
+function closeChatModeration() {
+  state.chatModeration = { open: false, messageId: null, targetUserId: null, targetNickname: null };
+  render();
+}
+function blockChatModerationTarget() {
+  const { targetUserId, targetNickname } = state.chatModeration;
+  if (targetUserId == null) return;
+  blockChatUser(targetUserId);
+  closeChatModeration();
+  toast(`${targetNickname}님의 채팅을 차단했어요. 이제부터 안 보여요.`);
+}
+async function reportChatModerationTarget() {
+  const { targetNickname, messageId } = state.chatModeration;
+  if (messageId == null) { toast('신고할 메시지를 찾을 수 없어요'); closeChatModeration(); return; }
+  closeChatModeration();
+  try {
+    const res = await fetch(`${API_BASE}/api/crews/me/chat/${messageId}/report`, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + state.token }
+    });
+    const body = await res.json();
+    if (!body.success) { toast(body.message || '신고 접수에 실패했습니다'); return; }
+    toast(`${targetNickname}님을 신고했어요. 확인 후 조치할게요.`);
+  } catch (err) {
+    toast('서버에 연결할 수 없습니다 (백엔드가 켜져 있는지 확인해주세요)');
+  }
+}
+function renderChatModerationModal() {
+  const cm = state.chatModeration;
+  if (!cm.open) return '';
+  return `
+  <div class="confirm-backdrop" onclick="if(event.target===this) closeChatModeration()">
+    <div class="confirm-box" style="max-width:320px;text-align:center;">
+      <h3 style="margin:0 0 4px;">${escapeHtml(cm.targetNickname || '이 크루원')}</h3>
+      <p class="hint" style="margin:0 0 14px;">이 크루원의 채팅에 대해 조치할 수 있어요.</p>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <button class="btn btn-secondary" onclick="blockChatModerationTarget()">채팅 차단</button>
+        <button class="btn btn-secondary" style="color:var(--danger);" onclick="reportChatModerationTarget()">신고하기</button>
+      </div>
+      <div class="confirm-actions" style="justify-content:center;margin-top:14px;">
+        <button class="btn btn-ghost btn-sm" onclick="closeChatModeration()">닫기</button>
+      </div>
+    </div>
+  </div>`;
+}
 function renderCrewChat() {
   const msgs = state.crew.chat.messages;
   return `
   <div class="chat-wrap" style="max-width:860px;margin:0 auto;">
     <div class="chat-log" id="crew-chat-log">
-      ${msgs.map(m => `
-        <div class="bubble ${m.mine ? 'me' : 'them'}">
-          ${m.mine ? '' : `<div class="who">${m.who}</div>`}${m.text}
-        </div>`).join('')}
+      ${msgs.map(renderChatBubbleHtml).join('')}
     </div>
     <div class="chat-input">
       <input id="crew-chat-input" placeholder="크루원에게 메시지 보내기" onkeydown="if(event.key==='Enter'){ event.preventDefault(); sendCrewChat(); }">
       <button class="btn btn-primary btn-sm" onclick="sendCrewChat()">전송</button>
     </div>
   </div>`;
+}
+// 시간(HH:mm)까지 함께 보여주고, 남의 말풍선(m.mine===false)을 누르면 차단/신고 팝업을 연다
+// (openChatModeration). 내 말풍선은 클릭해도 아무 일도 없다.
+function renderChatBubbleHtml(m) {
+  const clickable = !m.mine && m.senderId != null && m.id != null;
+  const nickForClick = escapeHtml(m.who || '').replace(/'/g, "\\'");
+  return `
+    <div class="bubble ${m.mine ? 'me' : 'them'}" ${clickable ? `onclick="openChatModeration(${Number(m.senderId)}, '${nickForClick}', ${Number(m.id)})" style="cursor:pointer;"` : ''}>
+      ${m.mine ? '' : `<div class="who">${escapeHtml(m.who)}</div>`}${escapeHtml(m.text)}
+      ${m.at ? `<div class="chat-time">${escapeHtml(m.at)}</div>` : ''}
+    </div>`;
 }
 function scrollCrewChatToBottom() {
   const log = document.getElementById('crew-chat-log');
@@ -496,10 +589,9 @@ function scrollCrewChatToBottom() {
 function appendChatBubble(m) {
   const log = document.getElementById('crew-chat-log');
   if (!log) return;
-  const div = document.createElement('div');
-  div.className = 'bubble ' + (m.mine ? 'me' : 'them');
-  div.innerHTML = (m.mine ? '' : `<div class="who">${m.who}</div>`) + m.text;
-  log.appendChild(div);
+  const wrap = document.createElement('div');
+  wrap.innerHTML = renderChatBubbleHtml(m).trim();
+  log.appendChild(wrap.firstElementChild);
   scrollCrewChatToBottom();
 }
 
@@ -523,7 +615,8 @@ function connectCrewChat(){
       crewChatSubscription = crewStompClient.subscribe(`/topic/crews/${state.crew.id}/chat`, (frame) => {
         const m = JSON.parse(frame.body);
         if (m.senderId === state.user.id) return; // 내가 보낸 메시지는 sendCrewChat()에서 이미 낙관적으로 표시했음
-        const msg = { who: m.senderNickname, mine: false, text: m.text };
+        if (getBlockedChatUserIds().has(Number(m.senderId))) return; // 차단한 사람 메시지는 아예 쌓지 않는다
+        const msg = { id: m.id, who: m.senderNickname, mine: false, text: m.text, senderId: m.senderId, at: fmtChatTime(m.sentAt) };
         state.crew.chat.messages.push(msg);
         appendChatBubble(msg);
       });
@@ -540,6 +633,8 @@ function connectCrewChat(){
         const ev = JSON.parse(frame.body);
         if (ev.type === 'BATTLE_PARTY_INVITE' || ev.type === 'BATTLE_PARTY_RESPONSE') {
           handleCrewPartyEvent(ev);
+        } else if (ev.type === 'BATTLE_SYNC') {
+          handleCrewBattleSyncEvent(ev);
         } else {
           handleCrewMemberEvent(ev);
         }
@@ -619,6 +714,20 @@ async function handleCrewMemberEvent(ev){
   }
 }
 
+// 크루대전 자동 매칭 신청/매칭 완료를 신청자 본인 이외의 참가자들에게 실시간으로 알려주는
+// 개인 알림(CrewBattleService.notifyParticipants 참고) — 같은 파티의 나머지 팀원(대기 상태든
+// 매칭 완료 상태든)과, 매칭이 잡혔을 때는 상대 크루 전원도 이걸 받는다. 신청 버튼을 직접 누른
+// 사람은 startCrewBattle()에서 이미 화면을 넘겼으므로 여기서는 나머지 사람들만 따라 들어간다.
+function handleCrewBattleSyncEvent(ev){
+  // 대기 중이던 팀원에게 "매칭 잡힘(ACTIVE)" 후속 이벤트가 다시 올 수 있어서, 이미 대전
+  // 화면에 들어와 있어도 매번 다시 처리한다 — initCrewBattleFromResponse가 상태(WAITING→
+  // ACTIVE)에 따라 폴링/소켓 연결을 알맞게 다시 잡아준다.
+  if (state.menu !== 'crewBattle') disconnectCrewChat();
+  initCrewBattleFromResponse(ev.battle);
+  state.menu = 'crewBattle';
+  render();
+}
+
 // 크루대전 파티 초대/응답 개인 알림 처리. BATTLE_PARTY_INVITE는 초대받은 사람 쪽에서,
 // BATTLE_PARTY_RESPONSE는 초대를 보낸 사람 쪽에서 받는다.
 function handleCrewPartyEvent(ev){
@@ -655,9 +764,13 @@ async function loadCrewChatHistory(){
     });
     const body = await res.json();
     if(!body.success) return;
-    state.crew.chat.messages = body.data.map(m => ({
-      who: m.senderNickname, mine: m.senderId===state.user.id, text: m.text
-    }));
+    const blocked = getBlockedChatUserIds();
+    state.crew.chat.messages = body.data
+      .filter(m => !blocked.has(Number(m.senderId)))
+      .map(m => ({
+        id: m.id, who: m.senderNickname, mine: m.senderId===state.user.id, text: m.text,
+        senderId: m.senderId, at: fmtChatTime(m.sentAt)
+      }));
     render();
   }catch(err){
     console.error('채팅 내역 불러오기 실패', err);
@@ -673,7 +786,7 @@ function sendCrewChat() {
   if(!crewStompClient || !crewStompClient.connected){ toast('채팅 연결 중입니다. 잠시 후 다시 시도해주세요.'); return; }
   // 서버 브로드캐스트가 돌아올 때까지 기다리지 않고 내 말풍선은 바로 그려서, 전송 즉시
   // 화면에 쌓이는 것처럼 보이게 한다(에코가 오면 subscribe 쪽에서 senderId로 걸러서 중복 방지).
-  const msg = { who: state.user.nickname, mine: true, text };
+  const msg = { who: state.user.nickname, mine: true, text, senderId: state.user.id, at: fmtChatTime(new Date()) };
   state.crew.chat.messages.push(msg);
   appendChatBubble(msg);
   crewStompClient.send(`/app/crews/${state.crew.id}/chat`, {}, JSON.stringify({ text }));
@@ -1241,52 +1354,66 @@ function battleGoodPlus(gc) {
   gc = gc || {};
   return (Number(gc.PERFECT) || 0) + (Number(gc.GREAT) || 0) + (Number(gc.GOOD) || 0);
 }
-function sampleBattleHistory() {
-  return [
-    {
-      sample:true, at:'2026.09.16 19:40', size:3, opponent:'헬스메이트', ourScore:86, oppScore:78, result:'승리', exp:100,
-      ourMembers:[
-        {n:'나',gender:'male',score:34,gradeCounts:{PERFECT:10,GREAT:7,GOOD:5,MISS:2}},
-        {n:'배드민턴킹',gender:'female',score:29,gradeCounts:{PERFECT:8,GREAT:6,GOOD:6,MISS:1}},
-        {n:'헬린이탈출',gender:'male',score:23,gradeCounts:{PERFECT:5,GREAT:7,GOOD:4,MISS:3}}
-      ],
-      oppMembers:[
-        {n:'헬스메이트장',gender:'female',score:31,gradeCounts:{PERFECT:9,GREAT:5,GOOD:5,MISS:4}},
-        {n:'근육강화맨',gender:'male',score:25,gradeCounts:{PERFECT:6,GREAT:6,GOOD:5,MISS:3}},
-        {n:'런닝러버',gender:'female',score:22,gradeCounts:{PERFECT:5,GREAT:5,GOOD:5,MISS:5}}
-      ]
-    },
-    {
-      sample:true, at:'2026.09.14 20:10', size:2, opponent:'스쿼트연합', ourScore:55, oppScore:61, result:'패배', exp:50,
-      ourMembers:[
-        {n:'나',gender:'male',score:30,gradeCounts:{PERFECT:8,GREAT:6,GOOD:4,MISS:3}},
-        {n:'써니핏',gender:'female',score:25,gradeCounts:{PERFECT:6,GREAT:5,GOOD:5,MISS:2}}
-      ],
-      oppMembers:[
-        {n:'스쿼트장인',gender:'male',score:34,gradeCounts:{PERFECT:10,GREAT:6,GOOD:4,MISS:2}},
-        {n:'핏걸',gender:'female',score:27,gradeCounts:{PERFECT:7,GREAT:5,GOOD:4,MISS:4}}
-      ]
-    },
-    {
-      sample:true, at:'2026.09.12 18:25', size:4, opponent:'건강루틴', ourScore:74, oppScore:74, result:'무승부', exp:50,
-      ourMembers:[
-        {n:'나',gender:'male',score:21,gradeCounts:{PERFECT:6,GREAT:4,GOOD:3,MISS:2}},
-        {n:'플랭크신',gender:'female',score:19,gradeCounts:{PERFECT:5,GREAT:4,GOOD:2,MISS:3}},
-        {n:'다이어터',gender:'male',score:18,gradeCounts:{PERFECT:4,GREAT:4,GOOD:2,MISS:2}},
-        {n:'스쿼트왕',gender:'female',score:16,gradeCounts:{PERFECT:3,GREAT:4,GOOD:3,MISS:2}}
-      ],
-      oppMembers:[
-        {n:'건강리더',gender:'female',score:22,gradeCounts:{PERFECT:6,GREAT:4,GOOD:4,MISS:2}},
-        {n:'루틴러',gender:'male',score:20,gradeCounts:{PERFECT:5,GREAT:4,GOOD:3,MISS:2}},
-        {n:'홈트왕',gender:'female',score:17,gradeCounts:{PERFECT:4,GREAT:3,GOOD:3,MISS:3}},
-        {n:'운동초보',gender:'male',score:15,gradeCounts:{PERFECT:3,GREAT:3,GOOD:3,MISS:3}}
-      ]
-    }
-  ];
+// 크루대전 탭에 들어갈 때(setSub) 불러오는 실제 대전 내역. 목록 API(GET /api/crew-battles/me)로
+// 끝난 대전들을 받아온 뒤, 각 건의 상세(GET /api/crew-battles/{id}/result — 참가자별 PERFECT/
+// GREAT/GOOD/MISS·획득 EXP까지 포함)를 병렬로 조회해서 카드에 바로 펼쳐볼 수 있게 채워둔다.
+// 아직 실제로 끝난 대전이 하나도 없으면 battleHistoryData()가 예전처럼 샘플로 대체한다.
+async function loadCrewBattleHistory() {
+  if (!state.token || !state.crew.created) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/crew-battles/me`, {
+      headers: { 'Authorization': 'Bearer ' + state.token }
+    });
+    const body = await res.json();
+    if (!body.success) return;
+    const finished = body.data.filter(b => b.status === 'FINISHED');
+    const details = await Promise.all(finished.map(b =>
+      fetch(`${API_BASE}/api/crew-battles/${b.id}/result`, {
+        headers: { 'Authorization': 'Bearer ' + state.token }
+      }).then(r => r.json()).then(rb => rb.success ? rb.data : null).catch(() => null)
+    ));
+    state.crew.battleHistory = details.filter(Boolean).map(crewBattleResultToHistoryItem);
+    render();
+  } catch (err) {
+    console.error('크루대전 기록 불러오기 실패', err);
+  }
+}
+function fmtBattleDateTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function crewBattleResultToHistoryItem(r) {
+  const isChallenger = String(r.challenger.crewId) === String(state.crew.id);
+  const our = isChallenger ? r.challenger : r.opponent;
+  const opp = isChallenger ? r.opponent : r.challenger;
+  const result = our.result === 'WIN' ? '승리' : our.result === 'LOSS' ? '패배' : '무승부';
+  // CrewBattleParticipantResponse의 실제 필드명은 personalScore다(참가자 엔티티의
+  // getTotalScore() 메서드 이름만 보고 totalScore로 잘못 짐작해서 항상 0으로 나왔었다 —
+  // crew.js 1185번줄의 실시간 참가자 매핑은 이미 personalScore를 맞게 쓰고 있었다).
+  const toMember = p => ({
+    n: p.nickname,
+    score: p.personalScore,
+    gradeCounts: { PERFECT: p.perfectCount, GREAT: p.greatCount, GOOD: p.goodCount, MISS: p.missCount }
+  });
+  return {
+    battleId: r.battleId,
+    at: fmtBattleDateTime(r.finishedAt || r.endsAt),
+    size: r.teamSize,
+    ourCrewName: our.crewName,
+    opponentCrewName: opp.crewName,
+    opponent: opp.crewName,
+    ourScore: our.totalScore,
+    oppScore: opp.totalScore,
+    result,
+    exp: our.rewardExp,
+    ourMembers: (our.participants || []).map(toMember),
+    oppMembers: (opp.participants || []).map(toMember),
+  };
 }
 function battleHistoryData() {
-  return Array.isArray(state.crew.battleHistory) && state.crew.battleHistory.length
-    ? state.crew.battleHistory : sampleBattleHistory();
+  return Array.isArray(state.crew.battleHistory) ? state.crew.battleHistory : [];
 }
 function toggleBattleHistory(idx) {
   state.crew.battleHistoryOpen = state.crew.battleHistoryOpen === idx ? null : idx;
@@ -1340,7 +1467,6 @@ function renderBattleHistoryCard(item, idx) {
     </button>
     ${open ? `
       <div class="battle-history-detail">
-        ${item.sample ? '<p class="hint battle-sample-note">레이아웃 확인용 샘플 데이터</p>' : ''}
         <div class="battle-score-strip" aria-label="대전 점수 요약">
           <span class="battle-score-team"><b>${ourCrewName}</b> <b class="mono">${Number(item.ourScore) || 0}점</b></span>
           <span class="battle-score-type">${size}vs${size}</span>
@@ -1375,7 +1501,7 @@ function renderCrewBattleMenu() {
   </section>
   <div class="view-head" style="margin-top:18px;"><h2 style="margin:0;">최근 대전 결과</h2></div>
   <div class="battle-result-list">
-    ${history.map((item, idx) => renderBattleHistoryCard(item, idx)).join('')}
+    ${history.length ? history.map((item, idx) => renderBattleHistoryCard(item, idx)).join('') : '<div class="empty-note">아직 크루대전 기록이 없습니다.</div>'}
   </div>`;
 }
 
@@ -1533,15 +1659,17 @@ async function leaveCrewMember(){
 /* ---------- 크루원 정보: 조회 전용 (강퇴 기능은 크루원관리 탭으로 이동) ---------- */
 function renderCrewMembers() {
   return `
-  <div class="table-wrap">
+  <div class="table-wrap compact-table">
     <table>
-      <thead><tr><th>이름</th><th>역할</th><th>레벨</th></tr></thead>
+      <thead><tr><th style="padding-left:24px;">닉네임</th><th>역할</th><th>레벨</th><th>티어</th><th>정보보기</th></tr></thead>
       <tbody>
         ${state.crew.members.map(m => `
           <tr>
-            <td>${m.n}${isCurrentCrewMember(m) ? ' <span class="pill pill-accent">나</span>' : ''}${m.role === '팀장' ? ' <span class="pill pill-gold">크루장</span>' : ''}</td>
+            <td style="padding-left:24px;">${m.n}${isCurrentCrewMember(m) ? ' <span class="pill pill-accent">나</span>' : ''}${m.role === '팀장' ? ' <span class="pill pill-gold">크루장</span>' : ''}</td>
             <td><span class="pill ${m.role === '팀장' ? 'pill-gold' : 'pill-muted'}">${crewRoleLabel(m.role)}</span></td>
             <td class="mono">Lv.${m.level}</td>
+            <td>${rankBadgeIcon(gradeFromLevel(m.level), USER_GRADE_NAMES[gradeFromLevel(m.level)], 24)}</td>
+            <td>${isCurrentCrewMember(m) ? '' : `<button class="btn btn-sm btn-secondary" onclick="openPublicProfile(${m.userId})">정보보기</button>`}</td>
           </tr>`).join('')}
       </tbody>
     </table>
@@ -1636,32 +1764,32 @@ async function kickMember(targetUserId) {
 
 
 /* ---------- 크루 랭킹: 시/구/동 드롭다운 랭킹 + 시/구 드롭다운 지도 (#18, #19) ---------- */
-const CREW_NAME_POOL = ['역삼동 러너스', '합정 플랭커즈', '성수 스쿼트단', '오룡 파워워커즈', '상무 헬스메이트', '망원 버피팀', '잠실 런지크루', '봉선 조깅단'];
-function getDongCrewRanking(dong) {
-  const seed = hashStr(dong);
-  const names = [];
-  let idx = seed;
-  while (names.length < 3) {
-    idx = (idx * 48271 + 1) % 2147483647;
-    const name = CREW_NAME_POOL[idx % CREW_NAME_POOL.length];
-    if (!names.includes(name)) names.push(name);
-  }
-  return names.map((name, i) => ({
-    rank: i + 1, name,
-    level: Math.max(1, 12 - i * 2 - (seed % 3)),
-    score: 5200 - i * 430 - (seed % 100),
-  }));
-}
 function getMyCrewDong() {
   const region = state.crew.region || state.user.region || '';
   return region.trim().split(/\s+/).pop();
 }
+// 예전엔 경쟁 크루 3개를 동 이름 해시로 지어내는 mock이었다(getDongCrewRanking, CREW_NAME_POOL) —
+// 이제 실제 GET /api/rankings/crew?city&gu 응답(구 단위까지만 백엔드가 집계함)을 동 단위로
+// 한 번 더 걸러서 내 크루 순위를 구한다. loadMyCrew()에서 크루 정보를 불러올 때 같이 채운다.
 function getMyDongCrewRank() {
-  const dong = getMyCrewDong();
-  const myScore = state.crew.members.reduce((s, m) => s + m.score, 0);
-  const others = getDongCrewRanking(dong).filter(c => c.name !== state.crew.name);
-  const rows = [...others, { name: state.crew.name, score: myScore }].sort((a, b) => b.score - a.score);
-  return { dong, rank: rows.findIndex(r => r.name === state.crew.name) + 1 };
+  return state.crew.myDongRank || { dong: getMyCrewDong(), rank: null };
+}
+async function loadMyDongCrewRank() {
+  if (!state.crew.created) { state.crew.myDongRank = null; return; }
+  const region = state.crew.region || state.user.region || '';
+  const parts = region.trim().split(/\s+/);
+  if (parts.length < 3) { state.crew.myDongRank = null; return; }
+  const [city, gu, dong] = parts;
+  try {
+    const res = await fetch(`${API_BASE}/api/rankings/crew?city=${encodeURIComponent(city)}&gu=${encodeURIComponent(gu)}`);
+    const body = await res.json();
+    if (!body.success) return;
+    const dongRows = body.data.filter(r => r.region === dong);
+    const idx = dongRows.findIndex(r => r.crewName === state.crew.name);
+    state.crew.myDongRank = { dong, rank: idx >= 0 ? idx + 1 : null };
+  } catch (err) {
+    console.error('크루 동네 랭킹 불러오기 실패', err);
+  }
 }
 // 실제 데이터는 GET /api/rankings/crew?city&gu 로 "구" 단위까지만 집계해서 받아온다(동 단위
 // 집계는 백엔드에 없음). 동 필터는 이미 받아온 구 단위 목록을 프론트에서 한 번 더 걸러
@@ -1736,5 +1864,5 @@ function setCrewRankDong(v) { state.crew.rankDong = v; render(); } // 동 변경
    4. 랭킹
    ======================================================================== */
 // (FR-RK-001~002) 랭킹 탭(ranking.js)의 지역별/종목별/크루 랭킹은 모두 GET /api/rankings/*
-// 실제 API로 연결됨(2026-09-10). getRegionRanking()/getDongCrewRanking()는 랭킹 탭이 아니라
-// 메인 대시보드 요약 위젯에서만 쓰는 가벼운 mock이라 그대로 남겨뒀다(profile.js 참고).
+// 실제 API로 연결됨(2026-09-10). 메인 대시보드·크루메인 요약 위젯의 "내 순위"도 이제 같은
+// API로 실제 값을 받아온다(ranking.js loadMyRegionRank, crew.js loadMyDongCrewRank 참고).

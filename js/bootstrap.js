@@ -26,6 +26,11 @@ document.addEventListener('click', e => {
         state.guestMode = false;
         state.screen = 'app';
         state.menu = loadSessionMenu() || 'main';
+        if (typeof loadMyRegionRank === 'function') await loadMyRegionRank();
+        if (typeof autoClaimAttendance === 'function') autoClaimAttendance(); // 새로고침으로 세션이 복원돼도 오늘 출석은 기록한다
+        // 온보딩(닉네임·캐릭터·동네)을 마치기 전에 새로고침한 소셜 로그인 계정도 다시
+        // 이 화면부터 채우게 한다 — auth.js maybeOpenSocialOnboarding 참고.
+        if (typeof maybeOpenSocialOnboarding === 'function') maybeOpenSocialOnboarding();
       } else {
         clearSession(); // 만료된 토큰이면 지우고 랜딩페이지로 보낸다
       }

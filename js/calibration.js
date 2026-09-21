@@ -31,6 +31,11 @@ let calHoldStart = null;      // 정렬 유지 시작 시각
 let calFrameCount = 0, calFpsTs = 0;
 
 function openCalibrationModal(){
+  // 예전엔 회원가입 화면의 성별 토글이 state.signup.gender를 채워줬는데, 그 화면을 없애면서
+  // (SNS 로그인 전용으로 전환) 아무도 이 값을 더 이상 안 채워주게 됐다 — 실제 계정 성별
+  // (state.user.gender, 소셜 온보딩에서 저장됨)과 어긋난 채로 캘리브레이션이 계산될 수 있어
+  // 모달을 열 때마다 여기서 동기화한다.
+  state.signup.gender = state.user.gender || 'male';
   state.signup.calModalOpen = true;
   state.signup.calStage = state.signup.calProfile ? 'done' : 'idle';
   state.signup.calError = '';
@@ -99,7 +104,7 @@ function calApply(){
 function calClamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
 
 // 키/몸무게 입력값 → BMI. 가이드 실루엣 보정 및 저장되는 bodyInfo에 함께 쓰인다.
-// 성별은 회원가입 화면의 남성/여성 토글(setSignupGender, auth.js)에서 고른 값을 그대로 쓴다.
+// 성별은 state.signup.gender(캘리브레이션 모달 안의 남성/여성 토글)에서 고른 값을 그대로 쓴다.
 function calGetBodyInfo(){
   const hEl = document.getElementById('cal-height-input');
   const wEl = document.getElementById('cal-weight-input');
@@ -107,29 +112,6 @@ function calGetBodyInfo(){
   const weightKg = wEl ? (parseFloat(wEl.value) || null) : null;
   const bmi = heightCm && weightKg ? weightKg / ((heightCm/100) ** 2) : null;
   return { heightCm, weightKg, bmi: bmi ? +bmi.toFixed(1) : null, gender: state.signup.gender || 'male' };
-}
-function calBmiCategory(bmi){
-  if(bmi==null) return '';
-  if(bmi<18.5) return '저체중';
-  if(bmi<23) return '표준';
-  if(bmi<25) return '과체중';
-  return '비만';
-}
-function calUpdateBmiLabel(){
-  const lbl=document.getElementById('cal-bmi-label');
-  const {heightCm,weightKg,bmi}=calGetBodyInfo();
-  const ready=!!(heightCm && weightKg);
-  const startBtn=document.getElementById('cal-start-btn');
-  if(startBtn){
-    startBtn.disabled=!ready;
-    startBtn.style.opacity=ready?'1':'.4';
-    startBtn.style.cursor=ready?'pointer':'not-allowed';
-  }
-  const startHint=document.getElementById('cal-start-hint');
-  if(startHint) startHint.style.display=ready?'none':'block';
-  if(!lbl) return;
-  if(!ready){ lbl.textContent='키·몸무게를 입력하면 가이드 실루엣이 내 체형에 맞게 조정돼요. 실제 판정에는 영향을 주지 않으니 대략적인 값이어도 괜찮아요.'; return; }
-  lbl.textContent = `BMI ${bmi.toFixed(1)} · ${calBmiCategory(bmi)} 기준으로 실루엣을 보정했어요.`;
 }
 // BMI가 높을수록 실루엣 폭을 넓게, 키가 클수록 하체 비중을 늘려 힙 위치를 살짝 올려준다.
 // (회원가입 캘리브레이션 화면·운동 촬영 고스트 양쪽에서 재사용하도록 DOM 의존 없이 값만 받는다.)
@@ -446,15 +428,6 @@ function renderCalibrationModal(){
 
 function renderCalLive(s){
   return `
-  <div class="card" style="margin-bottom:16px;">
-    <p class="section-label" style="margin:0 0 4px;">체형 정보 먼저 입력하기</p>
-    <p class="hint" style="margin:0 0 12px;">키·몸무게를 입력해야 내 체형에 맞는 가이드 실루엣이 만들어지고, 카메라 촬영을 시작할 수 있어요.</p>
-    <div class="field-row">
-      <div class="field"><label>키 (cm)</label><input type="number" id="cal-height-input" placeholder="예: 170" oninput="calUpdateBmiLabel()"></div>
-      <div class="field"><label>몸무게 (kg)</label><input type="number" id="cal-weight-input" placeholder="예: 65" oninput="calUpdateBmiLabel()"></div>
-    </div>
-    <p class="hint" id="cal-bmi-label" style="margin:0;">키·몸무게를 입력하면 가이드 실루엣이 내 체형에 맞게 조정돼요. 실제 판정에는 영향을 주지 않으니 대략적인 값이어도 괜찮아요.</p>
-  </div>
   <div class="grid cal-grid">
     <div>
       <div class="cam-stage" style="aspect-ratio:3/4;max-height:70vh;">
@@ -588,5 +561,3 @@ function calEditMoveDrag(evt){
 }
 function calEditEndDrag(){ calEditDragKey=null; }
 
-/* ---------- 로그인 ---------- */
-// renderLogin: 입력 폼 렌더링만 담당하는 프론트엔드 로직. 실제 인증 처리는 아래 doLogin() 지점 참고.

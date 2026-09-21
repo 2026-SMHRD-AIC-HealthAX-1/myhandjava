@@ -111,15 +111,15 @@ const FAQ_ITEMS = [
     id: 'grade',
     q: '레벨 앞의 등급(아이언~챌린저)은 무엇인가요?',
     a: () => `
-      <p class="desc" style="margin:0 0 10px;">500레벨에서 경험치를 모두 채우면 다음 등급으로 승급하면서 레벨이 다시 1로 초기화돼요. 등급은 아래 10단계 순서로 올라갑니다.</p>
+      <p class="desc" style="margin:0 0 10px;">등급은 10레벨 단위로 자동으로 정해져요. 1~10레벨은 아이언, 11~20레벨은 브론즈처럼 10레벨씩 오를 때마다 다음 등급으로 바뀌고, 91레벨부터(100레벨 이상 포함)는 가장 높은 챌린저예요.</p>
       <div style="display:flex;flex-direction:column;gap:8px;">
         ${Object.keys(USER_GRADE_COLORS).map(code => `
         <div class="flex-between" style="border:1px solid var(--line);border-radius:10px;padding:8px 12px;">
           <div style="display:flex;align-items:center;gap:8px;">
-            <span class="level-badge-icon" style="width:26px;height:26px;font-size:14px;background:${USER_GRADE_COLORS[code]};">💪</span>
+            ${rankBadgeIcon(code, USER_GRADE_NAMES[code], 26)}
             <b style="font-size:13.5px;">${USER_GRADE_NAMES[code]}</b>
           </div>
-          <span class="hint" style="margin:0;">${code}</span>
+          <span class="hint" style="margin:0;">Lv.${USER_GRADE_LEVEL_RANGE[code]}</span>
         </div>`).join('')}
       </div>`,
   },
@@ -145,10 +145,10 @@ function renderSupport(){
   const section=s.section || 'guide';
   return `
   <div class="view-head"><h1>고객센터</h1></div>
-  <div class="filter-bar" style="margin-bottom:18px;">
-    <button class="btn btn-sm ${section==='guide'?'btn-primary':'btn-secondary'}" onclick="setSupportSection('guide')">서비스 안내</button>
-    <button class="btn btn-sm ${section==='faq'?'btn-primary':'btn-secondary'}" onclick="setSupportSection('faq')">F&A</button>
-    <button class="btn btn-sm ${section==='inquiry'?'btn-primary':'btn-secondary'}" onclick="setSupportSection('inquiry')">문의</button>
+  <div class="subtabs">
+    <div class="tab ${section==='guide'?'active':''}" onclick="setSupportSection('guide')">서비스 안내</div>
+    <div class="tab ${section==='faq'?'active':''}" onclick="setSupportSection('faq')">F&A</div>
+    <div class="tab ${section==='inquiry'?'active':''}" onclick="setSupportSection('inquiry')">문의</div>
   </div>
   ${section==='guide' ? renderSupportGuide() : section==='faq' ? renderSupportFAQ() : renderSupportInquiry()}`;
 }
@@ -160,7 +160,7 @@ function setSupportSection(section){
 
 function renderSupportGuide(){
   return `
-  <div class="card" style="max-width:820px;">
+  <div class="card" style="max-width:820px;margin:0 auto;">
     <h2 style="margin-top:0;">운동 경험치 안내</h2>
     <p class="desc">운동 점수에 따라 경험치(EXP)가 지급됩니다.</p>
     <div style="overflow-x:auto;margin:14px 0 18px;">
@@ -176,18 +176,16 @@ function renderSupportGuide(){
 
     <h2 style="margin:28px 0 12px;">레벨 및 등급 안내</h2>
     <ul class="desc" style="line-height:1.9;padding-left:22px;">
-      <li>각 등급의 레벨은 <b>Lv.1 ~ Lv.500</b>으로 구성됩니다.</li>
-      <li>현재 경험치와 다음 레벨까지 필요한 경험치는 <b>EXP 게이지</b>에서 확인할 수 있습니다.</li>
+      <li>레벨은 <b>Lv.1</b>부터 계속 오르며, 현재 경험치와 다음 레벨까지 필요한 경험치는 <b>EXP 게이지</b>에서 확인할 수 있습니다.</li>
       <li>레벨 구간에 따라 다음 레벨에 필요한 경험치가 달라집니다.</li>
       <li>획득한 EXP는 계속 누적됩니다.</li>
       <li>레벨업에 필요한 경험치를 초과하여 획득한 EXP는 <b>다음 레벨에 자동으로 이월됩니다.</b></li>
-      <li><b>Lv.500의 필요 EXP를 모두 채우면 다음 등급의 Lv.1로 승급합니다.</b></li>
-      <li>등급 승급 시 초과 EXP도 <b>새로운 등급의 Lv.1 경험치에 자동으로 이월됩니다.</b></li>
+      <li><b>등급은 10레벨 단위로 자동 결정됩니다.</b> 레벨을 올리기 위해 따로 신청하거나 초기화되는 절차는 없습니다.</li>
       <li>현재 등급은 레벨 옆에 표시되는 <b>등급 문양과 고유 색상</b>으로 확인할 수 있습니다.</li>
     </ul>
     <div style="margin-top:18px;padding:14px 16px;background:var(--surface-2);border-radius:12px;">
-      <b>등급 순서</b>
-      <p class="desc" style="margin:8px 0 0;line-height:1.8;">아이언 → 브론즈 → 실버 → 골드 → 플래티넘 → 에메랄드 → 다이아몬드 → 마스터 → 그랜드마스터 → 챌린저</p>
+      <b>등급 구간</b>
+      <p class="desc" style="margin:8px 0 0;line-height:1.8;">${Object.keys(USER_GRADE_NAMES).map(code => `${USER_GRADE_NAMES[code]}(Lv.${USER_GRADE_LEVEL_RANGE[code]})`).join(' → ')}</p>
     </div>
   </div>`;
 }
@@ -200,9 +198,9 @@ function renderSupportFAQ(){
     ['0 EXP를 받은 운동도 운동 기록이나 점수에는 남나요?','0 ~ 249점 구간에서는 EXP가 지급되지 않습니다. 운동 기록 및 누적 점수 반영 여부는 해당 운동의 기록 기준에 따라 처리됩니다.'],
     ['1,500점이 운동 점수의 최대 점수인가요?','현재 경험치 지급 기준은 운동 점수 1,500점을 최고 구간으로 적용합니다.'],
     ['한 번의 운동에서 받을 수 있는 최대 EXP는 500 EXP인가요?','네. 현재 경험치 지급 기준에서 운동 1회 최대 획득 경험치는 500 EXP입니다.'],
-    ['Lv.500을 달성하는 순간 다음 등급으로 승급하나요?','아니요. Lv.500에 도달한 뒤 해당 레벨의 필요 EXP까지 모두 채우면 다음 등급의 Lv.1로 승급합니다. 초과하여 획득한 EXP는 새로운 등급의 Lv.1 경험치로 자동 이월됩니다.']
+    ['등급은 언제 바뀌나요?','등급은 레벨에 따라 자동으로 정해집니다. 10레벨을 채울 때마다 다음 등급으로 올라가고(예: Lv.11이 되면 브론즈), 91레벨부터는 가장 높은 등급인 챌린저입니다. 별도로 신청하거나 레벨이 초기화되는 절차는 없습니다.']
   ];
-  return `<div style="max-width:820px;">
+  return `<div style="max-width:820px;margin:0 auto;">
     <div class="card" style="margin-bottom:14px;"><h2 style="margin:0;">레벨 · 경험치 F&A</h2><p class="desc" style="margin-bottom:0;">운동 경험치와 레벨, 등급에 대해 자주 묻는 내용을 확인해보세요.</p></div>
     ${faqs.map((f,i)=>`<details class="card" ${i===0?'open':''} style="margin-bottom:10px;"><summary style="cursor:pointer;font-weight:700;">${f[0]}</summary><p class="desc" style="margin:12px 0 0;line-height:1.7;">${f[1]}</p></details>`).join('')}
   </div>`;

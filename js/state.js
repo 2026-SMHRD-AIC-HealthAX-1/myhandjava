@@ -1,7 +1,7 @@
 // state.js — 앱 전체 상태(state) 단일 객체. 지금은 이 객체 하나가 서버·DB 역할을 대신합니다. data.js 다음에 로드되어야 합니다.
 
 const state = {
-  screen: 'intro', // intro | signup | login | app
+  screen: 'intro', // intro | login | app | admin — 중간 프로젝트 단계로 아이디/비밀번호 회원가입 화면(signup)은 없앴다(SNS 로그인만 지원, auth.js 참고)
   // 로그인 전 랜딩 카드를 누르면 회원가입 없이도 screen='app'으로 들어가 로그인했을 때와 똑같은
   // 전체 카테고리(사이드바)를 그대로 둘러볼 수 있다 — 이 플래그는 "계정에 실제로 뭔가 남기는
   // 액션"만 로그인으로 유도하기 위한 표시일 뿐, 화면 라우팅 자체는 바꾸지 않는다(startGuestExercise/
@@ -15,11 +15,22 @@ const state = {
     regionCity:'서울시', regionGu:'강남구', regionDong:'역삼동', gender:'male', calibrated:false,
     calModalOpen:false, calStage:'idle', calProfile:null, calError:'',
   },
+  // 소셜 로그인(카카오/구글)으로 처음 가입하면 동네·닉네임·캐릭터(성별)를 하나도 안 정한
+  // 채로 바로 앱에 들어오게 되므로(로그인 직후 state.user.region이 비어있으면 판단),
+  // 메인 화면 대신 이 화면을 먼저 채우게 한다 — auth.js openSocialOnboarding 참고.
+  socialOnboarding: {
+    open:false, nickname:'', gender:'male',
+    regionCity:'서울시', regionGu:'강남구', regionDong:'역삼동',
+  },
   user: {id: null, nickname:'', avatar:0, gender:'male', points:1240, exp:62, level:7, grade:'IRON', gradeName:'아이언', region:'서울시 강남구 역삼동', retakeTickets:0, nicknameTickets:0, bio:'',
-    streak:10, streakRewardClaimed:false, extraSets:0, setsUsedToday:0, role:'USER'},
+    streak:10, streakRewardClaimed:false, extraSets:0, setsUsedToday:0, role:'USER',
+    regionRank:null}, // 내 동네(동 단위) 실제 순위 — ranking.js loadMyRegionRank() 참고. 아직 못 불러왔으면 null.
   menu: 'main',
   subtabs: {mission:0, profile:0, crew:0, ranking:0},
-  exercise: {step:0, picked:null, camPhase:'idle', camStream:null, timerId:null, seconds:0, result:null, retakesUsed:0, liveReps:[], replayOpen:false},
+  // 마이페이지 '보유 아이템' 카드 페이지 번호 — 아이템이 늘어나도 카드 높이가 안 늘어나게
+  // 4개씩 끊어 보여준다(profile.js renderMissionAvatar 참고).
+  profileItemsPage: 0,
+  exercise: {step:0, picked:'squat', camPhase:'idle', camStream:null, timerId:null, seconds:0, result:null, retakesUsed:0, liveReps:[], replayOpen:false},
   crewBattle: null, // 5vs5 크루대전 진행 중 상태 — startCrewBattle() 참고
   crewParty: {open:false, statusOpen:false, selected:[], invites:null, incoming:[], ready:false, tickId:null, incomingTickId:null, battleSize:5}, // 크루대전 파티맺기 — openPartyInvite() 참고. invites=내가 보낸 초대(상태만 표시), incoming=내가 받은 초대(수락/거절 버튼)
   crewConceptEditor: {open:false, selected:[]}, // 크루 메인 카드에서 바로 태그 재선택하는 팝업 — openCrewConceptEditor() 참고
@@ -29,14 +40,14 @@ const state = {
   missions: {
     today: [],
   },
-  // levelReq: 이 레벨에 도달해야 상점에서 구매할 수 있는 아이템이라는 의도로 넣어둔 데이터.
-  // 메인 대시보드의 "다음 레벨업 혜택" 미리보기가 이 값을 쓰다가 카드 자체가 빠지면서(2026-09-10)
-  // 지금은 실제로 읽는 곳이 없다 — 상점(shop.js) 구매 로직에서 레벨 제한으로 쓰려면 그때 연결하면 됨.
+  // levelReq: 예전엔 이 레벨에 도달해야 구매 가능했지만, 지금은 포인트만 있으면 레벨과 무관하게
+  // 누구나 구매할 수 있도록 제한을 없앴다(shop.js buyItem/백엔드 ShopService 참고) — 남아있는
+  // 필드는 단순 참고용 데이터일 뿐 실제로 읽는 곳이 없다.
   // 꾸미기 아이템은 헤어/상의/하의/신발/배경/기타 탭으로 분류한다.
   shopItems: [
     ...AVATAR_ITEM_CATALOG.map(item => ({...item, placement: {...item.placement}})),
     {name:'운동 추가권', price:80, owned:false, consumable:true, category:'기타', levelReq:1, asset:'assets/shop-icons/retake-ticket.svg', effect:'운동 1회 추가', effectDesc:'운동 기회를 1회 추가할 수 있는 이용권입니다.<br><br><strong>이용 안내</strong><br><br>• 운동 추가권을 사용하여 진행한 운동은 <strong>경험치가 지급되지 않습니다. (EXP 0)</strong><br>• 운동 결과 점수가 기존 최고점보다 높은 경우 <strong>최고점이 갱신되며, 결과 화면에 \'최고점 갱신\'이 표시됩니다.</strong><br>• 운동 시작 시 <strong>카메라 연결에 실패한 경우 운동 횟수 및 운동 추가권은 차감되지 않습니다.</strong><br><br>※ 카메라가 정상적으로 연결되어 운동이 시작된 경우에만 운동 추가권이 사용됩니다.'},
-    {name:'닉네임 컬러 이펙트', asset:'assets/shop-icons/name-color-effect.svg', price:180, owned:true, equipped:true, slot:'nickname', category:'기타', levelReq:2, effect:'능력치 없음 · 외형 전용', effectDesc:'닉네임 색상만 강조되며 점수에는 영향이 없습니다.'},
+    {name:'닉네임 컬러 이펙트', asset:'assets/shop-icons/name-color-effect.svg', price:180, owned:false, consumable:true, slot:'nickname', category:'기타', levelReq:2, effect:'닉네임 컬러 변경 1회', effectDesc:'구매하면 바로 원하는 닉네임 색상을 골라 적용할 수 있습니다. 보유 아이템으로 쌓이지 않고, 다시 구매하면 색상을 또 바꿀 수 있어요.'},
     {name:'닉네임 변경권', asset:'assets/shop-icons/nickname-change-ticket.svg', price:150, owned:false, consumable:true, category:'기타', levelReq:1, effect:'닉네임 변경 1회', effectDesc:'닉네임을 한 번 변경할 수 있습니다.'},
   ],
   shopFilter: '전체',
@@ -44,6 +55,7 @@ const state = {
   crew: {
     created:false, name:'', desc:'', region:'', leaderRegion:'', concepts:[],
     battleHistory: [], battleHistoryOpen: null,
+    myDongRank: null, // 우리 크루의 동네(동 단위) 실제 순위 — crew.js loadMyDongCrewRank() 참고.
     members:[],
     joinRequests:[
       {n:'배드민턴킹', level:5, score:1800, msg:'매일 저녁 운동 인증하려고 합니다. 잘 부탁드려요!'},
@@ -82,12 +94,17 @@ const state = {
   confirm: null,
   publicProfileModal: {open:false, loading:false, data:null}, // 랭킹 단상 아바타 클릭 시 (ranking.js openPublicProfile 참고)
   // 크루채팅에서 남의 메시지를 클릭하면 뜨는 신고/차단 작은 팝업 (crew.js openChatModeration 참고).
-  // 백엔드에 신고/차단 API가 아직 없어서(2026-09-20 확인) 지금은 UI만 있고 실제 서버 저장은 안 된다.
+  // 신고는 실제 서버(POST /api/crews/me/chat/{messageId}/report)에 저장되어 관리자모드의
+  // "크루채팅 신고 관리"에서 확인할 수 있다. 차단은 여전히 로컬 전용(getBlockedChatUserIds).
   chatModeration: {open:false, messageId:null, targetUserId:null, targetNickname:null},
-  findIdModal: {open:false, result:null},
-  findPwModal: {open:false, done:false},
-  rankFilter: {city:null, gu:null, dong:null},
-  exRankFilter: {city:null, gu:null, dong:null, ex:null},
+  // 관리자모드(admin.js) — state.user.role==='ADMIN'일 때만 사이드바에 진입 버튼이 보인다.
+  adminPanel: {tab:'dashboard', dashboard:null, users:[], usersSearch:'', reports:[], reportDetailId:null, missions:[], editingMissionId:null},
+  // 회원탈퇴 확인 팝업 — 실수로 누르지 않도록 내 닉네임을 정확히 입력해야 탈퇴 버튼이
+  // 눌린다(profile.js openWithdrawConfirm 참고).
+  withdrawConfirm: {open:false, input:''},
+  // 랭킹 탭 처음 들어왔을 때 특정 동네 대신 전국(전체) 랭킹이 먼저 보이게 기본값을 '전체'로 둔다.
+  rankFilter: {city:'전체', gu:null, dong:null},
+  exRankFilter: {city:'전체', gu:null, dong:null, ex:null},
   // 랭킹 탭에서 서버로부터 실제로 받아온 데이터를 담아두는 캐시 (loadRegionRanking 등 참고)
   rank: {region:[], exercise:[], crew:[]},
 };

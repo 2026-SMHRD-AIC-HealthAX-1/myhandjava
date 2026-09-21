@@ -51,12 +51,6 @@ const EXS = [
 
 function randInt(a,b){ return a+Math.floor(Math.random()*(b-a+1)); }
 
-// 아이디·닉네임·크루명 중복확인용 목업 데이터. 실제로는 DB 조회(SQL SELECT ... WHERE)로 대체된다.
-const EXISTING_USERS = [
-  {id:'hometrainer01', nickname:'써니핏'},
-  {id:'runner99', nickname:'런닝수달'},
-  {id:'proteinman', nickname:'단백질맨'},
-];
 // 첫 번째로 등록된 시(지금은 전남광주통합특별시)가 지역 드롭다운들의 기본값이 된다
 // (REGION_DATA[f.city]가 없을 때 Object.keys(REGION_DATA)[0]로 대체하는 로직들 참고).
 const REGION_DATA = {
@@ -65,5 +59,3 @@ const REGION_DATA = {
   '부산시': { '해운대구':['우동','중동'] },
   '대전시': { '유성구':['봉명동'] },
 };
-// renderSignup ~ setSignupDong 구간: 화면(입력 폼) 렌더링만 담당하는 순수 프론트엔드 로직.
-// (FR-AC-001) 실제 "가입 제출" 처리는 아래 doSignup() 지점에서 이어집니다.

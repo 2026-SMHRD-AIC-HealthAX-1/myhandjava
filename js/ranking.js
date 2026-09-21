@@ -45,31 +45,7 @@ function drawPodiumChars(){
     drawPixelCharacter(canvas, equip, gender);
   });
 }
-const PERSON_NAME_POOL=['런닝수달','써니핏','단백질맨','헬스왕','조깅요정','버피장인','파워워커','헬스메이트','런지킹','조깅단장','바다사나이','배드민턴킹'];
-// 동(dong)을 시드로 결정론적인 이웃 랭킹을 만든다. 실제로는 SQL SELECT ... ORDER BY 점수로 대체될 자리.
-function getDongPersonRanking(dong){
-  const seed=hashStr(dong+'person');
-  const names=[];
-  let idx=seed;
-  while(names.length<4){
-    idx=(idx*48271+1)%2147483647;
-    const nm=PERSON_NAME_POOL[idx%PERSON_NAME_POOL.length];
-    if(!names.includes(nm)) names.push(nm);
-  }
-  return names.map((name,i)=>({ name, level:Math.max(1, 11-i*2-(seed%3)), score:5100-i*380-(seed%90) }));
-}
 function totalScore(){ return state.history.reduce((s,h)=>s+h.score,0); }
-// renderMain()의 대시보드 위젯(마이페이지가 아니라 메인 화면 요약 카드)이 쓰는 가벼운 흉내값 —
-// 랭킹 탭 자체는 아래 loadRegionRanking()으로 실제 서버 데이터를 쓰도록 바꿨지만, 메인 대시보드는
-// 이 범위 밖이라 기존 mock 계산을 그대로 남겨둔다(profile.js의 mainStats() 참고).
-function getRegionRanking(dong){
-  const myDong = state.user.region.trim().split(/\s+/).pop();
-  const neighbors = getDongPersonRanking(dong).map(n=>({...n, isMe:false}));
-  const rows = dong===myDong
-    ? [...neighbors.slice(0,3), {name:state.user.nickname||'홈트초보', score:totalScore(), level:state.user.level, isMe:true}]
-    : neighbors;
-  return rows.sort((a,b)=>b.score-a.score).map((r,i)=>({...r, rank:i+1}));
-}
 // 시 드롭다운에서 고를 수 있는 "전체" 선택지 — 세 랭킹 탭(지역별·종목별·크루) 모두 이 값이면
 // city(필요하면 gu·dong도)를 서버에 아예 안 보내 전국 단위로 조회한다. 백엔드 쿼리들이 null
 // 파라미터는 필터링하지 않도록 되어 있다(UserRepository/CrewRepository 참고).
@@ -106,6 +82,26 @@ async function loadRegionRanking(){
     console.error('지역 랭킹 불러오기 실패', err);
   }
 }
+// 메인 대시보드·마이페이지 누적성과 카드의 "동네 랭킹 #N"이 예전엔 이름 시드 기반 mock
+// (getRegionRanking, 아래)을 썼다 — 랭킹 탭과 같은 실제 API로 내 동(dong) 순위만 따로
+// 불러와 state.user.regionRank에 채운다. 로그인·세션복원 직후(auth.js/bootstrap.js)에 호출한다.
+async function loadMyRegionRank(){
+  if(!state.token || !state.user.region) return;
+  const parts=state.user.region.trim().split(/\s+/);
+  if(parts.length<3) return;
+  const [city,gu,dong]=parts;
+  try{
+    const res = await fetch(`${API_BASE}/api/rankings/region?city=${encodeURIComponent(city)}&gu=${encodeURIComponent(gu)}&dong=${encodeURIComponent(dong)}`, {
+      headers: { 'Authorization': 'Bearer ' + state.token }
+    });
+    const body = await res.json();
+    if(!body.success) return;
+    const mine = body.data.find(r=>r.me);
+    state.user.regionRank = mine ? mine.rank : null;
+  }catch(err){
+    console.error('내 동네 랭킹 불러오기 실패', err);
+  }
+}
 function renderRankRegion(){
   const {cities,city,gus,gu,dongs,dong}=resolveRegionFilter(state.rankFilter);
   const isAll=city===RANK_ALL_CITY;
@@ -123,16 +119,18 @@ function renderRankRegion(){
   ${rows.length===0 ? `<div class="empty-note">${isAll?'아직':'이 지역엔 아직'} 랭킹 데이터가 없습니다.</div>` : `
   ${renderPodium(rows)}
   ${rest.length?`
-  <div class="table-wrap">
+  <div class="table-wrap compact-table">
     <table>
-      <thead><tr><th>순위</th><th>닉네임</th><th>레벨</th><th>누적 점수</th></tr></thead>
+      <thead><tr><th>순위</th><th>닉네임</th><th>레벨</th><th>티어</th><th>누적 점수</th><th>정보확인</th></tr></thead>
       <tbody>
         ${rest.map(r=>`
           <tr>
             <td><span class="rank-num">${r.rank}</span></td>
             <td><span class="name-cell"><span class="user-avatar" style="background:${avatarColor(r.rank-1)}">${avatarInitial(r.name)}</span>${r.name}${r.isMe?' <span class="pill pill-accent">나</span>':''}</span></td>
             <td class="mono">Lv.${r.level}</td>
+            <td>${rankBadgeIcon(gradeFromLevel(r.level), USER_GRADE_NAMES[gradeFromLevel(r.level)], 24)}</td>
             <td class="mono">${r.score.toLocaleString()}</td>
+            <td>${r.userId!=null?`<button class="btn btn-sm btn-secondary" onclick="openPublicProfile(${r.userId})">상대정보</button>`:''}</td>
           </tr>`).join('')}
       </tbody>
     </table>
@@ -241,7 +239,10 @@ function renderPublicProfileModal(){
           <h3 style="margin:0 0 6px;">${d.nickname}</h3>
           <p class="empty-note" style="padding:24px 0;">🔒 프로필 비공개입니다.</p>`
         : `
-          <h3 style="margin:0 0 4px;">${d.nickname} <span class="pill pill-gold">Lv.${d.level}</span></h3>
+          <div style="display:flex;align-items:center;gap:10px;margin:0 0 4px;">
+            ${rankBadgeIcon(gradeFromLevel(d.level), USER_GRADE_NAMES[gradeFromLevel(d.level)], 40)}
+            <h3 style="margin:0;">${d.nickname} <span class="pill pill-gold">Lv.${d.level}</span></h3>
+          </div>
           <p class="desc" style="margin:0 0 14px;">${d.bio || '자기소개가 없어요.'}</p>
           <p class="section-label" style="margin:0 0 6px;">누적 성과</p>
           <p class="desc mono" style="margin:0 0 14px;">누적 점수 <b>${d.totalScore.toLocaleString()}</b></p>
