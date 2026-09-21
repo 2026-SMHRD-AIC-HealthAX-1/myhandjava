@@ -36,6 +36,14 @@ function renderSignup() {
         <p class="hint" id="su-nick-msg" style="display:none;"></p>
       </div>
       <div class="field">
+        <label>성별</label>
+        <div class="field-row">
+          <button type="button" class="btn btn-sm ${state.signup.gender!=='female'?'btn-primary':'btn-secondary'}" style="flex:1;" onclick="setSignupGender('male')">남성</button>
+          <button type="button" class="btn btn-sm ${state.signup.gender==='female'?'btn-primary':'btn-secondary'}" style="flex:1;" onclick="setSignupGender('female')">여성</button>
+        </div>
+        <p class="hint">선택한 성별에 맞는 캐릭터가 배정됩니다.</p>
+      </div>
+      <div class="field">
         <label for="su-ref">추천인 아이디 (선택)</label>
         <input id="su-ref" type="text" placeholder="추천인 아이디 입력 시 포인트 지급" value="${state.signup.referrerId || ''}" oninput="state.signup.referrerId=this.value">
         <p class="hint">가입자와 추천인 모두에게 포인트가 지급됩니다.</p>
@@ -70,7 +78,7 @@ function renderSignup() {
           ${state.signup.calibrated ? '✓ 체형 보정 완료 (다시 촬영하려면 클릭)' : '카메라로 체형 보정하기'}
         </button>
         <p class="hint">
-          ${state.signup.calibrated && state.signup.calProfile && state.signup.calProfile.bodyInfo && state.signup.calProfile.bodyInfo.bmi ? `BMI ${state.signup.calProfile.bodyInfo.bmi} 기준으로 저장됨 · ` : ''}실제 스마트폰 카메라으로 촬영 각도·거리·신체 비율을 미리 보정해 자세 분석 정확도를 높입니다.
+          ${state.signup.calibrated && state.signup.calProfile && state.signup.calProfile.bodyInfo && state.signup.calProfile.bodyInfo.bmi ? `BMI ${state.signup.calProfile.bodyInfo.bmi} 기준으로 저장됨 · ` : ''}실제 카메라로 촬영 각도·거리·신체 비율을 미리 보정해 자세 분석 정확도를 높입니다.
         </p>
       </div>
 
@@ -79,6 +87,7 @@ function renderSignup() {
     </div>
   </div>`;
 }
+function setSignupGender(v) { state.signup.gender = v; render(); }
 function setSignupCity(v) {
   state.signup.regionCity = v;
   const gus = Object.keys(REGION_DATA[v]);
@@ -209,10 +218,10 @@ async function doSignup() {
 }
 
 
-/* ---------- 회원가입 : 실제 스마트폰 카메라 캘리브레이션 모달 (MediaPipe Pose) ---------- */
+/* ---------- 회원가입 : 실제 카메라 캘리브레이션 모달 (MediaPipe Pose) ---------- */
 // (FR-AC-002) 이 구간(calStartCamera ~ calComputeProfile)은 브라우저 안에서 도는
 // MediaPipe Pose(WASM) 계산이라 그대로 프론트엔드에 남습니다 — 백엔드가 필요 없는 부분.
-//   스마트폰 카메라 영상(JS) > MediaPipe Pose(WASM, 브라우저 내 실행) > 체형 프로필 계산(JS)
+//   카메라 영상(JS) > MediaPipe Pose(WASM, 브라우저 내 실행) > 체형 프로필 계산(JS)
 // 계산된 결과를 실제로 "저장"하는 시점(아래 calApply())부터만 서버 연동이 필요합니다.
 function renderLogin() {
   return `
@@ -300,6 +309,8 @@ async function loadMyProfile() {
     state.user.gender = normalizeGender(u.gender, loadSessionGender());
     saveSessionGender(state.user.gender);
     state.user.avatar = u.avatar ?? state.user.avatar;
+    state.user.grade = u.grade; // 'IRON'~'CHALLENGER' — userLevelBadge()의 배지 색을 정하는 값
+    state.user.gradeName = u.gradeName; // '아이언'~'챌린저' — 배지 title 툴팁용
     state.user.streak = u.streak;
     state.user.retakeTickets = u.retakeTickets;
     state.user.nicknameTickets = u.nicknameTickets;

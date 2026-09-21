@@ -20,12 +20,12 @@ function renderPodium(rows){
   const first=byRank(1), second=byRank(2), third=byRank(3);
   const step=(r,cls,size)=>{
     if(!r) return '<div class="podium-step" style="visibility:hidden;"></div>';
-    const cid=`podium-char-${cls}-${Math.abs(hashStr((r.userId??r.name)+cls))}`;
+    const cid=`podium-char-${cls}-${Math.abs(hashStr(r.name+cls))}`;
     // 크루 랭킹 단상은 userId가 없다(크루는 사람이 아니니까) — 그런 경우엔 클릭 안 먹게 둔다.
     const clickable = r.userId != null;
     return `
     <div class="podium-step ${cls}" ${clickable ? `style="cursor:pointer;" onclick="openPublicProfile(${r.userId})" title="프로필 보기"` : ''}>
-      <canvas class="podium-canvas" id="${cid}" data-seed="${r.name}" data-gender="${r.gender || (r.isMe ? state.user.gender : '')}" style="width:${size}px;height:${Math.round(size*1.22)}px;"></canvas>
+      <canvas class="podium-canvas" id="${cid}" data-seed="${r.name}" style="width:${size}px;height:${Math.round(size*1.22)}px;"></canvas>
       <div class="podium-name">${r.name}${r.isMe?' <span class="pill pill-accent">나</span>':''}</div>
       ${r.level!=null?`<div class="podium-lv mono">Lv.${r.level}</div>`:''}
       <div class="podium-score mono">${r.isMe?'내 점수 ':''}${r.score.toLocaleString()}</div>
@@ -41,7 +41,7 @@ function drawPodiumChars(){
     const seed=canvas.dataset.seed||'x';
     const h=hashStr(seed);
     const equip={ outfit:h%2===0, crown:false, badge:false, background:false, skin:false };
-    const gender=normalizeGender(canvas.dataset.gender || 'male', 'male');
+    const gender=h%3===0?'female':'male';
     drawPixelCharacter(canvas, equip, gender);
   });
 }
@@ -70,11 +70,18 @@ function getRegionRanking(dong){
     : neighbors;
   return rows.sort((a,b)=>b.score-a.score).map((r,i)=>({...r, rank:i+1}));
 }
+// 시 드롭다운에서 고를 수 있는 "전체" 선택지 — 세 랭킹 탭(지역별·종목별·크루) 모두 이 값이면
+// city(필요하면 gu·dong도)를 서버에 아예 안 보내 전국 단위로 조회한다. 백엔드 쿼리들이 null
+// 파라미터는 필터링하지 않도록 되어 있다(UserRepository/CrewRepository 참고).
+const RANK_ALL_CITY='전체';
 // 필터(state.rankFilter)에서 실제로 쓸 city/gu/dong을 골라낸다 — null이거나 더 이상 REGION_DATA에
 // 없는 값이면 그 단계의 첫 항목으로 대체한다. render()와 loadRegionRanking()이 항상 같은 값을
 // 쓰도록 로직을 한 곳에 모아둔다.
 function resolveRegionFilter(f){
   const cities=Object.keys(REGION_DATA);
+  if(f.city===RANK_ALL_CITY){
+    return {cities, city:RANK_ALL_CITY, gus:[], gu:null, dongs:[], dong:null};
+  }
   const city=REGION_DATA[f.city]?f.city:cities[0];
   const gus=Object.keys(REGION_DATA[city]);
   const gu=REGION_DATA[city][f.gu]?f.gu:gus[0];
@@ -85,14 +92,15 @@ function resolveRegionFilter(f){
 // (#16) 지역별 랭킹: 실제 GET /api/rankings/region?city&gu&dong 결과를 state.rank.region에 채운다.
 async function loadRegionRanking(){
   const {city,gu,dong}=resolveRegionFilter(state.rankFilter);
-  const ex = EXS.some(e=>e.name===state.rankFilter.ex) ? state.rankFilter.ex : EXS[0].name;
+  const isAll=city===RANK_ALL_CITY;
+  const regionQuery=isAll?'':`city=${encodeURIComponent(city)}&gu=${encodeURIComponent(gu)}&dong=${encodeURIComponent(dong)}`;
   try{
-    const res = await fetch(`${API_BASE}/api/rankings/region?city=${encodeURIComponent(city)}&gu=${encodeURIComponent(gu)}&dong=${encodeURIComponent(dong)}&exerciseType=${encodeURIComponent(ex)}`, {
+    const res = await fetch(`${API_BASE}/api/rankings/region?${regionQuery}`, {
       headers: state.token ? { 'Authorization': 'Bearer ' + state.token } : {}
     });
     const body = await res.json();
     if(!body.success) return;
-    state.rank.region = body.data.map(r=>({ rank:r.rank, userId:r.userId, name:r.nickname, level:r.level, score:r.score, isMe:r.me, gender:normalizeGender(r.gender ?? r.sex, r.me ? state.user.gender : 'male') }));
+    state.rank.region = body.data.map(r=>({ rank:r.rank, userId:r.userId, name:r.nickname, level:r.level, score:r.score, isMe:r.me }));
     render();
   }catch(err){
     console.error('지역 랭킹 불러오기 실패', err);
@@ -100,21 +108,19 @@ async function loadRegionRanking(){
 }
 function renderRankRegion(){
   const {cities,city,gus,gu,dongs,dong}=resolveRegionFilter(state.rankFilter);
-  const ex=EXS.some(e=>e.name===state.rankFilter.ex)?state.rankFilter.ex:EXS[0].name;
+  const isAll=city===RANK_ALL_CITY;
   const rows=state.rank.region;
   const rest=rows.filter(r=>r.rank>3);
   return `
-  <div class="ranking-filter-header">
-    <div class="filter-bar ranking-filter-bar">
-      <select onchange="setRankCity(this.value)">${cities.map(c=>`<option ${c===city?'selected':''}>${c}</option>`).join('')}</select>
-      <select onchange="setRankGu(this.value)">${gus.map(g=>`<option ${g===gu?'selected':''}>${g}</option>`).join('')}</select>
-      <select onchange="setRankDong(this.value)">${dongs.map(d=>`<option ${d===dong?'selected':''}>${d}</option>`).join('')}</select>
-      <select onchange="setRankEx(this.value)">${EXS.map(e=>`<option ${e.name===ex?'selected':''}>${e.name}</option>`).join('')}</select>
-    </div>
-    <p class="ranking-criteria">지역·운동별 랭킹: 해당 운동의 최고점 순으로 순위가 결정됩니다.</p>
+  <div class="filter-bar">
+    <select onchange="setRankCity(this.value)">
+      <option ${isAll?'selected':''}>${RANK_ALL_CITY}</option>
+      ${cities.map(c=>`<option ${c===city?'selected':''}>${c}</option>`).join('')}
+    </select>
+    <select onchange="setRankGu(this.value)" ${isAll?'disabled':''}>${isAll?`<option>--</option>`:gus.map(g=>`<option ${g===gu?'selected':''}>${g}</option>`).join('')}</select>
+    <select onchange="setRankDong(this.value)" ${isAll?'disabled':''}>${isAll?`<option>--</option>`:dongs.map(d=>`<option ${d===dong?'selected':''}>${d}</option>`).join('')}</select>
   </div>
-  <div class="ranking-data-offset">
-  ${rows.length===0 ? `<div class="empty-note">이 지역엔 아직 랭킹 데이터가 없습니다.</div>` : `
+  ${rows.length===0 ? `<div class="empty-note">${isAll?'아직':'이 지역엔 아직'} 랭킹 데이터가 없습니다.</div>` : `
   ${renderPodium(rows)}
   ${rest.length?`
   <div class="table-wrap">
@@ -130,54 +136,63 @@ function renderRankRegion(){
           </tr>`).join('')}
       </tbody>
     </table>
-  </div>`:''}`}
-  </div>`;
+  </div>`:''}`}`;
 }
-function setRankCity(v){ state.rankFilter={...state.rankFilter, city:v, gu:null, dong:null}; loadRegionRanking(); render(); }
+function setRankCity(v){ state.rankFilter={city:v, gu:null, dong:null}; loadRegionRanking(); render(); }
 function setRankGu(v){ state.rankFilter.gu=v; state.rankFilter.dong=null; loadRegionRanking(); render(); }
 function setRankDong(v){ state.rankFilter.dong=v; loadRegionRanking(); render(); }
-function setRankEx(v){ state.rankFilter.ex=v; loadRegionRanking(); render(); }
 
 // (#17) 운동 종목별 랭킹: 실제 GET /api/rankings/exercise?city&gu&dong&exerciseType 결과를 쓴다.
+// 시 드롭다운의 "전체"는 RANK_ALL_CITY(위쪽 지역별 랭킹 섹션 참고) — 고르면 city(따라서
+// gu·dong도)를 아예 안 보내 전국 랭킹을 받는다. 백엔드 findExerciseRanking()이 null 파라미터는
+// 필터링하지 않도록 되어 있다(UserRepository 참고).
 function resolveExRankFilter(f){
   const cities=Object.keys(REGION_DATA);
-  const userParts=String(state.user.region||'').trim().split(/\s+/).filter(Boolean);
-  const preferredCity=userParts[0], preferredGu=userParts[1], preferredDong=userParts.slice(2).join(' ');
-  const city=REGION_DATA[f.city]?f.city:(REGION_DATA[preferredCity]?preferredCity:cities[0]);
+  if(f.city===RANK_ALL_CITY){
+    const ex=EXS.some(e=>e.name===f.ex)?f.ex:EXS[0].name;
+    return {cities, city:RANK_ALL_CITY, gus:[], gu:null, dongs:[], dong:null, ex};
+  }
+  const city=REGION_DATA[f.city]?f.city:cities[0];
   const gus=Object.keys(REGION_DATA[city]);
-  const gu=REGION_DATA[city][f.gu]?f.gu:(REGION_DATA[city][preferredGu]?preferredGu:gus[0]);
+  const gu=REGION_DATA[city][f.gu]?f.gu:gus[0];
   const dongs=REGION_DATA[city][gu];
-  const dong=dongs.includes(f.dong)?f.dong:(dongs.includes(preferredDong)?preferredDong:dongs[0]);
+  const dong=dongs.includes(f.dong)?f.dong:dongs[0];
   const ex=EXS.some(e=>e.name===f.ex)?f.ex:EXS[0].name;
   return {cities, city, gus, gu, dongs, dong, ex};
 }
 async function loadExerciseRanking(){
   const {city,gu,dong,ex}=resolveExRankFilter(state.exRankFilter);
+  const isAll=city===RANK_ALL_CITY;
+  const regionQuery=isAll?'':`&city=${encodeURIComponent(city)}&gu=${encodeURIComponent(gu)}&dong=${encodeURIComponent(dong)}`;
   try{
-    const res = await fetch(`${API_BASE}/api/rankings/exercise?city=${encodeURIComponent(city)}&gu=${encodeURIComponent(gu)}&dong=${encodeURIComponent(dong)}&exerciseType=${encodeURIComponent(ex)}`, {
+    const res = await fetch(`${API_BASE}/api/rankings/exercise?exerciseType=${encodeURIComponent(ex)}${regionQuery}`, {
       headers: state.token ? { 'Authorization': 'Bearer ' + state.token } : {}
     });
     const body = await res.json();
     if(!body.success) return;
-    state.rank.exercise = body.data.map(r=>({ rank:r.rank, userId:r.userId, name:r.nickname, level:r.level, score:r.score, isMe:r.me, gender:normalizeGender(r.gender ?? r.sex, r.me ? state.user.gender : 'male') }));
+    state.rank.exercise = body.data.map(r=>({ rank:r.rank, userId:r.userId, name:r.nickname, level:r.level, score:r.score, isMe:r.me }));
     render();
   }catch(err){
     console.error('종목별 랭킹 불러오기 실패', err);
   }
 }
 function renderRankExercise(){
-  const {ex}=resolveExRankFilter(state.exRankFilter);
+  const {cities,city,gus,gu,dongs,dong,ex}=resolveExRankFilter(state.exRankFilter);
+  const isAll=city===RANK_ALL_CITY;
   const rows=state.rank.exercise;
   const rest=rows.filter(r=>r.rank>3);
   return `
-  <div class="ranking-exercise-layout">
-    <div class="filter-bar ranking-filter-bar">
-      <select onchange="setExRankEx(this.value)">${EXS.map(e=>`<option ${e.name===ex?'selected':''}>${e.name}</option>`).join('')}</select>
-    </div>
-    <p class="ranking-criteria">지역·운동별 랭킹: 해당 운동의 최고점 순으로 순위가 결정됩니다.</p>
-    <p class="hint ranking-exercise-note">점수는 ${ex} 종목의 누적 점수 기준입니다.</p>
+  <div class="filter-bar">
+    <select onchange="setExRankCity(this.value)">
+      <option ${isAll?'selected':''}>${RANK_ALL_CITY}</option>
+      ${cities.map(c=>`<option ${c===city?'selected':''}>${c}</option>`).join('')}
+    </select>
+    <select onchange="setExRankGu(this.value)" ${isAll?'disabled':''}>${isAll?`<option>--</option>`:gus.map(g=>`<option ${g===gu?'selected':''}>${g}</option>`).join('')}</select>
+    <select onchange="setExRankDong(this.value)" ${isAll?'disabled':''}>${isAll?`<option>--</option>`:dongs.map(d=>`<option ${d===dong?'selected':''}>${d}</option>`).join('')}</select>
+    <select onchange="setExRankEx(this.value)">${EXS.map(e=>`<option ${e.name===ex?'selected':''}>${e.name}</option>`).join('')}</select>
   </div>
-  <div class="ranking-data-offset">${rows.length===0 ? `<div class="empty-note">이 지역엔 아직 ${ex} 기록이 없습니다.</div>` : `
+  <p class="hint" style="margin:-6px 0 14px;">점수는 ${isAll?'전국':''} ${ex} 종목의 누적 점수 기준입니다.</p>
+  ${rows.length===0 ? `<div class="empty-note">${isAll?'아직':'이 지역엔 아직'} ${ex} 기록이 없습니다.</div>` : `
   ${renderPodium(rows)}
   ${rest.length?`
   <div class="table-wrap">
@@ -185,8 +200,7 @@ function renderRankExercise(){
       <thead><tr><th>순위</th><th>닉네임</th><th>${ex} 누적점수</th></tr></thead>
       <tbody>${rest.map(r=>`<tr><td><span class="rank-num">${r.rank}</span></td><td>${r.name}${r.isMe?' <span class="pill pill-accent">나</span>':''}</td><td class="mono">${r.score.toLocaleString()}</td></tr>`).join('')}</tbody>
     </table>
-  </div>`:''}`}
-  </div>`;
+  </div>`:''}`}`;
 }
 function setExRankCity(v){ state.exRankFilter={...state.exRankFilter, city:v, gu:null, dong:null}; loadExerciseRanking(); render(); }
 function setExRankGu(v){ state.exRankFilter.gu=v; state.exRankFilter.dong=null; loadExerciseRanking(); render(); }

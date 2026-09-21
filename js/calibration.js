@@ -1,4 +1,4 @@
-// calibration.js — 스마트폰 카메라 체형 캘리브레이션(MediaPipe Pose). 회원가입 중, 또는 운동 시작 전 필요 시 모달로 열립니다.
+// calibration.js — 카메라 체형 캘리브레이션(MediaPipe Pose). 회원가입 중, 또는 운동 시작 전 필요 시 모달로 열립니다.
 
 const CAL_REQUIRED_HOLD_MS = 2000;
 const CAL_RING_CIRC = 226; // 2π·36 — exercise.js의 cam-ready-overlay 원형 게이지와 반지름을 맞췄다
@@ -99,8 +99,7 @@ function calApply(){
 function calClamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
 
 // 키/몸무게 입력값 → BMI. 가이드 실루엣 보정 및 저장되는 bodyInfo에 함께 쓰인다.
-// 성별은 캘리브레이션 화면의 남성/여성 토글(setCalGender)에서 선택한 값을 그대로 담아,
-// 이후 캐릭터 생성 시 남성/여성 캐릭터를 구분하는 기준으로 재사용한다.
+// 성별은 회원가입 화면의 남성/여성 토글(setSignupGender, auth.js)에서 고른 값을 그대로 쓴다.
 function calGetBodyInfo(){
   const hEl = document.getElementById('cal-height-input');
   const wEl = document.getElementById('cal-weight-input');
@@ -108,15 +107,6 @@ function calGetBodyInfo(){
   const weightKg = wEl ? (parseFloat(wEl.value) || null) : null;
   const bmi = heightCm && weightKg ? weightKg / ((heightCm/100) ** 2) : null;
   return { heightCm, weightKg, bmi: bmi ? +bmi.toFixed(1) : null, gender: state.signup.gender || 'male' };
-}
-// 성별 토글은 캘리브레이션 촬영이 진행 중일 수 있어 render()로 화면 전체를 다시 그리지 않고,
-// 버튼 두 개의 active 클래스만 직접 바꾼다 (render()를 부르면 video 엘리먼트가 새로 만들어져
-// 이미 연결된 카메라 스트림이 끊긴다).
-function setCalGender(g){
-  state.signup.gender=g;
-  document.querySelectorAll('.cal-gender-tab').forEach(el=>{
-    el.classList.toggle('active', el.dataset.gender===g);
-  });
 }
 function calBmiCategory(bmi){
   if(bmi==null) return '';
@@ -138,7 +128,7 @@ function calUpdateBmiLabel(){
   const startHint=document.getElementById('cal-start-hint');
   if(startHint) startHint.style.display=ready?'none':'block';
   if(!lbl) return;
-  if(!ready){ lbl.textContent='체형 정보를 입력하면 가이드 실루엣이 내 체형에 맞게 조정돼요.'; return; }
+  if(!ready){ lbl.textContent='키·몸무게를 입력하면 가이드 실루엣이 내 체형에 맞게 조정돼요. 실제 판정에는 영향을 주지 않으니 대략적인 값이어도 괜찮아요.'; return; }
   lbl.textContent = `BMI ${bmi.toFixed(1)} · ${calBmiCategory(bmi)} 기준으로 실루엣을 보정했어요.`;
 }
 // BMI가 높을수록 실루엣 폭을 넓게, 키가 클수록 하체 비중을 늘려 힙 위치를 살짝 올려준다.
@@ -456,6 +446,15 @@ function renderCalibrationModal(){
 
 function renderCalLive(s){
   return `
+  <div class="card" style="margin-bottom:16px;">
+    <p class="section-label" style="margin:0 0 4px;">체형 정보 먼저 입력하기</p>
+    <p class="hint" style="margin:0 0 12px;">키·몸무게를 입력해야 내 체형에 맞는 가이드 실루엣이 만들어지고, 카메라 촬영을 시작할 수 있어요.</p>
+    <div class="field-row">
+      <div class="field"><label>키 (cm)</label><input type="number" id="cal-height-input" placeholder="예: 170" oninput="calUpdateBmiLabel()"></div>
+      <div class="field"><label>몸무게 (kg)</label><input type="number" id="cal-weight-input" placeholder="예: 65" oninput="calUpdateBmiLabel()"></div>
+    </div>
+    <p class="hint" id="cal-bmi-label" style="margin:0;">키·몸무게를 입력하면 가이드 실루엣이 내 체형에 맞게 조정돼요. 실제 판정에는 영향을 주지 않으니 대략적인 값이어도 괜찮아요.</p>
+  </div>
   <div class="grid cal-grid">
     <div>
       <div class="cam-stage" style="aspect-ratio:3/4;max-height:70vh;">

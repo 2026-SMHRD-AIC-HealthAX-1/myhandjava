@@ -75,6 +75,36 @@ function gradePill(g){
   return `<span class="pill ${cls}">${g}</span>`;
 }
 
+// 사용자 등급(레벨 1~500, 500레벨을 다 채우면 다음 등급으로 승급하고 다시 1레벨부터 시작 —
+// 백엔드 UserGrade/UserLevelPolicy 참고) 색상. 리그오브레전드 티어와 같은 순서·색감을 쓴다.
+const USER_GRADE_COLORS = {
+  IRON: '#6B6B6B',
+  BRONZE: '#A9702F',
+  SILVER: '#ADB8C0',
+  GOLD: '#E8B339',
+  PLATINUM: '#3FC1B0',
+  EMERALD: '#2FBF71',
+  DIAMOND: '#4FA3E3',
+  MASTER: '#A855F7',
+  GRANDMASTER: '#E63950',
+  CHALLENGER: '#7EE7E8',
+};
+function userGradeColor(grade){ return USER_GRADE_COLORS[grade] || USER_GRADE_COLORS.IRON; }
+// 백엔드 UserGrade.koreanName과 동일한 한글 표기 — 고객센터 FAQ의 등급 목록 등에서 재사용한다.
+const USER_GRADE_NAMES = {
+  IRON: '아이언', BRONZE: '브론즈', SILVER: '실버', GOLD: '골드', PLATINUM: '플래티넘',
+  EMERALD: '에메랄드', DIAMOND: '다이아몬드', MASTER: '마스터', GRANDMASTER: '그랜드마스터', CHALLENGER: '챌린저',
+};
+// 레벨 앞에 붙는 등급 배지 — 알통(💪) 이모지 자체는 CSS color로 다시 칠할 수 없어서, 팔각형
+// 배지의 배경색을 등급 색으로 채우고 그 위에 이모지를 얹는 방식으로 표현한다(.level-badge-icon,
+// style.css 참고). compact=true면 topbar처럼 좁은 자리에 맞게 배지·글자를 조금 작게 그린다.
+function userLevelBadge(grade, gradeName, level, compact){
+  const color = userGradeColor(grade);
+  const size = compact ? 24 : 32;
+  const icon = `<span class="level-badge-icon" style="width:${size}px;height:${size}px;font-size:${compact ? 13 : 17}px;background:${color};" title="${gradeName || ''}">💪</span>`;
+  return `<span style="display:inline-flex;align-items:center;gap:5px;vertical-align:middle;">${icon}<span class="mono" style="color:${color};font-weight:700;font-size:${compact ? 13 : 15}px;">Lv.${level}</span></span>`;
+}
+
 /* ========================================================================
    렌더 엔진 : 화면 라우팅
    ======================================================================== */

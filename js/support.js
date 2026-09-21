@@ -91,6 +91,55 @@ async function markTicketInProgress(ticketId){
   }
 }
 
+// 레벨/경험치, 등급 시스템처럼 매번 같은 문의가 반복되는 주제는 FAQ 카드로 먼저 보여주고,
+// 진짜 문의(불편사항 접수)와는 분리해서 문의 목록 위에 둔다. 답변은 함수로 둬서 클릭해서
+// 펼칠 때만(렌더될 때만) 계산하면 되고, 등급 목록 같은 무거운 마크업을 항상 만들지 않아도 된다.
+const FAQ_ITEMS = [
+  {
+    id: 'exp',
+    q: '레벨과 경험치는 어떻게 올라가나요?',
+    a: () => `
+      <p class="desc" style="margin:0 0 10px;">레벨은 1~500까지 있고, 레벨이 오를수록 다음 레벨까지 필요한 경험치가 점점 늘어나요.</p>
+      <ul class="steplist">
+        <li><span class="num">·</span>1~10레벨: 레벨업에 <b>100</b> 경험치가 필요해요.</li>
+        <li><span class="num">·</span>11~20레벨부터는 <b>150</b> 경험치로, 10레벨 구간마다 <b>+50</b>씩 늘어나요.</li>
+        <li><span class="num">·</span>레벨이 아주 높아지면 필요 경험치는 최대 <b>2,500</b>에서 더는 늘지 않아요.</li>
+        <li><span class="num">·</span>운동을 마치고 결과를 저장하면 정확도·판정 결과에 따라 경험치를 받아요.</li>
+      </ul>`,
+  },
+  {
+    id: 'grade',
+    q: '레벨 앞의 등급(아이언~챌린저)은 무엇인가요?',
+    a: () => `
+      <p class="desc" style="margin:0 0 10px;">500레벨에서 경험치를 모두 채우면 다음 등급으로 승급하면서 레벨이 다시 1로 초기화돼요. 등급은 아래 10단계 순서로 올라갑니다.</p>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        ${Object.keys(USER_GRADE_COLORS).map(code => `
+        <div class="flex-between" style="border:1px solid var(--line);border-radius:10px;padding:8px 12px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="level-badge-icon" style="width:26px;height:26px;font-size:14px;background:${USER_GRADE_COLORS[code]};">💪</span>
+            <b style="font-size:13.5px;">${USER_GRADE_NAMES[code]}</b>
+          </div>
+          <span class="hint" style="margin:0;">${code}</span>
+        </div>`).join('')}
+      </div>`,
+  },
+];
+function toggleFaq(id){
+  state.support.faqOpen[id] = !state.support.faqOpen[id];
+  render();
+}
+function renderFaqCard(item){
+  const open = !!state.support.faqOpen[item.id];
+  return `
+      <div class="card" style="cursor:pointer;" onclick="toggleFaq('${item.id}')">
+        <div class="flex-between">
+          <h3 style="margin:0;font-size:15px;">${item.q}</h3>
+          <span class="mono" style="color:var(--ink-faint);flex:none;margin-left:10px;">${open ? '▲' : '▼'}</span>
+        </div>
+        ${open ? `<div style="margin-top:12px;" onclick="event.stopPropagation();">${item.a()}</div>` : ''}
+      </div>`;
+}
+
 function renderSupport(){
   const s=state.support;
   const section=s.section || 'guide';
@@ -175,8 +224,27 @@ function renderSupportInquiry(){
       ${!adminView ? `<button class="btn btn-primary btn-sm" onclick="${(state.guestMode && !s.composerOpen) ? "goto('login')" : 'toggleComposer()'}">${s.composerOpen?'접기':'불편사항 접수하기'}</button>` : ''}
     </div>
   </div>
-  ${(!adminView && s.composerOpen) ? `<div class="card" style="max-width:560px;margin-bottom:20px;"><p class="section-label">새 불편사항 접수</p><div class="field"><label for="sp-type">유형</label><select id="sp-type"><option>Error</option><option>기능제안</option><option>기타</option></select></div><div class="field"><label for="sp-title">제목</label><input id="sp-title" placeholder="어떤 문제인지 한 줄로 요약해주세요"></div><div class="field"><label for="sp-body">내용</label><textarea id="sp-body" rows="4" placeholder="언제, 어떤 화면에서, 어떤 문제가 발생했는지 알려주세요"></textarea></div><button class="btn btn-primary" onclick="submitTicket()">접수하기</button></div>` : ''}
-  <div class="grid grid-2">${list.length===0 ? `<div class="empty-note">해당하는 ${adminView?'문의':'접수'} 내역이 없습니다.</div>` : list.map(t => adminView ? renderAdminTicketCard(t) : renderMyTicketCard(t)).join('')}</div>`;
+  ${adminView ? '' : `
+  <div style="margin-bottom:20px;">
+    <p class="section-label">자주하는 질문</p>
+    <div style="display:flex;flex-direction:column;gap:12px;">${FAQ_ITEMS.map(renderFaqCard).join('')}</div>
+  </div>`}
+
+  ${(!adminView && s.composerOpen) ? `
+  <div class="card" style="max-width:560px;margin-bottom:20px;">
+    <p class="section-label">새 불편사항 접수</p>
+    <div class="field"><label for="sp-type">유형</label>
+      <select id="sp-type"><option>Error</option><option>기능제안</option><option>기타</option></select>
+    </div>
+    <div class="field"><label for="sp-title">제목</label><input id="sp-title" placeholder="어떤 문제인지 한 줄로 요약해주세요"></div>
+    <div class="field"><label for="sp-body">내용</label><textarea id="sp-body" rows="4" placeholder="언제, 어떤 화면에서, 어떤 문제가 발생했는지 알려주세요"></textarea></div>
+    <button class="btn btn-primary" onclick="submitTicket()">접수하기</button>
+  </div>` : ''}
+
+  <div class="grid grid-2">
+    ${list.length===0 ? `<div class="empty-note">해당하는 ${adminView?'문의':'접수'} 내역이 없습니다.</div>`
+      : list.map(t => adminView ? renderAdminTicketCard(t) : renderMyTicketCard(t)).join('')}
+  </div>`;
 }
 function renderMyTicketCard(t){
   return `

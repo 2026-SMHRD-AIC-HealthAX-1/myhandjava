@@ -4,10 +4,10 @@
 // 재사용하지 않고 내 기록 중심 대시보드를 따로 그린다.
 // action은 클릭 시 호출할 게스트 체험 진입 함수(startGuest*) 이름을 문자열로 받는다.
 const LANDING_FEATURES = [
-  {title:'AI 자세 판정 및 운동', desc:'스마트폰 카메라만으로 스쿼트 같은 운동 자세를 실시간으로 분석하고 정확도를 채점해요.', action:'startGuestExercise()', cta:'지금 체험하기',
+  {title:'AI 자세 판정 및 운동', desc:'카메라만으로 스쿼트 같은 운동 자세를 실시간으로 분석하고 정확도를 채점해요.', action:'startGuestExercise()', cta:'지금 체험하기',
    image:'assets/ai-demo-preview.png', imageAlt:'캘리브레이션 실루엣 위에 스켈레톤이 겹쳐 스쿼트 자세를 실시간으로 판정하는 화면 예시'},
   {title:'실시간 크루대전', desc:'우리 크루와 다른 동네 크루가 실시간으로 스쿼트 점수 대결을 펼쳐요.', action:'startGuestCrew()', cta:'우리 동네 크루확인하기',
-   image:'assets/crew-battle-demo-preview.png', imageAlt:'앉은 자세 스쿼트 판정 스마트폰 카메라 화면과 팀별 실시간 점수·팀원 캐릭터가 함께 표시되는 5vs5 크루대전 화면 예시'},
+   image:'assets/crew-battle-demo-preview.png', imageAlt:'앉은 자세 스쿼트 판정 카메라 화면과 팀별 실시간 점수·팀원 캐릭터가 함께 표시되는 5vs5 크루대전 화면 예시'},
   {title:'운동 히스토리 관리', desc:'날짜별 운동 기록과 점수·정확도를 한눈에 모아서 관리해요.', action:'startGuestHistory()', cta:'히스토리 보기',
    image:'assets/history-demo-preview.png', imageAlt:'날짜별 운동 점수·정확도가 정리된 운동 히스토리 화면 예시'},
   {title:'우리 동네 랭킹 확인', desc:'역삼동 1위는 892점의 "써니핏"님! 지역별·종목별 랭킹에서 내 순위는 어디쯤일지 확인해보세요.', action:'startGuestRanking()', cta:'랭킹 보기',
@@ -52,7 +52,7 @@ function renderIntro(){
     <div class="landing-hero" id="home">
       <img src="assets/logo.png" alt="오운홈" style="width:180px;max-width:60%;margin:0 auto 8px;display:block;">
       <h1>집에서, 우리 동네 사람들과 함께 운동해요</h1>
-      <p>스마트폰 카메라으로 자세를 실시간 판정하고, 미션과 랭킹으로 이웃과 함께 성장하는 홈트레이닝 서비스예요.</p>
+      <p>카메라로 자세를 실시간 판정하고, 미션과 랭킹으로 이웃과 함께 성장하는 홈트레이닝 서비스예요.</p>
       
     </div>
     <div class="landing-body">
@@ -74,7 +74,7 @@ function startGuestExercise(){
   state.guestMode=true;
   state.screen='app';
   state.menu='exercise';
-  state.exercise={step:0, picked:null, camPhase:'idle', camStream:null, timerId:null, seconds:0, result:null, retakesUsed:0, liveReps:[], replayOpen:false};
+  state.exercise = freshExerciseState();
   render();
 }
 function startGuestCrew(){

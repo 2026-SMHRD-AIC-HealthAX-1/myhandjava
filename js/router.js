@@ -15,6 +15,7 @@ function render() {
   if (state.crewParty.statusOpen) root.innerHTML += renderPartyStatusModal();
   if (state.crewConceptEditor.open) root.innerHTML += renderCrewConceptEditorModal();
   if (state.publicProfileModal.open) root.innerHTML += renderPublicProfileModal();
+  if (state.chatModeration.open) root.innerHTML += renderChatModerationModal();
   if (state.exercise.replayOpen) root.innerHTML += renderReplayPopup();
   // 캘리브레이션 모달은 회원가입 화면뿐 아니라, 운동 탭에서 "캘리브레이션 필수" 조건에 걸려
   // 열릴 수도 있으므로 화면(screen)과 무관하게 calModalOpen 플래그만 본다.
@@ -112,7 +113,7 @@ function renderApp() {
           <span class="topbar-nick">${state.guestMode ? '비회원' : (state.user.nickname || '홈트초보')}</span>
           <div class="topbar-avatar" onclick="setMenu('profile');setSub('profile',0);" title="마이페이지 · 캐릭터 꾸미기">
             <canvas id="topbar-avatar-canvas"></canvas>
-            <span class="mono">Lv.${state.guestMode ? 0 : state.user.level}</span>
+            ${state.guestMode ? '<span class="mono">Lv.0</span>' : userLevelBadge(state.user.grade, state.user.gradeName, state.user.level, true)}
           </div>
         </div>
         ${state.notifPanelOpen ? renderNotifPanel() : ''}

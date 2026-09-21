@@ -340,6 +340,11 @@ button{font-family:inherit;}
 .pill-danger{background:var(--danger-soft);color:var(--danger);border-color:var(--danger);}
 .pill-muted{background:var(--surface-2);color:var(--ink-faint);border-color:var(--line);}
 
+/* 사용자 등급 배지(아이언~챌린저) — 팔각형 안에 등급 색 배경을 채우고 알통 이모지를 얹는다.
+   크기·글자 크기는 userLevelBadge()가 인라인 style로 넘겨준다(공용 배지 위치마다 크기가 달라서). */
+.level-badge-icon{display:inline-flex;align-items:center;justify-content:center;flex:none;line-height:1;
+  clip-path:polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);}
+
 .exercise-card{cursor:pointer;transition:border-color .15s ease, transform .1s ease, box-shadow .1s ease;}
 .exercise-card:hover{transform:translate(-1px,-3px);box-shadow:5px 6px 0 var(--outline);}
 .exercise-card.selected{background:var(--gold-soft);box-shadow:4px 5px 0 var(--gold);}

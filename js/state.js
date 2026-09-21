@@ -15,7 +15,7 @@ const state = {
     regionCity:'서울시', regionGu:'강남구', regionDong:'역삼동', gender:'male', calibrated:false,
     calModalOpen:false, calStage:'idle', calProfile:null, calError:'',
   },
-  user: {id: null, nickname:'', avatar:0, gender:'male', points:1240, exp:62, level:7, region:'서울시 강남구 역삼동', retakeTickets:0, nicknameTickets:0, bio:'',
+  user: {id: null, nickname:'', avatar:0, gender:'male', points:1240, exp:62, level:7, grade:'IRON', gradeName:'아이언', region:'서울시 강남구 역삼동', retakeTickets:0, nicknameTickets:0, bio:'',
     streak:10, streakRewardClaimed:false, extraSets:0, setsUsedToday:0, role:'USER'},
   menu: 'main',
   subtabs: {mission:0, profile:0, crew:0, ranking:0},
@@ -74,12 +74,16 @@ const state = {
     section:'guide', // 고객센터: 서비스 안내 / F&A / 문의
     composerOpen:false,
     filter:'all',
+    faqOpen:{}, // 자주하는 질문 카드별 펼침 상태 — {questionId: true/false}
     tickets:[], // 서버에서 실제 내 문의 목록을 받아와 채우는 배열 (loadSupportTickets 참고)
     adminView:false, // 관리자(role==='ADMIN')만 "전체 문의" 화면으로 전환 가능
     adminTickets:[], // 전체 사용자 문의 목록 (loadAllSupportTickets 참고)
   },
   confirm: null,
   publicProfileModal: {open:false, loading:false, data:null}, // 랭킹 단상 아바타 클릭 시 (ranking.js openPublicProfile 참고)
+  // 크루채팅에서 남의 메시지를 클릭하면 뜨는 신고/차단 작은 팝업 (crew.js openChatModeration 참고).
+  // 백엔드에 신고/차단 API가 아직 없어서(2026-09-20 확인) 지금은 UI만 있고 실제 서버 저장은 안 된다.
+  chatModeration: {open:false, messageId:null, targetUserId:null, targetNickname:null},
   findIdModal: {open:false, result:null},
   findPwModal: {open:false, done:false},
   rankFilter: {city:null, gu:null, dong:null},

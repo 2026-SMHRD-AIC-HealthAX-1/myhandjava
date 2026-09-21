@@ -27,9 +27,9 @@ js/
   router.js       화면 라우팅 + 앱 셸(사이드바/탑바)
   landing.js      로그인 전 랜딩 페이지
   auth.js         회원가입/로그인/소셜로그인/아이디·비밀번호 찾기
-  calibration.js  웹캠 체형 캘리브레이션 (MediaPipe Pose)
+  calibration.js  카메라 체형 캘리브레이션 (MediaPipe Pose)
   main.js         메인 대시보드
-  exercise.js     운동(웹캠 자세 판정) — 가장 큰 파일
+  exercise.js     운동(카메라 자세 판정) — 가장 큰 파일
   mission.js      일간 미션
   profile.js      마이페이지(캐릭터/미션현황/히스토리/계정관리)
   shop.js         포인트 상점
