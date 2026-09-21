@@ -1,0 +1,102 @@
+// landing.js — 로그인 전 랜딩(소개) 페이지. 비회원 체험 진입점(startGuest*)도 여기 있습니다.
+
+// 랜딩 페이지 전용 카드 — 로그인 후 "메인" 카테고리(renderMain)는 더 이상 이 소개 카드를
+// 재사용하지 않고 내 기록 중심 대시보드를 따로 그린다.
+// action은 클릭 시 호출할 게스트 체험 진입 함수(startGuest*) 이름을 문자열로 받는다.
+const LANDING_FEATURES = [
+  {title:'AI 자세 판정 및 운동', desc:'카메라만으로 스쿼트 같은 운동 자세를 실시간으로 분석하고 정확도를 채점해요.', action:'startGuestExercise()', cta:'지금 체험하기',
+   image:'assets/ai-demo-preview.png', imageAlt:'캘리브레이션 실루엣 위에 스켈레톤이 겹쳐 스쿼트 자세를 실시간으로 판정하는 화면 예시'},
+  {title:'실시간 크루대전', desc:'우리 크루와 다른 동네 크루가 실시간으로 스쿼트 점수 대결을 펼쳐요.', action:'startGuestCrew()', cta:'우리 동네 크루확인하기',
+   image:'assets/crew-battle-demo-preview.png', imageAlt:'앉은 자세 스쿼트 판정 카메라 화면과 팀별 실시간 점수·팀원 캐릭터가 함께 표시되는 5vs5 크루대전 화면 예시'},
+  {title:'운동 히스토리 관리', desc:'날짜별 운동 기록과 점수·정확도를 한눈에 모아서 관리해요.', action:'startGuestHistory()', cta:'히스토리 보기',
+   image:'assets/history-demo-preview.png', imageAlt:'날짜별 운동 점수·정확도가 정리된 운동 히스토리 화면 예시'},
+  {title:'우리 동네 랭킹 확인', desc:'역삼동 1위는 892점의 "써니핏"님! 지역별·종목별 랭킹에서 내 순위는 어디쯤일지 확인해보세요.', action:'startGuestRanking()', cta:'랭킹 보기',
+   image:'assets/ranking-demo-preview.png', imageAlt:'지역별 랭킹 화면의 1~3위 포디움과 순위표 예시'},
+];
+function renderLandingFeatures(){
+  return `
+  <div class="grid grid-3">
+    ${LANDING_FEATURES.map(f=>`
+      <div class="card exercise-card" style="text-align:center;" onclick="${f.action}">
+        ${f.image ? `<img src="${f.image}" alt="${f.imageAlt||''}" style="width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:12px;border:2px solid var(--outline);margin-bottom:12px;display:block;">` : ''}
+        <h3 style="margin:0 0 6px;font-size:15px;">${f.title}</h3>
+        <p class="desc" style="margin:0;">${f.desc}</p>
+        <span class="pill pill-accent" style="margin-top:8px;">${f.cta}</span>
+      </div>`).join('')}
+  </div>`;
+}
+function renderLandingBottomNav(){
+  const items=[
+    {icon:'🏠', label:'홈', action:"window.scrollTo({top:0,behavior:'smooth'})"},
+    {icon:'🎯', label:'AI 자세판정', action:'startGuestExercise()'},
+    {icon:'⚔️', label:'크루대전', action:'startGuestCrew()'},
+    {icon:'👤', label:'회원가입/로그인', action:"goto('login')"},
+  ];
+  return `
+  <nav class="landing-bottomnav">
+    ${items.map(it=>`
+      <div class="landing-bottomnav-item" onclick="${it.action}">
+        <span class="icon">${it.icon}</span><span class="label">${it.label}</span>
+      </div>`).join('')}
+  </nav>`;
+}
+function renderIntro(){
+  return `
+  <div class="landing-shell">
+    <div class="landing-topbar">
+      <div class="brand" style="cursor:default;">
+        <div class="brand-mark"><img src="assets/logo.png" alt="오운홈"></div>
+        <div class="brand-name">오운홈<small>O - Un - Home</small></div>
+      </div>
+    </div>
+    <div class="landing-hero" id="home">
+      <img src="assets/logo.png" alt="오운홈" style="width:180px;max-width:60%;margin:0 auto 8px;display:block;">
+      <h1>집에서, 우리 동네 사람들과 함께 운동해요</h1>
+      <p>카메라로 자세를 실시간 판정하고, 미션과 랭킹으로 이웃과 함께 성장하는 홈트레이닝 서비스예요.</p>
+      
+    </div>
+    <div class="landing-body">
+      <h2 class="landing-section-title">이런 걸 할 수 있어요</h2>
+      ${renderLandingFeatures()}
+    </div>
+  </div>
+  ${renderLandingBottomNav()}`;
+}
+
+/* ---------- 로그인 전 "게스트 모드" ----------
+   랜딩 페이지 소개 카드를 누르면 회원가입 없이도 screen='app'으로 들어가 로그인했을 때와 완전히
+   같은 화면(사이드바 전체 카테고리)을 그대로 둘러볼 수 있다. renderApp()은 실제 로그인 사용자와
+   게스트를 구분하지 않고 똑같이 그린다 — state.user/state.crew/state.history 등은 로그인 여부와
+   무관하게 항상 존재하는 데모값이라 그대로 재사용된다. 다만 계정에 실제로 뭔가를 남기는 액션
+   (운동 결과 저장, 크루 가입요청·생성, 메인 화면의 포인트받기·전체보기)만 state.guestMode를 보고
+   로그인 화면으로 유도한다. */
+function startGuestExercise(){
+  state.guestMode=true;
+  state.screen='app';
+  state.menu='exercise';
+  state.exercise = freshExerciseState();
+  render();
+}
+function startGuestCrew(){
+  state.guestMode=true;
+  state.screen='app';
+  state.menu='crew';
+  render();
+}
+function startGuestHistory(){
+  state.guestMode=true;
+  state.screen='app';
+  state.menu='profile';
+  state.subtabs.profile=2; // '운동 히스토리' 탭
+  render();
+}
+function startGuestRanking(){
+  state.guestMode=true;
+  state.screen='app';
+  state.menu='ranking';
+  render();
+}
+
+/* ---------- 회원가입 ---------- */
+// 시 -> 구 -> 동 순으로 좁혀가는 활동 지역 선택용 데이터. 랭킹 집계 단위는 기존과 동일하게
+// 동(가장 마지막 값) 기준을 유지하고, 저장 시에는 세 값을 합쳐 기존과 같은 "시 구 동" 문자열로 만든다.

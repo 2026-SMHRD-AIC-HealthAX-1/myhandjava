@@ -1,0 +1,672 @@
+[
+  {
+    "id": "head-headband",
+    "name": "오렌지 헤드밴드",
+    "price": 120,
+    "slot": "head",
+    "legacySlot": null,
+    "category": "헤어",
+    "levelReq": 1,
+    "effect": "능력치 없음 · 외형 전용",
+    "effectDesc": "운동할 때 포인트가 되는 오렌지 헤드밴드입니다.",
+    "asset": "assets/avatar-items/head-headband.png",
+    "layerAssets": [],
+    "genders": [
+      "male",
+      "female"
+    ],
+    "defaultOwned": true,
+    "active": true
+  },
+  {
+    "id": "head-cap",
+    "name": "네이비 스포츠 캡",
+    "price": 220,
+    "slot": "head",
+    "legacySlot": null,
+    "category": "헤어",
+    "levelReq": 2,
+    "effect": "능력치 없음 · 외형 전용",
+    "effectDesc": "차분한 네이비 컬러의 스포츠 캡입니다.",
+    "asset": "assets/avatar-items/head-cap.png",
+    "layerAssets": [],
+    "genders": [
+      "male",
+      "female"
+    ],
+    "defaultOwned": false,
+    "active": true
+  },
+  {
+    "id": "head-crown",
+    "name": "골드 챔피언 왕관",
+    "price": 450,
+    "slot": "head",
+    "legacySlot": null,
+    "category": "헤어",
+    "levelReq": 4,
+    "effect": "능력치 없음 · 외형 전용",
+    "effectDesc": "챌린지 우승자를 위한 골드 왕관입니다.",
+    "asset": "assets/avatar-items/head-crown.png",
+    "layerAssets": [],
+    "genders": [
+      "male",
+      "female"
+    ],
+    "defaultOwned": false,
+    "active": true
+  },
+  {
+    "id": "top-mint-shirt",
+    "name": "민트 트레이닝 티셔츠",
+    "price": 180,
+    "slot": "top",
+    "legacySlot": null,
+    "category": "상의",
+    "levelReq": 1,
+    "effect": "능력치 없음 · 외형 전용",
+    "effectDesc": "가볍게 입기 좋은 민트색 운동 티셔츠입니다.",
+    "asset": "assets/avatar-items/top-mint-shirt.png",
+    "layerAssets": [],
+    "genders": [
+      "male",
+      "female"
+    ],
+    "defaultOwned": true,
+    "active": true
+  },
+  {
+    "id": "top-orange-jacket",
+    "name": "오렌지 트랙 재킷",
+    "price": 320,
+    "slot": "top",
+    "legacySlot": null,
+    "category": "상의",
+    "levelReq": 3,
+    "effect": "능력치 없음 · 외형 전용",
+    "effectDesc": "활기찬 오렌지 컬러의 집업 트랙 재킷입니다.",
+    "asset": "assets/avatar-items/top-orange-jacket.png",
+    "layerAssets": [],
+    "genders": [
+      "male",
+      "female"
+    ],
+    "defaultOwned": false,
+    "active": true
+  },
+  {
+    "id": "top-lavender-hoodie",
+    "name": "라벤더 후디",
+    "price": 340,
+    "slot": "top",
+    "legacySlot": null,
+    "category": "상의",
+    "levelReq": 3,
+    "effect": "능력치 없음 · 외형 전용",
+    "effectDesc": "부드러운 라벤더색 후드 운동복입니다.",
+    "asset": "assets/avatar-items/top-lavender-hoodie.png",
+    "layerAssets": [],
+    "genders": [
+      "male",
+      "female"
+    ],
+    "defaultOwned": false,
+    "active": true
+  },
+  {
+    "id": "bottom-mint-shorts",
+    "name": "민트 스포츠 반바지",
+    "price": 160,
+    "slot": "bottom",
+    "legacySlot": null,
+    "category": "하의",
+    "levelReq": 1,
+    "effect": "능력치 없음 · 외형 전용",
+    "effectDesc": "산뜻한 민트색 스포츠 반바지입니다.",
+    "asset": "assets/avatar-items/bottom-mint-shorts.png",
+    "layerAssets": [],
+    "genders": [
+      "male",
+      "female"
+    ],
+    "defaultOwned": true,
+    "active": true
+  },
+  {
+    "id": "bottom-charcoal-pants",
+    "name": "차콜 트랙 팬츠",
+    "price": 280,
+    "slot": "bottom",
+    "legacySlot": null,
+    "category": "하의",
+    "levelReq": 2,
+    "effect": "능력치 없음 · 외형 전용",
+    "effectDesc": "오렌지 라인이 들어간 차콜 트레이닝 팬츠입니다.",
+    "asset": "assets/avatar-items/bottom-charcoal-pants.png",
+    "layerAssets": [],
+    "genders": [
+      "male",
+      "female"
+    ],
+    "defaultOwned": false,
+    "active": true
+  },
+  {
+    "id": "bottom-lavender-joggers",
+    "name": "라벤더 조거 팬츠",
+    "price": 300,
+    "slot": "bottom",
+    "legacySlot": null,
+    "category": "하의",
+    "levelReq": 3,
+    "effect": "능력치 없음 · 외형 전용",
+    "effectDesc": "편안한 핏의 라벤더 조거 팬츠입니다.",
+    "asset": "assets/avatar-items/bottom-lavender-joggers.png",
+    "layerAssets": [],
+    "genders": [
+      "male",
+      "female"
+    ],
+    "defaultOwned": false,
+    "active": true
+  },
+  {
+    "id": "shoes-orange-runners",
+    "name": "오렌지 러닝화",
+    "price": 200,
+    "slot": "shoes",
+    "legacySlot": null,
+    "category": "신발",
+    "levelReq": 1,
+    "effect": "능력치 없음 · 외형 전용",
+    "effectDesc": "기본 컬러와 잘 어울리는 오렌지 러닝화입니다.",
+    "asset": "assets/avatar-items/shoes-orange-runners.png",
+    "layerAssets": [],
+    "genders": [
+      "male",
+      "female"
+    ],
+    "defaultOwned": true,
+    "active": true
+  },
+  {
+    "id": "shoes-mint-sneakers",
+    "name": "민트 운동화",
+    "price": 260,
+    "slot": "shoes",
+    "legacySlot": null,
+    "category": "신발",
+    "levelReq": 2,
+    "effect": "능력치 없음 · 외형 전용",
+    "effectDesc": "민트 포인트가 들어간 산뜻한 운동화입니다.",
+    "asset": "assets/avatar-items/shoes-mint-sneakers.png",
+    "layerAssets": [],
+    "genders": [
+      "male",
+      "female"
+    ],
+    "defaultOwned": false,
+    "active": true
+  },
+  {
+    "id": "shoes-lavender-hightops",
+    "name": "라벤더 하이탑",
+    "price": 310,
+    "slot": "shoes",
+    "legacySlot": null,
+    "category": "신발",
+    "levelReq": 3,
+    "effect": "능력치 없음 · 외형 전용",
+    "effectDesc": "발목까지 올라오는 라벤더 하이탑 운동화입니다.",
+    "asset": "assets/avatar-items/shoes-lavender-hightops.png",
+    "layerAssets": [],
+    "genders": [
+      "male",
+      "female"
+    ],
+    "defaultOwned": false,
+    "active": true
+  },
+  {
+    "id": "accessory-wristbands",
+    "name": "오렌지 손목밴드",
+    "price": 100,
+    "slot": "wrist",
+    "legacySlot": "accessory",
+    "category": "기타",
+    "levelReq": 1,
+    "effect": "능력치 없음 · 외형 전용",
+    "effectDesc": "양쪽 손목에 함께 착용하는 오렌지 밴드입니다.",
+    "asset": "assets/avatar-items/accessory-wristbands.png",
+    "layerAssets": [
+      "assets/avatar-items/accessory-wristband-left-layer.png",
+      "assets/avatar-items/accessory-wristband-right-layer.png"
+    ],
+    "genders": [
+      "male",
+      "female"
+    ],
+    "defaultOwned": true,
+    "active": true
+  },
+  {
+    "id": "accessory-smartwatch",
+    "name": "네이비 스마트워치",
+    "price": 240,
+    "slot": "wrist",
+    "legacySlot": "accessory",
+    "category": "기타",
+    "levelReq": 2,
+    "effect": "능력치 없음 · 외형 전용",
+    "effectDesc": "운동 기록을 확인하는 네이비 스마트워치입니다.",
+    "asset": "assets/avatar-items/accessory-smartwatch.png",
+    "layerAssets": [],
+    "genders": [
+      "male",
+      "female"
+    ],
+    "defaultOwned": false,
+    "active": true
+  },
+  {
+    "id": "accessory-gold-medal",
+    "name": "골드 메달",
+    "price": 380,
+    "slot": "neck",
+    "legacySlot": "accessory",
+    "category": "기타",
+    "levelReq": 4,
+    "effect": "능력치 없음 · 외형 전용",
+    "effectDesc": "꾸준한 운동을 기념하는 골드 메달입니다.",
+    "asset": "assets/avatar-items/accessory-gold-medal.png",
+    "layerAssets": [],
+    "genders": [
+      "male",
+      "female"
+    ],
+    "defaultOwned": false,
+    "active": true
+  },
+  {
+    "id": "top-white-tank",
+    "name": "화이트 러닝 탱크톱",
+    "price": 170,
+    "slot": "top",
+    "legacySlot": null,
+    "category": "상의",
+    "levelReq": 1,
+    "effect": "능력치 없음 · 외형 전용",
+    "effectDesc": "더운 날 가볍게 입는 민소매 러닝 탱크톱입니다.",
+    "asset": "assets/avatar-items/top-white-tank.png",
+    "layerAssets": [],
+    "genders": [
+      "male",
+      "female"
+    ],
+    "defaultOwned": false,
+    "active": true
+  },
+  {
+    "id": "top-navy-longsleeve",
+    "name": "네이비 긴팔 기능성 티",
+    "price": 260,
+    "slot": "top",
+    "legacySlot": null,
+    "category": "상의",
+    "levelReq": 2,
+    "effect": "능력치 없음 · 외형 전용",
+    "effectDesc": "손목까지 내려오는 흡습속건 긴팔 티셔츠입니다.",
+    "asset": "assets/avatar-items/top-navy-longsleeve.png",
+    "layerAssets": [],
+    "genders": [
+      "male",
+      "female"
+    ],
+    "defaultOwned": false,
+    "active": true
+  },
+  {
+    "id": "outer-orange-vest",
+    "name": "오렌지 바람막이 베스트",
+    "price": 330,
+    "slot": "outer",
+    "legacySlot": null,
+    "category": "아우터",
+    "levelReq": 3,
+    "effect": "능력치 없음 · 외형 전용",
+    "effectDesc": "티셔츠 위에 겹쳐 입는 경량 바람막이 베스트입니다.",
+    "asset": "assets/avatar-items/outer-orange-vest.png",
+    "layerAssets": [],
+    "genders": [
+      "male",
+      "female"
+    ],
+    "defaultOwned": false,
+    "active": true
+  },
+  {
+    "id": "bottom-black-leggings",
+    "name": "블랙 러닝 레깅스",
+    "price": 280,
+    "slot": "bottom",
+    "legacySlot": null,
+    "category": "하의",
+    "levelReq": 2,
+    "effect": "능력치 없음 · 외형 전용",
+    "effectDesc": "다리에 밀착되는 블랙 러닝 레깅스입니다.",
+    "asset": "assets/avatar-items/bottom-black-leggings.png",
+    "layerAssets": [],
+    "genders": [
+      "male",
+      "female"
+    ],
+    "defaultOwned": false,
+    "active": true
+  },
+  {
+    "id": "bottom-grey-training-pants",
+    "name": "그레이 트레이닝 팬츠",
+    "price": 290,
+    "slot": "bottom",
+    "legacySlot": null,
+    "category": "하의",
+    "levelReq": 2,
+    "effect": "능력치 없음 · 외형 전용",
+    "effectDesc": "발목까지 내려오는 그레이 긴 트레이닝 팬츠입니다.",
+    "asset": "assets/avatar-items/bottom-grey-training-pants.png",
+    "layerAssets": [],
+    "genders": [
+      "male",
+      "female"
+    ],
+    "defaultOwned": false,
+    "active": true
+  },
+  {
+    "id": "socks-white-ankle",
+    "name": "화이트 발목 양말",
+    "price": 80,
+    "slot": "socks",
+    "legacySlot": null,
+    "category": "양말",
+    "levelReq": 1,
+    "effect": "능력치 없음 · 외형 전용",
+    "effectDesc": "운동화 위로 살짝 보이는 발목 양말입니다.",
+    "asset": "assets/avatar-items/socks-white-ankle.png",
+    "layerAssets": [],
+    "genders": [
+      "male",
+      "female"
+    ],
+    "defaultOwned": false,
+    "active": true
+  },
+  {
+    "id": "socks-orange-crew",
+    "name": "오렌지 크루 양말",
+    "price": 120,
+    "slot": "socks",
+    "legacySlot": null,
+    "category": "양말",
+    "levelReq": 1,
+    "effect": "능력치 없음 · 외형 전용",
+    "effectDesc": "종아리 중간까지 올라오는 오렌지 크루 양말입니다.",
+    "asset": "assets/avatar-items/socks-orange-crew.png",
+    "layerAssets": [],
+    "genders": [
+      "male",
+      "female"
+    ],
+    "defaultOwned": false,
+    "active": true
+  },
+  {
+    "id": "head-white-visor",
+    "name": "화이트 러닝 바이저",
+    "price": 200,
+    "slot": "head",
+    "legacySlot": null,
+    "category": "헤어",
+    "levelReq": 2,
+    "effect": "능력치 없음 · 외형 전용",
+    "effectDesc": "햇빛을 막아주는 챙만 있는 러닝 바이저입니다.",
+    "asset": "assets/avatar-items/head-white-visor.png",
+    "layerAssets": [],
+    "genders": [
+      "male",
+      "female"
+    ],
+    "defaultOwned": false,
+    "active": true
+  },
+  {
+    "id": "eyewear-sport-sunglasses",
+    "name": "스포츠 선글라스",
+    "price": 250,
+    "slot": "eyewear",
+    "legacySlot": null,
+    "category": "아이웨어",
+    "levelReq": 2,
+    "effect": "능력치 없음 · 외형 전용",
+    "effectDesc": "미러 렌즈가 들어간 러닝용 스포츠 선글라스입니다.",
+    "asset": "assets/avatar-items/eyewear-sport-sunglasses.png",
+    "layerAssets": [],
+    "genders": [
+      "male",
+      "female"
+    ],
+    "defaultOwned": false,
+    "active": true
+  },
+  {
+    "id": "hair-pink-scrunchie",
+    "name": "핑크 스크런치",
+    "price": 90,
+    "slot": "hair",
+    "legacySlot": null,
+    "category": "헤어",
+    "levelReq": 1,
+    "effect": "능력치 없음 · 외형 전용",
+    "effectDesc": "옆머리에 포인트를 주는 핑크 스크런치입니다.",
+    "asset": "assets/avatar-items/hair-pink-scrunchie.png",
+    "layerAssets": [],
+    "genders": [
+      "female"
+    ],
+    "defaultOwned": false,
+    "active": true
+  },
+  {
+    "id": "bag-black-hipsack",
+    "name": "블랙 러닝 힙색",
+    "price": 300,
+    "slot": "bag",
+    "legacySlot": null,
+    "category": "가방",
+    "levelReq": 2,
+    "effect": "능력치 없음 · 외형 전용",
+    "effectDesc": "허리에 두르는 슬림한 러닝 힙색입니다.",
+    "asset": "assets/avatar-items/bag-black-hipsack.png",
+    "layerAssets": [],
+    "genders": [
+      "male",
+      "female"
+    ],
+    "defaultOwned": false,
+    "active": true
+  },
+  {
+    "id": "hands-handheld-bottle",
+    "name": "핸드헬드 물병",
+    "price": 150,
+    "slot": "hands",
+    "legacySlot": null,
+    "category": "기타",
+    "levelReq": 1,
+    "effect": "능력치 없음 · 외형 전용",
+    "effectDesc": "손에 끼워 들고 달리는 핸드헬드 물병입니다.",
+    "asset": "assets/avatar-items/hands-handheld-bottle.png",
+    "layerAssets": [],
+    "genders": [
+      "male",
+      "female"
+    ],
+    "defaultOwned": false,
+    "active": true
+  },
+  {
+    "id": "legwear-black-kneepads",
+    "name": "블랙 무릎 보호대",
+    "price": 180,
+    "slot": "legwear",
+    "legacySlot": null,
+    "category": "보호대",
+    "levelReq": 2,
+    "effect": "능력치 없음 · 외형 전용",
+    "effectDesc": "양쪽 무릎을 감싸는 블랙 무릎 보호대입니다.",
+    "asset": "assets/avatar-items/legwear-black-kneepads.png",
+    "layerAssets": [],
+    "genders": [
+      "male",
+      "female"
+    ],
+    "defaultOwned": false,
+    "active": true
+  },
+  {
+    "id": "legwear-orange-calf-sleeves",
+    "name": "오렌지 종아리 슬리브",
+    "price": 190,
+    "slot": "legwear",
+    "legacySlot": null,
+    "category": "보호대",
+    "levelReq": 2,
+    "effect": "능력치 없음 · 외형 전용",
+    "effectDesc": "종아리를 압박해 주는 오렌지 슬리브입니다.",
+    "asset": "assets/avatar-items/legwear-orange-calf-sleeves.png",
+    "layerAssets": [],
+    "genders": [
+      "male",
+      "female"
+    ],
+    "defaultOwned": false,
+    "active": true
+  },
+  {
+    "id": "hands-running-gloves",
+    "name": "네이비 러닝 장갑",
+    "price": 160,
+    "slot": "hands",
+    "legacySlot": null,
+    "category": "기타",
+    "levelReq": 2,
+    "effect": "능력치 없음 · 외형 전용",
+    "effectDesc": "겨울 러닝용 네이비 터치 장갑입니다.",
+    "asset": "assets/avatar-items/hands-running-gloves.png",
+    "layerAssets": [
+      "assets/avatar-items/hands-running-glove-left-layer.png",
+      "assets/avatar-items/hands-running-glove-right-layer.png"
+    ],
+    "genders": [
+      "male",
+      "female"
+    ],
+    "defaultOwned": false,
+    "active": true
+  },
+  {
+    "id": "neck-grey-neckwarmer",
+    "name": "그레이 넥워머",
+    "price": 170,
+    "slot": "neck",
+    "legacySlot": null,
+    "category": "기타",
+    "levelReq": 2,
+    "effect": "능력치 없음 · 외형 전용",
+    "effectDesc": "목을 따뜻하게 감싸는 그레이 넥워머입니다.",
+    "asset": "assets/avatar-items/neck-grey-neckwarmer.png",
+    "layerAssets": [],
+    "genders": [
+      "male",
+      "female"
+    ],
+    "defaultOwned": false,
+    "active": true
+  },
+  {
+    "id": "background-riverside-day",
+    "name": "배경 - 맑은 강변 산책로",
+    "price": 250,
+    "slot": "background",
+    "legacySlot": null,
+    "category": "배경",
+    "levelReq": 1,
+    "effect": "능력치 없음 · 외형 전용",
+    "effectDesc": "푸른 하늘과 강변 러닝 코스가 펼쳐진 밝은 낮 배경입니다.",
+    "asset": "assets/avatar-items/background-riverside-day.png",
+    "layerAssets": [],
+    "genders": [
+      "male",
+      "female"
+    ],
+    "defaultOwned": false,
+    "active": true
+  },
+  {
+    "id": "background-riverside-sunset",
+    "name": "배경 - 노을빛 강변",
+    "price": 300,
+    "slot": "background",
+    "legacySlot": null,
+    "category": "배경",
+    "levelReq": 2,
+    "effect": "능력치 없음 · 외형 전용",
+    "effectDesc": "주황빛 노을이 물든 강변 러닝 코스 배경입니다.",
+    "asset": "assets/avatar-items/background-riverside-sunset.png",
+    "layerAssets": [],
+    "genders": [
+      "male",
+      "female"
+    ],
+    "defaultOwned": false,
+    "active": true
+  },
+  {
+    "id": "background-autumn-lake",
+    "name": "배경 - 가을 호수 공원",
+    "price": 350,
+    "slot": "background",
+    "legacySlot": null,
+    "category": "배경",
+    "levelReq": 3,
+    "effect": "능력치 없음 · 외형 전용",
+    "effectDesc": "단풍과 호수가 어우러진 따뜻한 가을 공원 배경입니다.",
+    "asset": "assets/avatar-items/background-autumn-lake.png",
+    "layerAssets": [],
+    "genders": [
+      "male",
+      "female"
+    ],
+    "defaultOwned": false,
+    "active": true
+  },
+  {
+    "id": "background-rainy-park",
+    "name": "배경 - 비 오는 가로수길",
+    "price": 320,
+    "slot": "background",
+    "legacySlot": null,
+    "category": "배경",
+    "levelReq": 3,
+    "effect": "능력치 없음 · 외형 전용",
+    "effectDesc": "가로등 불빛이 비치는 차분한 빗속 공원 배경입니다.",
+    "asset": "assets/avatar-items/background-rainy-park.png",
+    "layerAssets": [],
+    "genders": [
+      "male",
+      "female"
+    ],
+    "defaultOwned": false,
+    "active": true
+  }
+]
