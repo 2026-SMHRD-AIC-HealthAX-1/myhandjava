@@ -1,4 +1,12 @@
 // crew.js — '홈크루' 카테고리: 생성/가입/멤버관리/채팅/크루대전.
+// [담당] '홈크루' 카테고리 대부분(생성/가입/탈퇴/공지/채팅/멤버관리) + 크루대전 파티맺기.
+// [백엔드 연동] GET/POST/PATCH/DELETE /api/crews/** (REST) + WebSocket(SockJS+STOMP) /ws로
+//              채팅·멤버십 변경·대전파티 초대를 실시간 수신 → DB: crews, crew_members,
+//              crew_chat_messages, crew_chat_reports, crew_join_requests 등 크루 관련 테이블 전부.
+// [주의] ⚠️ 소켓 연결/해제(connectCrewChat/disconnectCrewChat) 타이밍을 안 맞추면 중복 구독되거나
+//        메시지를 못 받는다. 크루채팅 "신고하기"는 실제로 DB(crew_chat_reports)에 저장되어
+//        관리자모드에서 처리하니 장난으로 지우면 안 됨. 크루 해체(disband)는 대전 이력이 있는
+//        크루도 정상 처리되도록 CrewService.deleteCrewChildData에서 대전 테이블까지 정리한다.
 
 // 팀장일 때만 '크루원관리' 탭이 추가로 붙는다 (가입요청 승인·강퇴는 팀장 전용 화면으로 분리).
 function getCrewPageTabs() {
@@ -888,7 +896,6 @@ function pendingPartyInviteCount() {
   return (state.crewParty.incoming || []).length;
 }
 function toggleNotifPanel() { state.notifPanelOpen = !state.notifPanelOpen; render(); }
-function closeNotifPanel() { state.notifPanelOpen = false; render(); }
 function renderNotifPanel() {
   const pending = state.crewParty.incoming || [];
   return `
@@ -982,7 +989,6 @@ function checkPartyReady() {
   if (state.screen === 'app' && state.menu === 'crew') render();
   else updatePartyStatusModal();
 }
-function openPartyStatus() { state.crewParty.statusOpen = true; render(); }
 function closePartyStatus() { state.crewParty.statusOpen = false; render(); }
 function renderPartyInviteModal() {
   const p = state.crewParty;

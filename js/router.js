@@ -1,4 +1,8 @@
 // router.js — 화면 라우팅(render), 앱 셸(사이드바/탑바), 화면 전환(setMenu/goto), 공용 확인 모달.
+// [담당] 특정 카테고리 없음 — 모든 화면을 그리는 최상위 진입점(render()).
+// [백엔드 연동] 직접 fetch하지 않는다. 각 카테고리의 render 함수를 호출만 한다.
+// [주의] render()가 호출될 때마다 모든 모달의 open 상태(state.confirm, state.chatModeration 등)를
+//        순서대로 체크해서 붙인다 — 새 모달을 추가하면 반드시 여기 목록에도 등록해야 화면에 뜬다.
 
 function render() {
   const root = document.getElementById('app');

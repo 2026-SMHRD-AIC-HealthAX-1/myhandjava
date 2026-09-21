@@ -1,4 +1,8 @@
 // support.js — '고객센터' 카테고리: 문의 등록/조회.
+// [담당] '고객센터' 탭(서비스 안내/F&A/문의) — 관리자모드의 문의 관리 탭도 이 파일 함수를 재사용.
+// [백엔드 연동] POST/GET /api/support/tickets, PATCH .../reply, .../start → DB: support_tickets.
+// [주의] renderAdminTicketCard/loadAllSupportTickets 등은 admin.js가 그대로 가져다 쓰므로,
+//        여기 함수 시그니처를 바꾸면 admin.js의 고객센터 문의 관리 탭도 같이 깨진다.
 
 // 백엔드 SupportTicket.Status는 영문 enum(RECEIVED/IN_PROGRESS/ANSWERED)으로 내려오므로
 // 화면에 쓰는 한글 라벨로 바꿔준다. type은 SupportService.parseType()이 'Error'/'기능제안'/

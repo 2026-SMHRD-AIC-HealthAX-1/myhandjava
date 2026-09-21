@@ -1,4 +1,9 @@
 // state.js — 앱 전체 상태(state) 단일 객체. 지금은 이 객체 하나가 서버·DB 역할을 대신합니다. data.js 다음에 로드되어야 합니다.
+// [담당] 특정 카테고리 없음 — 모든 화면이 공유하는 전역 상태 정의.
+// [백엔드 연동] 이 파일 자체는 fetch를 하지 않는다. 다른 파일들(auth.js/profile.js 등)이 API
+//              응답을 받아서 이 객체의 필드에 채워 넣는 구조다.
+// [주의] 여기 필드를 추가/삭제하면 그 필드를 읽는 모든 render 함수도 같이 확인해야 한다 —
+//        특히 user/crew/signup 객체는 여러 파일에서 동시에 참조한다.
 
 const state = {
   screen: 'intro', // intro | login | app | admin — 중간 프로젝트 단계로 아이디/비밀번호 회원가입 화면(signup)은 없앴다(SNS 로그인만 지원, auth.js 참고)
@@ -10,9 +15,10 @@ const state = {
   token: null,
   notifPanelOpen: false, // 상단바 알림벨 — 크루대전 파티 신청 수락/거절 알림용(crew.js의 crewParty 참고)
 
+  // 회원가입 폼은 삭제됐지만(auth.js 참고, SNS 로그인 전용), 이 객체 자체는 캘리브레이션
+  // 모달 상태로 계속 쓰인다.
   signup: {
-    id:'', pw:'', pw2:'', nickname:'', email:'', referrerId:'',
-    regionCity:'서울시', regionGu:'강남구', regionDong:'역삼동', gender:'male', calibrated:false,
+    gender:'male', calibrated:false,
     calModalOpen:false, calStage:'idle', calProfile:null, calError:'',
   },
   // 소셜 로그인(카카오/구글)으로 처음 가입하면 동네·닉네임·캐릭터(성별)를 하나도 안 정한
@@ -23,7 +29,7 @@ const state = {
     regionCity:'서울시', regionGu:'강남구', regionDong:'역삼동',
   },
   user: {id: null, nickname:'', avatar:0, gender:'male', points:1240, exp:62, level:7, grade:'IRON', gradeName:'아이언', region:'서울시 강남구 역삼동', retakeTickets:0, nicknameTickets:0, bio:'',
-    streak:10, streakRewardClaimed:false, extraSets:0, setsUsedToday:0, role:'USER',
+    streak:10, streakRewardClaimed:false, setsUsedToday:0, role:'USER',
     regionRank:null}, // 내 동네(동 단위) 실제 순위 — ranking.js loadMyRegionRank() 참고. 아직 못 불러왔으면 null.
   menu: 'main',
   subtabs: {mission:0, profile:0, crew:0, ranking:0},
@@ -40,15 +46,14 @@ const state = {
   missions: {
     today: [],
   },
-  // levelReq: 예전엔 이 레벨에 도달해야 구매 가능했지만, 지금은 포인트만 있으면 레벨과 무관하게
-  // 누구나 구매할 수 있도록 제한을 없앴다(shop.js buyItem/백엔드 ShopService 참고) — 남아있는
-  // 필드는 단순 참고용 데이터일 뿐 실제로 읽는 곳이 없다.
+  // 구매 가능 여부는 포인트만으로 결정한다(레벨 제한 없음, shop.js buyItem/백엔드 ShopService
+  // 참고) — 예전엔 아이템마다 levelReq를 뒀지만 실제로 읽는 곳이 없어서 필드째로 정리했다.
   // 꾸미기 아이템은 헤어/상의/하의/신발/배경/기타 탭으로 분류한다.
   shopItems: [
     ...AVATAR_ITEM_CATALOG.map(item => ({...item, placement: {...item.placement}})),
-    {name:'운동 추가권', price:80, owned:false, consumable:true, category:'기타', levelReq:1, asset:'assets/shop-icons/retake-ticket.svg', effect:'운동 1회 추가', effectDesc:'운동 기회를 1회 추가할 수 있는 이용권입니다.<br><br><strong>이용 안내</strong><br><br>• 운동 추가권을 사용하여 진행한 운동은 <strong>경험치가 지급되지 않습니다. (EXP 0)</strong><br>• 운동 결과 점수가 기존 최고점보다 높은 경우 <strong>최고점이 갱신되며, 결과 화면에 \'최고점 갱신\'이 표시됩니다.</strong><br>• 운동 시작 시 <strong>카메라 연결에 실패한 경우 운동 횟수 및 운동 추가권은 차감되지 않습니다.</strong><br><br>※ 카메라가 정상적으로 연결되어 운동이 시작된 경우에만 운동 추가권이 사용됩니다.'},
-    {name:'닉네임 컬러 이펙트', asset:'assets/shop-icons/name-color-effect.svg', price:180, owned:false, consumable:true, slot:'nickname', category:'기타', levelReq:2, effect:'닉네임 컬러 변경 1회', effectDesc:'구매하면 바로 원하는 닉네임 색상을 골라 적용할 수 있습니다. 보유 아이템으로 쌓이지 않고, 다시 구매하면 색상을 또 바꿀 수 있어요.'},
-    {name:'닉네임 변경권', asset:'assets/shop-icons/nickname-change-ticket.svg', price:150, owned:false, consumable:true, category:'기타', levelReq:1, effect:'닉네임 변경 1회', effectDesc:'닉네임을 한 번 변경할 수 있습니다.'},
+    {name:'운동 추가권', price:80, owned:false, consumable:true, category:'기타', asset:'assets/shop-icons/retake-ticket.svg', effect:'운동 1회 추가', effectDesc:'운동 기회를 1회 추가할 수 있는 이용권입니다.<br><br><strong>이용 안내</strong><br><br>• 운동 추가권을 사용하여 진행한 운동은 <strong>경험치가 지급되지 않습니다. (EXP 0)</strong><br>• 운동 결과 점수가 기존 최고점보다 높은 경우 <strong>최고점이 갱신되며, 결과 화면에 \'최고점 갱신\'이 표시됩니다.</strong><br>• 운동 시작 시 <strong>카메라 연결에 실패한 경우 운동 횟수 및 운동 추가권은 차감되지 않습니다.</strong><br><br>※ 카메라가 정상적으로 연결되어 운동이 시작된 경우에만 운동 추가권이 사용됩니다.'},
+    {name:'닉네임 컬러 이펙트', asset:'assets/shop-icons/name-color-effect.svg', price:180, owned:false, consumable:true, slot:'nickname', category:'기타', effect:'닉네임 컬러 변경 1회', effectDesc:'구매하면 바로 원하는 닉네임 색상을 골라 적용할 수 있습니다. 보유 아이템으로 쌓이지 않고, 다시 구매하면 색상을 또 바꿀 수 있어요.'},
+    {name:'닉네임 변경권', asset:'assets/shop-icons/nickname-change-ticket.svg', price:150, owned:false, consumable:true, category:'기타', effect:'닉네임 변경 1회', effectDesc:'닉네임을 한 번 변경할 수 있습니다.'},
   ],
   shopFilter: '전체',
   itemPreview: {open:false, idx:null},

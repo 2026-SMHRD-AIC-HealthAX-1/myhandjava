@@ -1,6 +1,13 @@
 // admin.js — '관리자모드' 전용 화면. state.screen==='admin'일 때 router.js가 renderAdminApp()을
 // 부른다. 기존 오운홈 테마 클래스(.app-shell/.sidebar/.navitem/.card/.table-wrap/.btn*/.pill*)를
 // 그대로 재사용하고, 이 파일에서는 새 CSS를 거의 추가하지 않는다.
+// [담당] 관리자 전용 화면 5개 탭(대시보드/전체 사용자 관리/크루채팅 신고 관리/고객센터 문의
+//        관리/미션 관리). 일반 사용자 화면(state.screen='app')과는 완전히 분리된 별도 화면.
+// [백엔드 연동] GET /api/admin/dashboard, /api/admin/users(+suspend/activate),
+//              /api/admin/crew-chat-reports(+resolve), /api/admin/mission-definitions(CRUD)
+//              → 전부 백엔드에서 @PreAuthorize("hasRole('ADMIN')")로 막혀있다.
+// [주의] 로그인 계정의 role이 'ADMIN'이 아니면 사이드바에 진입 버튼 자체가 안 보인다.
+//        실제 관리자 권한 부여는 DB에서 직접 users.role='ADMIN'으로 바꿔야 한다(화면에서 못 줌).
 
 function openAdminPanel(){
   if(state.guestMode || state.user.role !== 'ADMIN'){ toast('관리자만 접근할 수 있습니다'); return; }

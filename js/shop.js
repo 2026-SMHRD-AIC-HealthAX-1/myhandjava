@@ -1,4 +1,9 @@
 // shop.js — '포인트 상점' 카테고리: 아이템 목록/구매/미리보기.
+// [담당] '포인트 상점' 탭(아이템 목록/구매/착용/미리보기).
+// [백엔드 연동] GET /api/shop/items, POST /api/shop/items/{id}/purchase, /equip, /unequip
+//              → DB: shop_items, user_items, users(포인트 차감).
+// [주의] 아이템 착용 가능 레벨 제한(levelReq)은 이번 세션에 완전히 제거됐다 — 포인트만
+//        충분하면 레벨 무관하게 구매 가능하니, 레벨 체크 로직을 다시 넣지 않도록 주의.
 
 function renderShop(){
   return `

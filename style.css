@@ -328,24 +328,15 @@ button{font-family:inherit;}
 .battle-exp-guide{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);font-size:13px;}
 .battle-exp-guide b{width:100%;}
 .battle-exp-guide small{color:var(--ink-dim);margin-left:auto;}
-.battle-result-samples{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:12px;}
-.battle-result-sample{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface);}
-.battle-result-sample img{display:block;width:100%;height:118px;object-fit:cover;border-bottom:1px solid var(--line);}
-.battle-result-sample>div{padding:10px;}
-.battle-result-sample p{margin:5px 0;}
 .battle-result-list{display:flex;flex-direction:column;gap:8px;margin-top:10px;}
-.battle-result-row{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;}
 .crew-join-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
 @media(max-width:720px){
-  .battle-result-samples{grid-template-columns:1fr;}
-  .battle-result-row{grid-template-columns:1fr;}
   .battle-exp-guide small{margin-left:0;}
 }
 .crew-battle-card::before{content:'';position:absolute;inset:0;pointer-events:none;
   background-image:repeating-linear-gradient(-45deg, rgba(255,255,255,.08) 0 10px, transparent 10px 20px);}
 .crew-battle-card > *{position:relative;}
 .crew-battle-cta{background:#fff;color:var(--coral);border-color:var(--outline);font-weight:700;}
-.crew-battle-ghost-btn{border-color:rgba(255,255,255,.6);color:#fff;}
 .pill{display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700;font-family:var(--font-mono);border:1.5px solid transparent;}
 .pill-accent{background:var(--accent-soft);color:var(--accent);border-color:var(--accent);}
 .pill-coral{background:var(--coral-soft);color:var(--coral);border-color:var(--coral);}
@@ -618,8 +609,7 @@ tr:last-child td{border-bottom:none;}
 .ticket-warning{padding:10px 12px;border-radius:10px;background:var(--gold-soft);color:var(--gold-ink);font-weight:700;}
 .record-new{color:var(--accent);font-weight:700;padding:10px;border:1px solid var(--accent);border-radius:10px;}
 .ranking-policy{margin-top:16px}.ranking-policy p{margin:6px 0 0;color:var(--ink-dim);}
-.admin-mission-form{margin-bottom:16px;}
-@media(max-width:720px){.gender-choice{grid-template-columns:1fr}.user-progress-summary{align-items:flex-start}.exercise-session-strip{justify-content:flex-start}.admin-mission-form .grid{grid-template-columns:1fr;}}
+@media(max-width:720px){.gender-choice{grid-template-columns:1fr}.user-progress-summary{align-items:flex-start}.exercise-session-strip{justify-content:flex-start}}
 
 @media (max-width:720px){
   .profile-avatar-layout{grid-template-columns:1fr;gap:18px;}
@@ -728,7 +718,6 @@ tr:last-child td{border-bottom:none;}
 .battle-score-team b:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .battle-score-type{font-family:var(--font-mono);font-weight:700;white-space:nowrap;color:var(--ink);}
 .battle-score-opponent{justify-content:flex-start;text-align:left;}
-.battle-sample-note{margin:0 0 10px !important;}
 .battle-history-columns{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px;}
 .battle-member-list{display:flex;flex-direction:column;gap:8px;}
 .battle-member-detail{display:flex;align-items:center;gap:9px;padding:9px;border:1px solid var(--line);border-radius:10px;background:var(--surface);}

@@ -2,6 +2,9 @@
 // 자동 생성해서 현재 진행도(current)까지 계산해 내려준다 — 운동 기록을 저장할 때마다 서버가
 // 카운터를 갱신하므로(ExerciseService.saveResult → MissionService.recordSquatSession), 프론트는
 // 받은 값을 그대로 표시하고 운동 완료 직후 다시 불러오기만 하면 된다.
+// [담당] 대시보드/미션 탭의 '오늘의 미션' 카드.
+// [백엔드 연동] GET /api/missions/today, POST /api/missions/{id}/claim → DB: missions, mission_counters.
+// [주의] 진행도 계산은 100% 백엔드 책임 — 프론트에서 진행도를 임의로 계산하면 서버 값과 어긋난다.
 
 const MISSION_PERIOD_LABEL={daily:'일간'};
 // 미션 카드 하나. 진행도는 퍼센트가 아니라 실제 개수(cur/target)로 보여준다. 미션을 진행하는

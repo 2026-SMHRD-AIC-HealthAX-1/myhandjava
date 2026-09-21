@@ -1,4 +1,10 @@
 // auth.js — 로그인(SNS 전용)/소셜로그인/소셜 온보딩 화면과 로직.
+// [담당] 로그인 화면 + 소셜 로그인 콜백 처리 + 최초 로그인 시 온보딩(닉네임/성별/지역 설정).
+// [백엔드 연동] POST /api/auth/kakao/login, /api/auth/google/login, /api/auth/social/{provider},
+//              GET /api/users/me(loadMyProfile), PATCH /api/users/me/onboarding
+//              → DB: users, calibration_profiles 테이블까지 이어짐.
+// [주의] doSocialLogin()은 실제 카카오/구글 OAuth 리다이렉트라, 로컬 개발 환경에서는
+//        OAUTH_REDIRECT_URI가 실제 서버 설정(카카오/구글 개발자 콘솔)과 일치해야 동작한다.
 
 /* ---------- 캘리브레이션 모달 (MediaPipe Pose) ---------- */
 // (FR-AC-002) 이 구간(calStartCamera ~ calComputeProfile)은 브라우저 안에서 도는
@@ -49,7 +55,6 @@ async function loadMyProfile() {
     state.user.streak = u.streak;
     state.user.retakeTickets = u.retakeTickets;
     state.user.nicknameTickets = u.nicknameTickets;
-    state.user.extraSets = u.extraSets;
     state.user.setsUsedToday = u.setsUsedToday;
     state.user.freeWorkoutsUsed = u.freeWorkoutsUsed ?? u.setsUsedToday ?? state.user.freeWorkoutsUsed;
     state.user.freeWorkoutDate = u.freeWorkoutDate || state.user.freeWorkoutDate;

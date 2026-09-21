@@ -1,4 +1,7 @@
 // data.js — 정적 데이터/카탈로그 (종목, 지역 데이터 등). 미션은 이제 서버(GET /api/missions/today)에서 받아오므로 여기엔 목업이 없습니다.
+// [담당] 특정 카테고리 없음 — 여러 화면이 공유하는 상수 데이터.
+// [백엔드 연동] 없음. 순수 프론트 상수(REGION_DATA 등)만 정의한다 — DB로 안 감.
+// [주의] REGION_DATA의 첫 번째 시(현재 '전남광주통합특별시')가 모든 지역 드롭다운의 기본값으로 쓰인다.
 
 // PC 브라우저로 테스트할 땐 로컬 백엔드를 직접 쓰는 게 devtunnel보다 훨씬 빠르다(1.3s ↔ 6.7ms
 // 왕복시간 직접 측정 비교, 2026-09-10). 폰으로 테스트할 때만 아래 devtunnel 주소로 다시 바꿔주면 됨.
@@ -48,8 +51,6 @@ function clearSession() {
 const EXS = [
   {id:'squat', name:'스쿼트', target:'하체 · 둔근', level:'초급'},
 ];
-
-function randInt(a,b){ return a+Math.floor(Math.random()*(b-a+1)); }
 
 // 첫 번째로 등록된 시(지금은 전남광주통합특별시)가 지역 드롭다운들의 기본값이 된다
 // (REGION_DATA[f.city]가 없을 때 Object.keys(REGION_DATA)[0]로 대체하는 로직들 참고).

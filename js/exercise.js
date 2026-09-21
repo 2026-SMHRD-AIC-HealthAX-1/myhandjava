@@ -1,4 +1,10 @@
 // exercise.js — '운동' 카테고리: 종목 선택 → 튜토리얼 → 스마트폰 카메라 촬영(실시간 자세 판정) → 결과 저장. 가장 큰 파일입니다.
+// [담당] '운동' 카테고리 전체(1.종목선택~4.결과저장) + 실시간 자세 판정(MediaPipe Pose).
+// [백엔드 연동] POST /api/exercise-sessions(세션 생성), PATCH .../start, .../fail, .../abort,
+//              POST /api/exercise-records(결과 저장) → DB: exercise_sessions, exercise_records.
+// [주의] ⚠️ 실시간 판정 루프(exStartPoseLoop 등)는 카메라 프레임마다 도는 코드라, 수정 후 반드시
+//        실제 카메라로 프레임 드랍/오탐 여부를 확인해야 한다. saveExerciseResult()는 세션이 아직
+//        서버에 생성되기 전에 저장을 시도하는 race를 재시도로 방어하고 있으니 그 흐름을 건드릴 때 주의.
 
 /* ========================================================================
    1. 운동 (EXERCISE WIZARD)
@@ -29,8 +35,12 @@ const EXERCISE_TIME_LIMIT_SECONDS = 120;
 // 하루에 완료할 수 있는 운동세트(세션) 한도 — 기본 3세트, 5레벨마다 기본 한도 +1, 포인트 상점
 // "세트 추가권" 1개 구매마다 +3세트. state.user.setsUsedToday는 saveExerciseResult()에서
 // 세션을 저장할 때마다 늘어난다(재촬영은 이미 FREE_RETAKES/티켓으로 따로 제한되므로 여기 세지 않음).
+// 백엔드 User.getDailySetLimit()이 레벨/extraSets와 무관하게 항상 고정 3회를 반환하도록
+// 되어있어(extraSets 필드 자체가 늘 0이라 삭제됨), 프론트도 그대로 고정값만 쓴다 — 예전엔
+// 레벨 보너스를 더해 화면에 더 큰 숫자를 보여줬지만, 실제 서버는 그 보너스를 인정하지 않아
+// 레벨이 높은 사용자에게 잘못된(실제보다 큰) 한도를 표시하는 버그였다.
 const EXERCISE_DAILY_SETS_BASE = 3;
-function getDailySetLimit() { return EXERCISE_DAILY_SETS_BASE + Math.floor((state.user.level || 1) / 5) + (state.user.extraSets || 0); }
+function getDailySetLimit() { return EXERCISE_DAILY_SETS_BASE; }
 const CAM_FINAL_COUNTDOWN_SECONDS = 3; // 자세 보정이 끝난 뒤 실제 촬영 시작까지의 음성 카운트다운(3,2,1,스타트!)
 const CAM_ALIGN_HOLD_MS = 2000; // 정렬(자세 보정) 원형 게이지가 다 차기까지 유지해야 하는 시간
 const CAM_GUIDE_SPEAK_INTERVAL_MS = 2500; // 같은 안내 음성이 너무 자주 반복되지 않도록 하는 간격

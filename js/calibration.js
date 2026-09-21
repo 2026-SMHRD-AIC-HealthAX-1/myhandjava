@@ -1,4 +1,10 @@
 // calibration.js — 카메라 체형 캘리브레이션(MediaPipe Pose). 회원가입 중, 또는 운동 시작 전 필요 시 모달로 열립니다.
+// [담당] 마이페이지/운동 시작 전 어디서든 열릴 수 있는 체형 보정 모달(카메라).
+// [백엔드 연동] 자세 계산 자체는 브라우저 내 MediaPipe(WASM)라 서버 통신이 없고, 계산된
+//              결과를 저장할 때만 PUT /api/users/me/calibration → DB: calibration_profiles.
+// [주의] 여기 실루엣 좌표 값들은 profile.js의 캐릭터 스프라이트 비율에 맞춰 하드코딩돼 있어서
+//        캐릭터 이미지를 바꾸면 같이 틀어진다. 카메라 권한 거부/MediaPipe 로딩 실패 시 에러 메시지
+//        분기(calStage='error')가 있으니 수정 시 그 경로도 같이 확인할 것.
 
 const CAL_REQUIRED_HOLD_MS = 2000;
 const CAL_RING_CIRC = 226; // 2π·36 — exercise.js의 cam-ready-overlay 원형 게이지와 반지름을 맞췄다

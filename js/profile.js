@@ -1,4 +1,12 @@
 // profile.js — '마이페이지' 카테고리 전체(캐릭터 꾸미기, 미션 달성 현황, 운동 히스토리, 계정관리).
+// [담당] '마이페이지' 4개 탭 전부 + 픽셀 캐릭터 캔버스 렌더링(다른 화면 아바타도 여기 함수를 씀).
+// [백엔드 연동] GET/PATCH /api/users/me, GET /api/exercise-records, DELETE /api/users/me(회원탈퇴),
+//              GET/PUT /api/users/me/calibration 등 다수 → DB: users, exercise_records,
+//              calibration_profiles, user_items 등.
+// [주의] doLogout()이 state.user.calibration 등 계정별 값을 제대로 안 지우면 다음 계정/게스트에
+//        값이 새어나간다. drawPixelCharacter 계열 캔버스 함수들은 좌표가 하드코딩이라 캐릭터
+//        이미지를 바꾸면 여러 함수를 같이 손봐야 한다. 회원탈퇴(withdraw)는 크루 해체 등
+//        연쇄 삭제가 걸려있는 되돌릴 수 없는 동작이니 함부로 로직 바꾸지 말 것.
 
 const PROFILE_TABS = ['프로필·캐릭터 꾸미기', '미션 달성 현황', '히스토리', '계정관리'];
 function renderProfile() {
@@ -404,23 +412,6 @@ function drawContainedWearable(ctx, sprite, p, slot) {
   ctx.drawImage(sprite, p.x + (p.w - dw) / 2, p.y + (p.h - dh) / 2, dw, dh);
 }
 
-function drawFittedAvatarItem(ctx, item, gender) {
-  if (!item) return false;
-  const catalogItem = typeof AVATAR_ITEM_CATALOG === 'undefined' ? null : AVATAR_ITEM_CATALOG.find(entry => entry.name === item.name);
-  const id = item.id || (catalogItem && catalogItem.id);
-  if (!id) return false;
-  if (id.startsWith('top-')) { drawFittedAvatarTop(ctx, id); return true; }
-  if (id.startsWith('bottom-')) { drawFittedAvatarBottom(ctx, id); return true; }
-  if (id.startsWith('shoes-')) { drawFittedAvatarShoes(ctx, id); return true; }
-  if (id === 'head-headband') { drawFittedHeadband(ctx); return true; }
-  if (id === 'head-cap') { drawFittedCap(ctx); return true; }
-  if (id === 'head-crown') { drawFittedCrown(ctx); return true; }
-  if (id === 'accessory-wristbands') { drawFittedWristbands(ctx); return true; }
-  if (id === 'accessory-smartwatch') { drawFittedSmartwatch(ctx); return true; }
-  if (id === 'accessory-gold-medal') { drawFittedMedal(ctx); return true; }
-  return false;
-}
-
 // v11.3 긴 의류 교체용 occlusion mask.
 // 기본 래스터 캐릭터의 기존 반팔/반바지 및 노출 피부가 새 긴옷 밖으로 튀어나오는 것을 막는다.
 function drawLongTopOcclusionMask(ctx, gender) {
@@ -566,99 +557,6 @@ function drawFittedAvatarBottom(ctx, id) {
   ctx.restore();
 }
 
-function traceAvatarShoe(ctx, right) {
-  const mirror = x => right ? 144 - x : x;
-  ctx.beginPath();
-  ctx.moveTo(mirror(46), 160);
-  ctx.quadraticCurveTo(mirror(47), 154, mirror(53), 151);
-  ctx.quadraticCurveTo(mirror(61), 149, mirror(66), 153);
-  ctx.quadraticCurveTo(mirror(69), 157, mirror(69), 165);
-  ctx.quadraticCurveTo(mirror(68), 169, mirror(63), 170);
-  ctx.lineTo(mirror(49), 170);
-  ctx.quadraticCurveTo(mirror(45), 168, mirror(46), 160);
-  ctx.closePath();
-}
-
-function drawFittedAvatarShoes(ctx, id) {
-  const highTop = id === 'shoes-lavender-hightops';
-  const color = highTop ? '#a995e8' : '#70d9c0';
-  const edge = highTop ? '#58458e' : '#287664';
-  ctx.save();
-  [false, true].forEach(right => {
-    if (highTop) {
-      const x = right ? 77 : 50;
-      ctx.fillStyle = color; ctx.strokeStyle = edge; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.roundRect(x, 145, 17, 15, 4); ctx.fill(); ctx.stroke();
-    }
-    traceAvatarShoe(ctx, right);
-    ctx.save(); ctx.globalAlpha = .82; ctx.fillStyle = color; ctx.fill(); ctx.restore();
-    ctx.strokeStyle = edge; ctx.lineWidth = 1.05; ctx.stroke();
-    ctx.strokeStyle = '#fff'; ctx.lineWidth = .8;
-    const x1 = right ? 79 : 53, x2 = right ? 91 : 65;
-    ctx.beginPath(); ctx.moveTo(x1, 157); ctx.lineTo(x2, 160); ctx.moveTo(x1, 160); ctx.lineTo(x2, 163); ctx.stroke();
-  });
-  ctx.restore();
-}
-
-function drawFittedHeadband(ctx) {
-  ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(45, 34); ctx.quadraticCurveTo(72, 30, 99, 34);
-  ctx.lineTo(98, 40); ctx.quadraticCurveTo(72, 36, 46, 40); ctx.closePath();
-  ctx.fillStyle = '#f47b20'; ctx.fill();
-  ctx.strokeStyle = '#9b3f12'; ctx.lineWidth = 1; ctx.stroke();
-  ctx.strokeStyle = '#fff1df'; ctx.lineWidth = .9;
-  ctx.beginPath(); ctx.moveTo(47, 36); ctx.quadraticCurveTo(72, 33, 97, 36); ctx.stroke();
-  ctx.restore();
-}
-
-function drawFittedCap(ctx) {
-  ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(42, 29); ctx.quadraticCurveTo(45, 8, 72, 7); ctx.quadraticCurveTo(99, 8, 103, 30);
-  ctx.quadraticCurveTo(72, 36, 42, 29); ctx.closePath();
-  ctx.fillStyle = '#273453'; ctx.fill(); ctx.strokeStyle = '#172039'; ctx.lineWidth = 1.2; ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(58, 8); ctx.quadraticCurveTo(72, 18, 72, 31); ctx.moveTo(86, 8); ctx.quadraticCurveTo(72, 18, 72, 31); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(38, 31); ctx.quadraticCurveTo(72, 25, 108, 34); ctx.quadraticCurveTo(76, 40, 43, 36); ctx.closePath();
-  ctx.fillStyle = '#1f2a47'; ctx.fill(); ctx.stroke();
-  ctx.restore();
-}
-
-function drawFittedCrown(ctx) {
-  ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(53, 31); ctx.lineTo(52, 13); ctx.lineTo(61, 21); ctx.lineTo(67, 9);
-  ctx.lineTo(73, 20); ctx.lineTo(82, 8); ctx.lineTo(86, 21); ctx.lineTo(94, 13); ctx.lineTo(92, 31); ctx.closePath();
-  const g = ctx.createLinearGradient(0, 4, 0, 32); g.addColorStop(0, '#ffe58b'); g.addColorStop(1, '#e5a829');
-  ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = '#8f5d0d'; ctx.lineWidth = 1.1; ctx.stroke();
-  ctx.fillStyle = '#f47b2a'; ctx.beginPath(); ctx.arc(72, 24, 2.6, 0, Math.PI * 2); ctx.fill();
-  ctx.restore();
-}
-
-function drawFittedWristbands(ctx) {
-  ctx.save(); ctx.fillStyle = '#f47b20'; ctx.strokeStyle = '#9b3f12'; ctx.lineWidth = .8;
-  ctx.beginPath(); ctx.moveTo(37, 91); ctx.lineTo(44, 89); ctx.lineTo(46, 95); ctx.lineTo(39, 97); ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(100, 89); ctx.lineTo(107, 91); ctx.lineTo(105, 97); ctx.lineTo(98, 95); ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.restore();
-}
-
-function drawFittedSmartwatch(ctx) {
-  ctx.save();
-  ctx.fillStyle = '#273453'; ctx.strokeStyle = '#172039'; ctx.lineWidth = .8;
-  ctx.beginPath(); ctx.moveTo(37.5, 89.5); ctx.lineTo(44, 88); ctx.lineTo(46.5, 97); ctx.lineTo(40, 98.5); ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#83d9d1'; ctx.beginPath(); ctx.roundRect(39.5, 91, 4.5, 5, 1); ctx.fill();
-  ctx.restore();
-}
-
-function drawFittedMedal(ctx) {
-  ctx.save();
-  ctx.strokeStyle = '#23365c'; ctx.lineWidth = 2.2;
-  ctx.beginPath(); ctx.moveTo(61, 63); ctx.lineTo(72, 79); ctx.lineTo(83, 63); ctx.stroke();
-  ctx.fillStyle = '#efb437'; ctx.strokeStyle = '#8f5d0d'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.arc(72, 82, 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#fff1a8'; ctx.beginPath(); ctx.arc(70, 80, 2, 0, Math.PI * 2); ctx.fill();
-  ctx.restore();
-}
 const _itemIconCache = {};
 function itemIconDataURL(name) {
   const item = state.shopItems.find(entry => entry.name === name);

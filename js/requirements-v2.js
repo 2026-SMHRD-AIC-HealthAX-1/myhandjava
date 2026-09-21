@@ -1,5 +1,11 @@
 // requirements-v2.js — 2026-09-16 화면/정책 개편.
 // 서버 응답이 있는 값은 서버 값을 우선하고, 아직 없는 값은 MOCK 표시된 데이터로 동작한다.
+// [담당] 특정 카테고리 없음 — 다른 파일에 이미 정의된 함수를 나중에 덮어쓰는 "몽키패치" 모음.
+// [백엔드 연동] 덮어쓰는 원본 함수가 뭘 호출하는지에 따라 다르다(고정된 연동 지점 없음).
+// [주의] ⚠️⚠️ index.html에서 반드시 여기서 덮어쓰는 원본 파일들(main.js/crew.js 등)보다
+//        나중에 로드돼야 한다. `const _fooV1 = foo; foo = function(){ ...; return _fooV1(); }`
+//        패턴으로 foo를 통째로 교체하므로, 원본 foo(예: renderMain, renderCrew)를 고칠 때
+//        여기서 같은 이름을 덮어쓰고 있는지 꼭 같이 확인할 것 — 안 그러면 원본 수정이 무시된다.
 
 // 등급 이름·색·배지는 실제 서버 값(state.user.grade/gradeName)과 utils.js의
 // USER_GRADE_COLORS/NAMES/rankBadgeIcon을 쓴다 — 여기 있던 gradeIndex 기반 목데이터는 제거함.

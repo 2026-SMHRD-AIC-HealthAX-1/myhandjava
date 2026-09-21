@@ -1,4 +1,9 @@
 // ranking.js — '랭킹' 카테고리: 지역별/종목별/크루 랭킹.
+// [담당] '랭킹' 탭(지역별/종목별/크루) + 랭킹 단상 클릭 시 뜨는 공개 프로필 팝업.
+// [백엔드 연동] GET /api/rankings/region, /api/rankings/exercise, /api/rankings/crew,
+//              GET /api/users/{id}/public-profile → DB: users, exercise_records 집계 쿼리.
+// [주의] "전체" 옵션을 선택하면 city/gu/dong을 아예 안 보내 전국 랭킹을 받는다(null 파라미터를
+//        서버가 필터 없음으로 처리) — 빈 문자열과 null을 혼동하면 랭킹이 안 나온다.
 
 const RANK_TABS=['지역별 랭킹','운동 종목별 랭킹','크루 랭킹'];
 function renderRanking(){

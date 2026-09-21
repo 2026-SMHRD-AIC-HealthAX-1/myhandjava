@@ -1,3 +1,8 @@
+// bootstrap.js — 페이지 최초 로드 시 실행되는 시작 스크립트. index.html에서 가장 마지막에 로드된다.
+// [담당] 특정 카테고리 없음 — 앱 부팅(저장된 로그인 세션 복원) + 첫 render() 호출 + 공용 이벤트 리스너.
+// [백엔드 연동] localStorage에 토큰이 남아있으면 로그인과 동일한 초기 데이터 로드(loadMyProfile,
+//              loadMyCrew 등)를 재사용해서 자동 로그인 상태로 복원한다.
+// [주의] 이 파일은 반드시 다른 모든 js 파일보다 나중에 로드돼야 한다(index.html 스크립트 순서 마지막).
 document.addEventListener('click', e => {
   if (e.target && e.target.id === 'confirm-yes' && state.confirm) { state.confirm.onYes(); }
 });
