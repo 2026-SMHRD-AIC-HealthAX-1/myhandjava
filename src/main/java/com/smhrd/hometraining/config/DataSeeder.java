@@ -6,11 +6,14 @@ import com.smhrd.hometraining.shop.entity.ShopItem;
 import com.smhrd.hometraining.shop.repository.ShopItemRepository;
 import com.smhrd.hometraining.shop.repository.UserItemRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
 
 /** script.js의 EXS·shopItems 목업 데이터를 최초 기동 시 DB에 그대로 반영한다(이미 있으면 건너뜀). */
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class DataSeeder implements CommandLineRunner {
@@ -23,7 +26,15 @@ public class DataSeeder implements CommandLineRunner {
     @Transactional
     public void run(String... args) {
         seedExercises();
-        seedShopItems();
+        try {
+            seedShopItems();
+        } catch (RuntimeException e) {
+            // 공용 DB처럼 shop_items 스키마가 아직 옛날 카테고리 값(의상 등)에 묶여있는 환경에서는
+            // 시딩이 실패할 수 있다 — 그런다고 서버 전체가 못 뜨면 안 되므로 경고만 남기고 넘어간다.
+            // (여기서 잡아도 이미 실패한 트랜잭션은 커밋하면 안 되므로 rollback-only로 표시한다.)
+            log.warn("상점 아이템 시딩 실패 — 기존 데이터 유지, 서버는 계속 기동합니다: {}", e.getMessage());
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+        }
     }
 
     private void seedExercises() {
