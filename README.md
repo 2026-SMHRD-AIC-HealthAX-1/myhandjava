@@ -1,46 +1,11 @@
-# smhrd-hc-frontend
+# 오운홈(OunHome) — 프론트엔드
 
-`smhrd-hc-prototype`(디자인/기능 검증용 프로토타입)에서 실제 구현에 필요한 부분만 가져와
-정리한 프론트엔드입니다. 원본 프로토타입의 `script.js`(4300여 줄 단일 파일)를 화면
-구간(사이드바 카테고리)별로 여러 파일로 나눴다는 점만 다르고, 동작·마크업·로직은 그대로입니다.
+AI 자세 분석 홈트레이닝 + 동네 크루 커뮤니티 플랫폼의 프론트엔드입니다. 번들러 없는 순수
+자바스크립트 SPA로, 백엔드(Java/Spring Boot, 별도 폴더/브랜치 `back`)가 내려주는 REST API +
+WebSocket(STOMP)으로 실시간 동작합니다 — 더 이상 목업 데이터가 아니라 실제 서버와 연동됩니다.
 
-## 왜 나눴나
-
-`smhrd-hc-backend`(Java/Spring Boot)처럼 폴더/파일이 도메인별로 나뉘어 있어야
-- 어디를 고치면 되는지 찾기 쉽고,
-- 나중에 각 화면을 실제 API 호출로 바꿔나갈 때(다음 단계) 파일 단위로 작업하기 편합니다.
-
-번들러(Webpack/Vite 등)는 쓰지 않았습니다 — 예전과 동일하게 일반 `<script>` 태그 여러 개를
-순서대로 로드하는 방식이라, 지금처럼 그냥 정적 파일 서버로 열면 바로 동작합니다.
-
-## 폴더 구조
-
-```
-index.html
-style.css
-Bodyweight_Squats.gif      스쿼트 레퍼런스 영상(운동 튜토리얼에서 사용)
-assets/                    아바타·데모 프리뷰 이미지
-js/
-  data.js         정적 데이터(종목, 미션 템플릿, 지역 데이터)
-  state.js        전역 상태 객체 — 지금은 이 하나가 서버·DB 역할을 대신함
-  utils.js        공용 유틸(토스트, 확인모달, 아바타, 해시 등)
-  router.js       화면 라우팅 + 앱 셸(사이드바/탑바)
-  landing.js      로그인 전 랜딩 페이지
-  auth.js         회원가입/로그인/소셜로그인/아이디·비밀번호 찾기
-  calibration.js  카메라 체형 캘리브레이션 (MediaPipe Pose)
-  main.js         메인 대시보드
-  exercise.js     운동(카메라 자세 판정) — 가장 큰 파일
-  mission.js      일간 미션
-  profile.js      마이페이지(캐릭터/미션현황/히스토리/계정관리)
-  shop.js         포인트 상점
-  crew.js         홈크루(가입/공지/채팅/크루대전)
-  ranking.js      랭킹
-  support.js      고객센터
-  bootstrap.js    전역 클릭 리스너 + render() 최초 호출 (항상 마지막 로드)
-```
-
-로드 순서 규칙은 `index.html`의 스크립트 태그 주석에 적어뒀습니다 — 실제로 순서를 지켜야 하는
-건 `data.js → state.js`와 `bootstrap.js를 항상 마지막에 두는 것` 두 가지뿐입니다.
+번들러(Webpack/Vite 등)는 쓰지 않습니다 — 일반 `<script>` 태그 여러 개를 순서대로 로드하는
+방식이라, 정적 파일 서버로 열면 바로 동작합니다.
 
 ## 실행 방법
 
@@ -49,22 +14,69 @@ js/
 - VSCode "Live Server" 확장 → `index.html` 우클릭 → Open with Live Server
 - 또는 Node가 있다면: `npx serve .`
 
-`file://`로 직접 열면 카메라 권한과 CORS(나중에 백엔드 연동 시) 때문에 일부 기능이 막힐 수
-있으니 위 방법 중 하나로 `http://localhost:...` 주소로 띄워서 확인하세요.
+`file://`로 직접 열면 카메라 권한과 CORS(백엔드 연동) 때문에 기능이 막히니, 위 방법 중 하나로
+`http://localhost:...` 주소로 띄워서 확인하세요. 백엔드(`back` 브랜치)를 먼저 실행해서
+`js/data.js` 등의 `API_BASE`가 가리키는 주소로 떠 있어야 로그인·운동 저장 등이 동작합니다.
 
-## smhrd-hc-prototype과의 관계
+## 폴더 구조
 
-`smhrd-hc-prototype`은 그대로 두었습니다(디자인 시안·리디자인 실험·목업 이미지 등이 함께
-있는 작업 공간이라 계속 그 용도로 쓰시면 됩니다). 이 폴더는 그 중 실제 서비스로 이어갈
-부분만 뽑아 별도 저장소로 관리하기 위한 곳입니다. `mockup/`, `redesign/`, `wireframe/`,
-`alarm_exam/`, `tools/`, 메모용 `.txt` 파일들은 프로토타입 쪽에만 남아 있고 여기엔
-없습니다 — 실행에 필요 없는 참고/실험 자료이기 때문입니다.
+```
+index.html
+style.css
+Bodyweight_Squats.gif      스쿼트 레퍼런스 영상(운동 튜토리얼)
+squat-bottom-ref.png       스쿼트 최저점 실루엣 레퍼런스(캘리브레이션 가이드용)
+assets/                    아바타 아이템·랭킹 등급 아이콘·상점 아이콘 이미지
+js/
+  data.js             정적 데이터(운동 종목, 지역 드롭다운 등)
+  avatar-items.js     캐릭터 꾸미기 아이템 카탈로그
+  state.js            전역 상태 객체 — 모든 화면이 공유
+  utils.js            공용 유틸(토스트, 확인모달, 아바타 색상, 등급 색상 등)
+  router.js           화면 라우팅(render) + 앱 셸(사이드바/탑바)
+  landing.js          로그인 전 랜딩 페이지 + 비회원 체험 진입
+  auth.js             로그인(SNS 전용)/소셜로그인 콜백/최초 로그인 온보딩
+  calibration.js      카메라 체형 캘리브레이션(MediaPipe Pose)
+  main.js             로그인 후 메인 대시보드
+  exercise.js         운동(카메라 실시간 자세 판정) — 가장 큰 파일
+  mission.js          오늘의 미션
+  profile.js          마이페이지(캐릭터 꾸미기/미션현황/히스토리/계정관리)
+  shop.js             포인트 상점
+  crew.js             홈크루(생성/가입/채팅/크루대전 파티맺기 등)
+  ranking.js          랭킹(지역별/종목별/크루)
+  support.js          고객센터
+  admin.js            관리자모드(대시보드/회원관리/신고관리/문의관리/미션관리)
+  requirements-v2.js  기존 함수를 나중에 덮어쓰는 화면/정책 개편 모음 — 아래 "주의" 참고
+  bootstrap.js         세션 복원 + render() 최초 호출 (항상 마지막 로드)
+```
 
-## 다음 단계 (아직 안 한 것)
+각 `js/*.js` 파일 맨 위에 **[담당]/[백엔드 연동]/[주의]** 형식 주석을 달아뒀습니다 — 이 화면이
+백엔드 어느 엔드포인트를 부르는지, 뭘 조심해야 하는지는 해당 파일을 열어서 먼저 확인하세요.
 
-- `smhrd-hc-backend`가 떠 있는 상태에서, 각 파일의 `state` 목업 조작 부분을
-  `fetch('http://localhost:8080/api/...')` 호출로 하나씩 바꿔가는 작업이 남아있습니다.
-  예: `auth.js`의 `doSignup()` → `POST /api/auth/signup`, `exercise.js`의
-  `saveExerciseResult()` → `POST /api/exercise-records` 등.
-- 자세 인식(MediaPipe) 자체는 계속 브라우저에서만 실행됩니다 — 서버로 영상이 전송되지
-  않는 구조는 그대로 유지하면 됩니다.
+로드 순서는 `index.html`의 `<script>` 태그 순서를 그대로 따릅니다(위 목록과 동일한 순서).
+실제로 순서를 지켜야 하는 건 `data.js → state.js`, `bootstrap.js를 항상 마지막에 두는 것`,
+그리고 **`requirements-v2.js`는 반드시 자신이 덮어쓰는 원본 파일들보다 나중에 로드돼야 하는 것**
+세 가지입니다.
+
+## ⚠️ `requirements-v2.js`를 고칠 때 주의
+
+이 파일은 다른 파일에 이미 정의된 함수를 나중에 통째로 덮어쓰는 "몽키패치" 모음입니다.
+
+```js
+const _renderFooV1 = renderFoo;
+renderFoo = function(){ ...; return _renderFooV1(); };
+```
+
+이런 패턴으로 `renderFoo`를 교체하므로, 원본 파일(`main.js`/`crew.js` 등)에서 `renderFoo`를
+고쳐도 `requirements-v2.js`가 같은 이름을 다시 덮어쓰고 있으면 그 수정이 조용히 무시됩니다.
+원본 함수를 고칠 땐 `requirements-v2.js`에 같은 이름이 있는지 먼저 검색해보세요.
+
+## 백엔드 연동 현황
+
+- **회원가입/로그인은 SNS(카카오/구글) 전용입니다.** 아이디/비밀번호 화면은 없습니다(백엔드
+  API 자체는 남아있음).
+- 운동 결과 저장, 미션, 상점, 크루, 랭킹, 고객센터, 관리자모드까지 **전부 실제 백엔드 API와
+  연동되어 있습니다** — 목업으로 남은 큰 기능은 없습니다.
+- 크루채팅·크루대전 실시간 갱신·크루대전 파티 초대는 WebSocket(SockJS + STOMP, `/ws`)으로
+  동작합니다. 연결 시 STOMP CONNECT 프레임에 `Authorization: Bearer <JWT>` 헤더가 실려야
+  인증되니, 백엔드가 꺼져 있거나 토큰이 없으면 크루 관련 실시간 기능이 안 됩니다.
+- 관리자모드(`admin.js`)는 로그인 계정의 `role`이 `'ADMIN'`이어야 사이드바에 진입 버튼이
+  보입니다 — 권한 부여는 화면에 없고 DB에서 직접 바꿔야 합니다(백엔드 README 참고).
