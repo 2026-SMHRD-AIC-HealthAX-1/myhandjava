@@ -26,6 +26,11 @@ public class AuthController {
 
     private final AuthService authService;
 
+    @PostMapping("/check-nickname")
+    public ApiResponse<Map<String, Boolean>> checkNickname(@RequestBody Map<String, String> body) {
+        return ApiResponse.ok(Map.of("duplicate", authService.isNicknameDuplicate(body.get("nickname"))));
+    }
+
     @PostMapping("/signup")
     public ApiResponse<LoginResponse> signup(@Valid @RequestBody SignupRequest req) {
         return ApiResponse.ok(authService.signup(req));

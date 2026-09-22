@@ -22,7 +22,6 @@ import com.smhrd.hometraining.crew.dto.CrewCreateRequest;
 import com.smhrd.hometraining.crew.dto.CrewJoinRequestDto;
 import com.smhrd.hometraining.crew.dto.CrewMemberEventDto;
 import com.smhrd.hometraining.crew.dto.CrewMemberResponse;
-import com.smhrd.hometraining.crew.dto.CrewNoticeDto;
 import com.smhrd.hometraining.crew.dto.CrewResponse;
 import com.smhrd.hometraining.crew.dto.CrewSummaryResponse;
 import com.smhrd.hometraining.crew.dto.CrewUpdateRequest;
@@ -31,7 +30,6 @@ import com.smhrd.hometraining.crew.entity.CrewChatMessage;
 import com.smhrd.hometraining.crew.entity.CrewChatReport;
 import com.smhrd.hometraining.crew.entity.CrewJoinRequest;
 import com.smhrd.hometraining.crew.entity.CrewMember;
-import com.smhrd.hometraining.crew.entity.CrewNotice;
 import com.smhrd.hometraining.crew.battle.entity.CrewBattle;
 import com.smhrd.hometraining.crew.battle.repository.CrewBattleParticipantRepository;
 import com.smhrd.hometraining.crew.battle.repository.CrewBattleRepository;
@@ -40,7 +38,6 @@ import com.smhrd.hometraining.crew.repository.CrewChatReportRepository;
 import com.smhrd.hometraining.crew.repository.CrewExperienceHistoryRepository;
 import com.smhrd.hometraining.crew.repository.CrewJoinRequestRepository;
 import com.smhrd.hometraining.crew.repository.CrewMemberRepository;
-import com.smhrd.hometraining.crew.repository.CrewNoticeRepository;
 import com.smhrd.hometraining.crew.repository.CrewRepository;
 import com.smhrd.hometraining.crew.repository.CrewWeeklyContributionRepository;
 import com.smhrd.hometraining.crew.repository.CrewWeeklyMissionRepository;
@@ -72,7 +69,6 @@ public class CrewService {
     private final CrewRepository crewRepository;
     private final CrewMemberRepository crewMemberRepository;
     private final CrewJoinRequestRepository crewJoinRequestRepository;
-    private final CrewNoticeRepository crewNoticeRepository;
     private final CrewChatMessageRepository crewChatMessageRepository;
     private final CrewChatReportRepository crewChatReportRepository;
     private final CrewExperienceHistoryRepository crewExperienceHistoryRepository;
@@ -861,7 +857,6 @@ public class CrewService {
     private void deleteCrewChildData(Long crewId) {
         crewChatMessageRepository.deleteByCrewId(crewId);
         crewJoinRequestRepository.deleteByCrewId(crewId);
-        crewNoticeRepository.deleteByCrewId(crewId);
         crewExperienceHistoryRepository.deleteByCrewId(crewId);
         crewWeeklyMissionRepository.deleteByCrewId(crewId);
 
@@ -891,7 +886,6 @@ public class CrewService {
     public void cleanupAndLeaveForWithdrawal(Long userId) {
 
         crewChatMessageRepository.deleteBySenderId(userId);
-        crewNoticeRepository.deleteByAuthorId(userId);
         crewJoinRequestRepository.deleteByRequesterId(userId);
         crewBattleParticipantRepository.deleteByUser_Id(userId);
         /*
@@ -963,50 +957,7 @@ public class CrewService {
         crewMemberRepository.delete(member);
     }
 
-    /**
-     * 크루 공지사항을 조회합니다.
-     */
-    @Transactional(readOnly = true)
-    public List<CrewNoticeDto> listNotices(
-            Long userId
-    ) {
-
-        CrewMember me =
-                requireMember(userId);
-
-        return crewNoticeRepository
-                .findByCrewIdOrderByCreatedAtDesc(
-                        me.getCrew().getId()
-                )
-                .stream()
-                .map(CrewNoticeDto::from)
-                .toList();
-    }
-
-    /**
-     * 크루 공지사항을 등록합니다.
-     */
-    @Transactional
-    public CrewNoticeDto addNotice(
-            Long userId,
-            CrewNoticeDto.Create request
-    ) {
-
-        CrewMember leader =
-                requireLeader(userId);
-
-        CrewNotice notice =
-                crewNoticeRepository.save(
-                        CrewNotice.of(
-                                leader.getCrew(),
-                                leader.getUser(),
-                                request.title(),
-                                request.body()
-                        )
-                );
-
-        return CrewNoticeDto.from(notice);
-    }
+  
 
     /**
      * 최근 크루 채팅 50개를 조회합니다.

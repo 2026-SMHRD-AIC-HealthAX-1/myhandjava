@@ -20,7 +20,6 @@ import com.smhrd.hometraining.crew.dto.CrewCreateRequest;
 import com.smhrd.hometraining.crew.dto.CrewExperienceHistoryResponse;
 import com.smhrd.hometraining.crew.dto.CrewJoinRequestDto;
 import com.smhrd.hometraining.crew.dto.CrewJoinSettingRequest;
-import com.smhrd.hometraining.crew.dto.CrewNoticeDto;
 import com.smhrd.hometraining.crew.dto.CrewResponse;
 import com.smhrd.hometraining.crew.dto.CrewSummaryResponse;
 import com.smhrd.hometraining.crew.dto.CrewUpdateRequest;
@@ -397,47 +396,8 @@ public class CrewController {
         return ApiResponse.ok();
     }
 
-    /**
-     * 현재 크루의 공지사항을 조회합니다.
-     */
-    @GetMapping("/me/notices")
-    public ApiResponse<List<CrewNoticeDto>> notices(
-            @AuthenticationPrincipal
-            CustomUserPrincipal principal
-    ) {
-
-        List<CrewNoticeDto> response =
-                crewService.listNotices(
-                        principal.getUserId()
-                );
-
-        return ApiResponse.ok(response);
-    }
-
-    /**
-     * 크루 공지사항을 등록합니다.
-     *
-     * 크루장만 사용할 수 있습니다.
-     */
-    @PostMapping("/me/notices")
-    public ApiResponse<CrewNoticeDto> addNotice(
-            @AuthenticationPrincipal
-            CustomUserPrincipal principal,
-
-            @Valid
-            @RequestBody
-            CrewNoticeDto.Create request
-    ) {
-
-        CrewNoticeDto response =
-                crewService.addNotice(
-                        principal.getUserId(),
-                        request
-                );
-
-        return ApiResponse.ok(response);
-    }
-
+    
+  
     /**
      * 최근 크루 채팅 50개를 조회합니다.
      */

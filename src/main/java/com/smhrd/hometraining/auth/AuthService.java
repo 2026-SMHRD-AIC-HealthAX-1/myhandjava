@@ -73,7 +73,11 @@ public class AuthService {
     @Value("${app.oauth.google.redirect-uri}")
     private String googleRedirectUri;
 
-    @Transactional
+    @Transactional(readOnly = true)
+    public boolean isNicknameDuplicate(String nickname) {
+        return userRepository.existsByNickname(nickname);
+    }
+
     public LoginResponse signup(SignupRequest req) {
         if (userRepository.existsByLoginId(req.loginId())) {
             throw new BusinessException("이미 사용 중인 아이디입니다.");
