@@ -6,6 +6,10 @@
 
 function render() {
   const root = document.getElementById('app');
+  if (state.authInitializing) {
+    root.innerHTML = '<div role="status" aria-live="polite" style="min-height:100vh;display:grid;place-items:center;background:#EEF7FF;color:#102A56;">로그인 정보를 확인하고 있어요…</div>';
+    return;
+  }
   // 로그인 세션에 딸린 팝업(동네설정 확인창, 소셜 온보딩, 회원탈퇴 확인, 채팅 차단/신고)은
   // 로그아웃 경로를 안 거치고 남아있는 경우가 있어도(예: 뒤로가기, 오래된 상태) 로그인 전
   // 랜딩페이지에서는 절대 뜨면 안 된다 — 화면이 intro면 여기서 한 번 더 확실히 지운다.
@@ -88,7 +92,7 @@ function render() {
 // 실제 내 기록은 로그인 후에나 생기므로, 임의의 샘플 히스토리 화면 이미지를 보여준다.
 /* ---------- 앱 셸 ---------- */
 const MENUS = [
-  { id: 'main', label: '메인', icon: '🏠' },
+  { id: 'main', label: '메인', icon: '<img src="assets/오운홈 로고.png" alt="오운홈" style="width:24px;height:24px;object-fit:contain;vertical-align:middle;">' },
   { id: 'exercise', label: '운동', icon: '🏋️' },
   { id: 'shop', label: '포인트 상점', icon: '🛍️' },
   { id: 'crew', label: '홈크루', icon: '🏘️' },
@@ -101,8 +105,8 @@ function renderApp() {
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand" onclick="goHome()" style="cursor:pointer;" title="메인으로 이동">
-        <div class="brand-mark"><img src="assets/logo.png" alt="오운홈"></div>
-        <div class="brand-name">오운홈<small>O - Un - Home</small></div>
+        <div class="brand-mark"><img src="assets/오운홈 로고.png" alt="오운홈"></div>
+        <div class="brand-name">오운홈<small>오늘 운동은 홈에서</small></div>
       </div>
       ${MENUS.filter(m => !m.adminOnly || state.user.role === 'ADMIN').map(m => `
         <div class="navitem ${state.menu === m.id ? 'active' : ''}" onclick="setMenu('${m.id}')">

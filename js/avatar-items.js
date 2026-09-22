@@ -73,7 +73,7 @@ const AVATAR_ITEM_CATALOG = [
     id: 'head-cap', name: '네이비 스포츠 캡', price: 220,
     owned: false, equipped: false, slot: 'head', category: '헤어',
     effect: '능력치 없음 · 외형 전용', effectDesc: '차분한 네이비 컬러의 스포츠 캡입니다.',
-    asset: 'assets/avatar-items/head-cap.png', fullCanvas: { male: 'assets/avatar-items/full-canvas/head-cap-male.png', female: 'assets/avatar-items/full-canvas/head-cap-female.png' }, placement: { x: 37, y: 10, w: 70, h: 38 }, z: 40,
+    asset: 'assets/avatar-items/네이비 스포츠 캡.png', fullCanvas: { male: 'assets/avatar-items/full-canvas/head-cap-male.png', female: 'assets/avatar-items/full-canvas/head-cap-female.png' }, placement: { x: 37, y: 10, w: 70, h: 38 }, z: 40,
   },
 
   {
@@ -116,7 +116,7 @@ const AVATAR_ITEM_CATALOG = [
     id: 'shoes-mint-sneakers', name: '민트 운동화', price: 260,
     owned: false, equipped: false, slot: 'shoes', category: '신발',
     effect: '능력치 없음 · 외형 전용', effectDesc: '민트 포인트가 들어간 산뜻한 운동화입니다.',
-    asset: 'assets/avatar-items/shoes-mint-sneakers.png', fullCanvas: { male: 'assets/avatar-items/full-canvas/shoes-mint-sneakers-male.png', female: 'assets/avatar-items/full-canvas/shoes-mint-sneakers-female.png' }, placement: { x: 38, y: 148, w: 68, h: 24 }, z: 30,
+    asset: 'assets/avatar-items/민트 운동화.png', fullCanvas: { male: 'assets/avatar-items/full-canvas/shoes-mint-sneakers-male.png', female: 'assets/avatar-items/full-canvas/shoes-mint-sneakers-female.png' }, placement: { x: 38, y: 148, w: 68, h: 24 }, z: 30,
   },
   {
     id: 'shoes-lavender-hightops', name: '라벤더 하이탑', price: 310,

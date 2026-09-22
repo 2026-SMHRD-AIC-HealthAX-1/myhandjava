@@ -274,32 +274,7 @@ function drawPixelCharacter(canvas, equip, gender) {
     const scale = Math.min((W * U) / sw, (H * U) / sh);
     const dw = sw * scale, dh = sh * scale;
 
-    // v11.1: 기본 캐릭터 원본의 오렌지 신발만 흰색/연회색으로 보정한다.
-    // 착용 아이템 레이어는 이후에 그려지므로 민트/라벤더/오렌지 신발 아이템 색상에는 영향이 없다.
-    const off = document.createElement('canvas');
-    off.width = sw; off.height = sh;
-    const ox = off.getContext('2d', { willReadFrequently:true });
-    ox.drawImage(sprite, 0, 0);
-    try {
-      const img = ox.getImageData(0, 0, sw, sh);
-      const p = img.data;
-      const shoeStartY = Math.floor(sh * 0.77);
-      for (let y=shoeStartY; y<sh; y++) {
-        for (let x=0; x<sw; x++) {
-          const i=(y*sw+x)*4, r=p[i], g=p[i+1], b=p[i+2], a=p[i+3];
-          // 오렌지/주황 계열만 선택. 피부색은 발목 위라 shoeStartY 밖에 있어 보호된다.
-          if (a>20 && r>145 && r>g*1.28 && g>b*1.12) {
-            const lum=Math.max(0,Math.min(255,Math.round(r*.22+g*.55+b*.23)));
-            const v=Math.max(205,Math.min(250,215+Math.round(lum*.14)));
-            p[i]=v; p[i+1]=v; p[i+2]=Math.min(255,v+3);
-          }
-        }
-      }
-      ox.putImageData(img,0,0);
-      ctx.drawImage(off, (W * U - dw) / 2, H * U - dh, dw, dh);
-    } catch(e) {
-      ctx.drawImage(sprite, (W * U - dw) / 2, H * U - dh, dw, dh);
-    }
+    ctx.drawImage(sprite, (W * U - dw) / 2, H * U - dh, dw, dh);
     ctx.restore();
   }
 

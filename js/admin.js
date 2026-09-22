@@ -40,7 +40,7 @@ function renderAdminApp(){
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand" onclick="setAdminTab('dashboard')" style="cursor:pointer;" title="관리자 대시보드로">
-        <div class="brand-mark"><img src="assets/logo.png" alt="오운홈"></div>
+        <div class="brand-mark"><img src="assets/오운홈 로고.png" alt="오운홈"></div>
         <div class="brand-name">오운홈<small>관리자</small></div>
       </div>
       ${ADMIN_TABS.map(t => `
