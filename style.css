@@ -149,19 +149,37 @@ button{font-family:inherit;}
 .auth-sub{color:var(--ink-dim);font-size:13.5px;margin:0 0 24px;line-height:1.5;}
 
 /* ---------- 소개(랜딩) 페이지 : 로그인 전 첫 화면 ---------- */
-.landing-shell{min-height:100vh;background:var(--bg);}
+.landing-shell{min-height:100vh;background:#EEF7FF;}
 .landing-topbar{
   display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
   padding:16px 32px;border-bottom:2.5px solid var(--outline);background:var(--surface);
 }
 .landing-topbar .brand{padding:0;}
 .landing-actions{display:flex;gap:10px;flex:none;}
-.landing-hero{max-width:720px;margin:0 auto;padding:64px 24px 8px;text-align:center;}
-.landing-hero h1{font-size:34px;margin:0 0 14px;line-height:1.35;}
-.landing-hero p{color:var(--ink-dim);font-size:14.5px;max-width:52ch;margin:0 auto 28px;line-height:1.6;}
+.landing-hero{margin:0 auto;padding:32px 24px 32px;text-align:center;background:radial-gradient(ellipse at 50% 12%,#ffffff 0%,#f4faff 28%,#eaf6ff 65%,#EEF7FF 100%);}
+.landing-hero h1{font-size:34px;margin:0 auto 12px;max-width:720px;line-height:1.35;color:#102A56;word-break:keep-all;overflow-wrap:anywhere;}
+.landing-hero p{color:var(--ink-dim);font-size:14.5px;max-width:52ch;margin:0 auto;line-height:1.6;}
 .cta-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;}
-.landing-body{max-width:1040px;margin:0 auto;padding:0 24px 96px;}
+.landing-body{max-width:1248px;margin:0 auto;padding:0 24px 96px;}
+.landing-feature-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:20px;}
+.landing-feature-grid .landing-feature-card{min-width:0;background:#FFFFFF;border-color:#102A56;box-shadow:0 8px 20px rgba(16,42,86,.10);word-break:keep-all;overflow-wrap:anywhere;}
+.landing-feature-grid .landing-feature-card:hover{transform:translateY(-3px);box-shadow:0 10px 24px rgba(16,42,86,.14);}
+.landing-feature-card h3{color:#102A56;}
+.landing-feature-card .pill-accent{background:#EDF5FF;color:#102A56;border-color:#102A56;white-space:normal;text-align:center;}
+.landing-feature-card .pill-accent:hover{background:#DCEBFF;}
+.landing-feature-card .pill-accent::before{content:"";width:6px;height:6px;border-radius:50%;background:#F39A45;margin-right:6px;flex-shrink:0;}
+@media (max-width:1000px){.landing-feature-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media (max-width:540px){.landing-feature-grid{grid-template-columns:minmax(0,1fr);}.landing-body{padding:0 16px 96px;}}
 .landing-section-title{text-align:center;font-size:21px;margin:0 0 24px;}
+.landing-feature-banner{background:#e8f5ff;border-radius:12px;padding:18px 12px;margin-bottom:28px;text-align:center;}
+.landing-feature-banner .landing-section-title{display:flex;align-items:center;justify-content:center;gap:12px;margin:0;color:#16376b;font-size:clamp(18px, 4.5vw, 24px);font-weight:900;line-height:1.4;word-break:keep-all;overflow-wrap:anywhere;}
+.landing-feature-banner .landing-section-title>span:nth-child(2){min-width:0;}
+.landing-feature-banner p{margin:6px 0 0;color:#526b91;font-size:clamp(11px, 2.8vw, 13px);line-height:1.6;word-break:keep-all;overflow-wrap:anywhere;}
+.landing-title-rays{position:relative;display:block;flex:0 0 20px;height:26px;}
+.landing-title-rays::before,.landing-title-rays::after{content:"";position:absolute;width:11px;height:2px;background:#4279ff;border-radius:2px;}
+.landing-title-rays::before{top:5px;left:8px;transform:rotate(50deg);}
+.landing-title-rays::after{top:17px;left:1px;transform:rotate(20deg);}
+.landing-title-rays:last-child{transform:scaleX(-1);}
 
 /* 참고 화면(모바일 쇼핑몰 앱)의 하단 고정 서브 카테고리 바를 본떠, 스크롤과 무관하게 항상
    보이는 랜딩 전용 하단 내비게이션 — 클릭하면 해당 섹션으로 부드럽게 스크롤된다. */
@@ -692,7 +710,7 @@ tr:last-child td{border-bottom:none;}
 /* 폰 화면(대략 세로 모드 스마트폰 폭) — 카드 그리드·통계 박스가 최소폭 때문에 잘리지 않도록
    컬럼을 더 줄이고, 큰 제목 글자도 살짝 낮춘다. */
 @media (max-width:540px){
-  .landing-hero{padding:44px 16px 28px;}
+  .landing-hero{padding:24px 16px 32px;}
   .landing-hero h1{font-size:25px;}
   .landing-hero p{font-size:13.5px;}
   .auth-title{font-size:23px;}
