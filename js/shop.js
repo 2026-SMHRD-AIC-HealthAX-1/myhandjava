@@ -14,13 +14,13 @@ const SHOP_CATEGORIES=['전체','헤어','상의','하의','신발','배경','�
 // 지금 실제로 판매 중인 아이템만 넣어둔 목록 — 나머지는 이미지가 멀쩡해도 "준비중"으로 표시하고
 // 구매/미리보기를 막는다(공개 범위를 좁혀둔 임시 조치, unavailable 계산 참고).
 const SHOP_ENABLED_ITEM_NAMES = new Set([
-  '네이비 스포츠 캡', '라벤더 후디', '라벤더 조거 팬츠', '라벤더 하이탑',
+  '네이비 스포츠 캡', '라벤더 후디', '라벤더 조거 팬츠', '라벤더 하이탑', '민트 운동화',
   '배경 - 맑은 강변 산책로', '배경 - 노을빛 강변', '배경 - 가을 호수 공원', '배경 - 비 오는 가로수길',
-  '닉네임 컬러 이펙트', '닉네임 변경권', '운동 추가권',
+  '닉네임 컬러 이펙트', '닉네임 변경권',
 ]);
 function renderMissionShop(){
   const f=SHOP_CATEGORIES.includes(state.shopFilter)?state.shopFilter:'전체';
-  const items=state.shopItems.map((it,idx)=>({it,idx})).filter(({it})=>f==='전체'||it.category===f);
+  const items=state.shopItems.map((it,idx)=>({it,idx})).filter(({it})=>it.name!=='운동 추가권' && (f==='전체'||it.category===f));
   return `
   <div class="subtabs">
     ${SHOP_CATEGORIES.map(c=>`<div class="tab ${f===c?'active':''}" onclick="setShopFilter('${c}')">${c}</div>`).join('')}
@@ -31,11 +31,9 @@ function renderMissionShop(){
       return `
       <div class="card shop-item-card">
         <div class="feed-media shop-item-media" style="background:#f3f7ff;overflow:hidden;display:flex;align-items:center;justify-content:center;">
-          ${unavailable
+          ${(!it.asset || it.assetMissing)
             ? `<span class="shop-item-comingsoon">준비중인 아이템이에요</span>`
-            : ((it.slot==='shoes'||it.slot==='head')
-              ? `<canvas class="clean-shop-asset" data-src="${it.asset}" data-slot="${it.slot}" data-idx="${idx}" aria-label="${it.name}" style="width:100%;height:100%;display:block;"></canvas>`
-              : `<img src="${it.asset}" alt="${it.name}" onerror="markShopAssetMissing(${idx})" style="width:100%;height:100%;object-fit:${it.slot==='background'?'cover':'contain'};padding:${it.slot==='background'?'0':'8px'};border-radius:8px;">`)}
+            : `<img src="${it.asset}" alt="${it.name}" onerror="markShopAssetMissing(${idx})" style="width:100%;height:100%;object-fit:contain;padding:8px;border-radius:8px;">`}
         </div>
         <div class="shop-item-body">
           <div class="flex-between shop-item-title"><h3 style="margin:0;">${it.name}</h3></div>

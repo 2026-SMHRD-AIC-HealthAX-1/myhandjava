@@ -51,7 +51,6 @@ const state = {
   // 꾸미기 아이템은 헤어/상의/하의/신발/배경/기타 탭으로 분류한다.
   shopItems: [
     ...AVATAR_ITEM_CATALOG.map(item => ({...item, placement: {...item.placement}})),
-    {name:'운동 추가권', price:80, owned:false, consumable:true, category:'기타', asset:'assets/shop-icons/retake-ticket.svg', effect:'운동 1회 추가', effectDesc:'운동 기회를 1회 추가할 수 있는 이용권입니다.<br><br><strong>이용 안내</strong><br><br>• 운동 추가권을 사용하여 진행한 운동은 <strong>경험치가 지급되지 않습니다. (EXP 0)</strong><br>• 운동 결과 점수가 기존 최고점보다 높은 경우 <strong>최고점이 갱신되며, 결과 화면에 \'최고점 갱신\'이 표시됩니다.</strong><br>• 운동 시작 시 <strong>카메라 연결에 실패한 경우 운동 횟수 및 운동 추가권은 차감되지 않습니다.</strong><br><br>※ 카메라가 정상적으로 연결되어 운동이 시작된 경우에만 운동 추가권이 사용됩니다.'},
     {name:'닉네임 컬러 이펙트', asset:'assets/shop-icons/name-color-effect.svg', price:180, owned:false, consumable:true, slot:'nickname', category:'기타', effect:'닉네임 컬러 변경 1회', effectDesc:'구매하면 바로 원하는 닉네임 색상을 골라 적용할 수 있습니다. 보유 아이템으로 쌓이지 않고, 다시 구매하면 색상을 또 바꿀 수 있어요.'},
     {name:'닉네임 변경권', asset:'assets/shop-icons/nickname-change-ticket.svg', price:150, owned:false, consumable:true, category:'기타', effect:'닉네임 변경 1회', effectDesc:'닉네임을 한 번 변경할 수 있습니다.'},
   ],

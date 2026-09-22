@@ -18,14 +18,23 @@
 function renderLogin() {
   return `
   <div class="center-shell">
-    <div class="auth-card">
-      <p class="auth-eyebrow">오운홈</p>
+    <div class="auth-card login-card">
+      <div class="brand" style="padding:0;margin-bottom:16px;cursor:default;">
+        <div class="brand-mark" style="width:56px;height:56px;"><img src="assets/오운홈 로고.png" alt="오운홈"></div>
+        <div class="brand-name"><small style="font-size:14px;margin-top:0;word-break:keep-all;color:#344563;font-weight:600;">오늘 운동은 홈에서</small></div>
+      </div>
       <h1 class="auth-title">로그인</h1>
       <p class="auth-sub">${state.user.nickname ? state.user.nickname + '님, 다시 오신 것을 환영해요' : 'SNS 계정으로 간편하게 시작해요'}</p>
-      <button class="btn btn-block" style="background:#FEE500;border-color:var(--outline);color:#241A00;margin-bottom:8px;" onclick="doSocialLogin('카카오')">카카오로 계속하기</button>
-      <button class="btn btn-secondary btn-block" onclick="doSocialLogin('구글')">Google로 계속하기</button>
-      <p class="hint" style="text-align:center;margin-top:14px;">처음이신가요? SNS 계정으로 바로 시작할 수 있어요.</p>
-      <button class="btn btn-ghost btn-block" style="margin-top:14px;" onclick="backToLanding()">← 뒤로가기</button>
+      <button class="btn btn-block login-social" style="background:#FEE500;border-color:var(--outline);color:#241A00;margin-bottom:8px;" onclick="doSocialLogin('카카오')">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="#191919" d="M12 3C6.48 3 2 6.48 2 10.77c0 2.76 1.86 5.18 4.66 6.56l-.94 3.5c-.08.3.25.54.51.37l4.09-2.7c.55.07 1.11.1 1.68.1 5.52 0 10-3.49 10-7.83S17.52 3 12 3Z"/></svg>
+        <span>카카오로 계속하기</span>
+      </button>
+      <button class="btn btn-secondary btn-block login-social" style="background:#fff;" onclick="doSocialLogin('구글')">
+        <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5Z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6C44.4 38.02 46.98 31.86 46.98 24.55Z"/><path fill="#FBBC05" d="M10.53 28.59A14.4 14.4 0 0 1 9.75 24c0-1.59.27-3.13.78-4.59l-7.98-6.19A23.87 23.87 0 0 0 0 24c0 3.87.93 7.52 2.56 10.78l7.97-6.19Z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.8l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48Z"/></svg>
+        <span>Google로 계속하기</span>
+      </button>
+      <p class="hint" style="text-align:center;margin-top:16px;color:#465570;line-height:1.6;">처음이신가요? SNS 계정으로 바로 시작할 수 있어요.</p>
+      <button class="btn btn-ghost login-back" onclick="backToLanding()">← 뒤로가기</button>
     </div>
   </div>`;
 }

@@ -147,6 +147,10 @@ button{font-family:inherit;}
 }
 .auth-title{font-size:30px;margin:0 0 6px;}
 .auth-sub{color:var(--ink-dim);font-size:13.5px;margin:0 0 24px;line-height:1.5;}
+.login-card::before{height:4px;margin:-14px 0 22px;border:0;background:#c6dcf3;}
+.login-card .login-social{display:flex;align-items:center;justify-content:center;gap:10px;min-height:48px;}
+.login-card .login-social svg{width:20px;height:20px;flex-shrink:0;}
+.login-card .login-back{display:block;width:auto;margin:12px auto 0;padding:6px 12px;font-size:12px;color:#465570;}
 
 /* ---------- 소개(랜딩) 페이지 : 로그인 전 첫 화면 ---------- */
 .landing-shell{min-height:100vh;background:#EEF7FF;}
@@ -858,15 +862,16 @@ tr:last-child td{border-bottom:none;}
 }
 
 /* 추가 수정: 포인트 상점 카드 고정 레이아웃 / 닉네임 컬러 미리보기 */
-.shop-item-card{display:flex;flex-direction:column;height:420px;min-height:420px;box-sizing:border-box;overflow:hidden;}
+.shop-item-grid{align-items:start;}
+.shop-item-card{display:flex;flex-direction:column;height:auto;min-height:0;box-sizing:border-box;overflow:hidden;padding:14px;}
 .shop-item-media{height:128px;min-height:128px;flex:none;}
-.shop-item-body{display:flex;flex:1;min-height:0;flex-direction:column;}
-.shop-item-title{min-height:32px;margin-top:10px;align-items:flex-start;}
+.shop-item-body{display:flex;flex:none;min-height:0;flex-direction:column;}
+.shop-item-title{margin-top:10px;align-items:flex-start;}
 .shop-item-effect{margin-top:8px;align-self:flex-start;}
 .shop-item-owned{margin:4px 0 0;font-size:11.5px;}
 .shop-item-comingsoon{color:var(--ink-faint);font-size:12.5px;font-weight:600;text-align:center;padding:0 12px;}
-.shop-item-desc{margin-top:8px;min-height:0;flex:1;overflow-y:auto;overflow-x:hidden;padding-right:4px;color:var(--ink-dim);font-size:13px;line-height:1.55;word-break:keep-all;overflow-wrap:break-word;}
-.shop-item-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;flex:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);}
+.shop-item-desc{margin-top:8px;min-height:0;color:var(--ink-dim);font-size:13px;line-height:1.55;word-break:keep-all;overflow-wrap:break-word;}
+.shop-item-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;flex:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--line);}
 .shop-item-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:nowrap;}
 .shop-item-actions .btn{white-space:nowrap;}
 .shop-item-footer .shop-price{flex:none;align-self:center;}
@@ -887,7 +892,7 @@ tr:last-child td{border-bottom:none;}
 .att-day-star{font-size:7px;color:var(--gold);margin-left:1px;vertical-align:super;}
 .main-nickname-effect{word-break:keep-all;}
 @media(max-width:720px){
-  .shop-item-card{height:410px;min-height:410px;}
+  .shop-item-card{height:auto;min-height:0;}
   .shop-item-actions .btn{padding-left:8px;padding-right:8px;font-size:11.5px;}
   .nickname-preview-palette{grid-template-columns:repeat(2,minmax(0,1fr));}
 }
