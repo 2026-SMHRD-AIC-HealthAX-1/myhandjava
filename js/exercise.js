@@ -459,10 +459,6 @@ let exRepPhase = 'up';       // 'up'(서있음) | 'down'(스쿼트 진행중) 2�
 let exMinAngleThisRep = null;
 let exTorsoStandingAngle = null; // 이번 렙이 'up'이었을 때 마지막으로 측정된 허리(상체) 각도 — 사람마다 다른 기준 자세를 보정하기 위한 개인 기준선
 let exMinTorsoAngleThisRep = null; // 이번 렙 동안 허리가 가장 많이 숙여졌을 때의 각도
-// 지금 이 세션에서 실제로 서 있는 동안 관측된 발 위치·키(px) — 캘리브레이션할 때와 지금 카메라
-// 거리가 다르면 고정된 캘리브레이션 값만으로 그린 실루엣이 실제 몸보다 작거나 크게 보일 수 있어서,
-// 있으면(=한 번이라도 서있는 걸 관측했으면) 이 값을 캘리브레이션 값보다 우선한다.
-let exLiveStandFootCX = null, exLiveStandFootY = null, exLiveStandBodyH = null;
 let exMediaRecorder = null;
 let exRecordedChunks = [];
 let exRecordedMimeType = 'video/webm'; // 실제로 녹화된 포맷(브라우저마다 다름) — Blob 만들 때 이거랑 맞춰야 함
@@ -643,16 +639,15 @@ async function ensureSquatBottomSilhouette() {
   }
   return squatBottomSilhouette;
 }
+const SQUAT_GHOST_FOOT_Y_RATIO = 0.95; // 캔버스 높이 대비 발 위치(하단 기준 비율) — 화면 하단에 고정
+const SQUAT_GHOST_HEIGHT_RATIO = 0.55; // 캔버스 높이 대비 실루엣 키 비율 — 사용자 위치/거리와 무관하게 크기 고정
+
 function exDrawSquatBottomGhostImage(ctx, w, h) {
-  const profile = state.user.calibration;
-  if (!profile || !profile.landmarks) return;
-  const pts = profile.landmarks;
-  if (!pts.lank || !pts.rank || !pts.nose) return;
   const sil = squatBottomSilhouette;
-  const footY = exLiveStandFootY ?? ((pts.lank.y + pts.rank.y) / 2 * h);
-  const footCX = exLiveStandFootCX ?? ((pts.lank.x + pts.rank.x) / 2 * w);
-  const bodyH = exLiveStandBodyH ?? Math.max(20, footY - pts.nose.y * h);
-  const targetH = bodyH * 0.74; // 스쿼트 최저점에서 줄어드는 키 비율(경험값)
+  if (!sil) return;
+  const footY = h * SQUAT_GHOST_FOOT_Y_RATIO;
+  const footCX = w / 2;
+  const targetH = h * SQUAT_GHOST_HEIGHT_RATIO;
   const scale = targetH / sil.bbox.h;
   const drawW = sil.bbox.w * scale, drawH = sil.bbox.h * scale;
   const dx = footCX - drawW / 2, dy = footY - drawH;
@@ -667,10 +662,10 @@ function exDrawSquatBottomGhostShape(ctx, w, h) {
   const profile = state.user.calibration;
   if (!profile || !profile.landmarks) return;
   const pts = profile.landmarks;
-  if (!pts.lank || !pts.rank || !pts.lhip || !pts.rhip || !pts.lsh || !pts.rsh || !pts.nose) return;
-  const footY = exLiveStandFootY ?? ((pts.lank.y + pts.rank.y) / 2 * h);
-  const footCX = exLiveStandFootCX ?? ((pts.lank.x + pts.rank.x) / 2 * w);
-  const bodyH = exLiveStandBodyH ?? Math.max(20, footY - pts.nose.y * h); // 코~발목 세로 길이(px) — 서있는 캘리브레이션 기준 스케일
+  if (!pts.lhip || !pts.rhip || !pts.lsh || !pts.rsh) return;
+  const footY = h * SQUAT_GHOST_FOOT_Y_RATIO;
+  const footCX = w / 2;
+  const bodyH = h * SQUAT_GHOST_HEIGHT_RATIO;
   const shoulderPx = Math.hypot((pts.lsh.x - pts.rsh.x) * w, (pts.lsh.y - pts.rsh.y) * h);
   const bi = profile.bodyInfo || {};
   const { widthFactor } = bodyShapeFactorsFromBmi(bi.bmi, bi.heightCm);
@@ -850,7 +845,6 @@ async function exStartPoseLoop() {
   }
   exRepPhase = 'up'; exMinAngleThisRep = null; exLastVideoTime = -1;
   exTorsoStandingAngle = null; exMinTorsoAngleThisRep = null;
-  exLiveStandFootCX = null; exLiveStandFootY = null; exLiveStandBodyH = null;
   const ctx = canvas.getContext('2d');
   function loop() {
     if (!document.getElementById('cam-canvas')) return; // 화면 이동 시 자연 종료
@@ -885,14 +879,6 @@ async function exStartPoseLoop() {
           const standing = SQUAT_REFERENCE.standingKneeAngle;
           if (exRepPhase === 'up') {
             if (torsoAngle != null) exTorsoStandingAngle = torsoAngle; // 서있는 동안 계속 갱신 → 렙 시작 직전 값이 개인 기준선이 됨
-            const gIdx = CAL_KEYPOINT_IDX;
-            const gNose = landmarks[gIdx.nose], gLank = landmarks[gIdx.lank], gRank = landmarks[gIdx.rank];
-            if (gNose && gLank && gRank && (gNose.visibility ?? 1) >= CAL_VIS_THRESHOLD &&
-                (gLank.visibility ?? 1) >= CAL_VIS_THRESHOLD && (gRank.visibility ?? 1) >= CAL_VIS_THRESHOLD) {
-              exLiveStandFootY = (gLank.y + gRank.y) / 2 * canvas.height;
-              exLiveStandFootCX = (gLank.x + gRank.x) / 2 * canvas.width;
-              exLiveStandBodyH = Math.max(20, exLiveStandFootY - gNose.y * canvas.height);
-            }
             if (angle < standing - 20) {
               exRepPhase = 'down';
               exMinAngleThisRep = angle;
