@@ -125,7 +125,7 @@ async function handleKakaoRedirect(code) {
     const res = await fetch(`${API_BASE}/api/auth/kakao/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code })
+      body: JSON.stringify({ code, redirectUri: OAUTH_REDIRECT_URI })
     });
     const body = await res.json();
     if (!body.success) { toast(body.message || '카카오 로그인에 실패했습니다'); return; }
@@ -155,7 +155,7 @@ async function handleGoogleRedirect(code) {
     const res = await fetch(`${API_BASE}/api/auth/google/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code })
+      body: JSON.stringify({ code, redirectUri: OAUTH_REDIRECT_URI })
     });
     const body = await res.json();
     if (!body.success) { toast(body.message || '구글 로그인에 실패했습니다'); return; }
