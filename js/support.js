@@ -115,7 +115,7 @@ const FAQ_ITEMS = [
     id: 'grade',
     q: '레벨 앞의 등급(아이언~챌린저)은 무엇인가요?',
     a: () => `
-      <p class="desc" style="margin:0 0 10px;">등급은 10레벨 단위로 자동으로 정해져요. 1~10레벨은 아이언, 11~20레벨은 브론즈처럼 10레벨씩 오를 때마다 다음 등급으로 바뀌고, 91레벨부터(100레벨 이상 포함)는 가장 높은 챌린저예요.</p>
+      <p class="desc" style="margin:0 0 10px;">등급은 [순위 도전]에 참여하면 가장 낮은 아이언부터 시작돼요. 순위 도전에서 쌓은 누적 점수가 각 등급의 기준 점수를 넘으면 다음 등급으로 자동 승급하고, 가장 높은 등급은 챌린저예요. 내 누적 점수는 랭킹 탭의 지역별 랭킹에서 확인할 수 있어요.</p>
       <div style="display:flex;flex-direction:column;gap:8px;">
         ${Object.keys(USER_GRADE_COLORS).map(code => `
         <div class="flex-between" style="border:1px solid var(--line);border-radius:10px;padding:8px 12px;">
@@ -184,13 +184,9 @@ function renderSupportGuide(){
       <li>레벨 구간에 따라 다음 레벨에 필요한 경험치가 달라집니다.</li>
       <li>획득한 EXP는 계속 누적됩니다.</li>
       <li>레벨업에 필요한 경험치를 초과하여 획득한 EXP는 <b>다음 레벨에 자동으로 이월됩니다.</b></li>
-      <li><b>등급은 10레벨 단위로 자동 결정됩니다.</b> 레벨을 올리기 위해 따로 신청하거나 초기화되는 절차는 없습니다.</li>
+      <li><b>등급은 [순위 도전]에 참여하면 가장 낮은 등급부터 시작되며, 순위 도전에서 쌓은 누적 점수가 각 등급의 기준을 넘으면 다음 등급으로 자동 승급합니다.</b> 등급별 필요 누적 점수는 문의 탭의 자주하는 질문에서 확인할 수 있습니다.</li>
       <li>현재 등급은 레벨 옆에 표시되는 <b>등급 문양과 고유 색상</b>으로 확인할 수 있습니다.</li>
     </ul>
-    <div style="margin-top:18px;padding:14px 16px;background:var(--surface-2);border-radius:12px;">
-      <b>등급 구간</b>
-      <p class="desc" style="margin:8px 0 0;line-height:1.8;">${Object.keys(USER_GRADE_NAMES).map(code => `${USER_GRADE_NAMES[code]}(Lv.${USER_GRADE_LEVEL_RANGE[code]})`).join(' → ')}</p>
-    </div>
   </div>`;
 }
 
@@ -198,11 +194,11 @@ function renderSupportFAQ(){
   const faqs=[
     ['Lv.1 → Lv.2에는 정확히 몇 EXP가 필요한가요?','레벨업에 필요한 EXP는 현재 레벨의 경험치 게이지에서 확인할 수 있습니다. 레벨 구간에 따라 필요한 EXP가 달라집니다.'],
     ['레벨업에 필요한 EXP는 언제 증가하나요?','레벨업에 필요한 EXP는 10레벨 단위로 변경됩니다. 현재 레벨에 적용되는 필요 EXP는 경험치 게이지에서 확인할 수 있습니다.'],
-    ['운동을 여러 번 하면 EXP가 계속 누적되나요?','네. 운동으로 획득한 EXP는 계속 누적되며, 필요한 EXP를 모두 채우면 다음 레벨로 올라갑니다.'],
+    ['운동을 여러 번 하면 EXP가 계속 누적되나요?','하루 5회까지는 경험치와 포인트를 모두 획득할 수 있습니다. 6회부터는 포인트는 획득할 수 없고, 경험치는 1/3만 획득됩니다.'],
     ['0 EXP를 받은 운동도 운동 기록이나 점수에는 남나요?','0 ~ 249점 구간에서는 EXP가 지급되지 않습니다. 운동 기록 및 누적 점수 반영 여부는 해당 운동의 기록 기준에 따라 처리됩니다.'],
     ['1,500점이 운동 점수의 최대 점수인가요?','현재 경험치 지급 기준은 운동 점수 1,500점을 최고 구간으로 적용합니다.'],
     ['한 번의 운동에서 받을 수 있는 최대 EXP는 500 EXP인가요?','네. 현재 경험치 지급 기준에서 운동 1회 최대 획득 경험치는 500 EXP입니다.'],
-    ['등급은 언제 바뀌나요?','등급은 레벨에 따라 자동으로 정해집니다. 10레벨을 채울 때마다 다음 등급으로 올라가고(예: Lv.11이 되면 브론즈), 91레벨부터는 가장 높은 등급인 챌린저입니다. 별도로 신청하거나 레벨이 초기화되는 절차는 없습니다.']
+    ['등급은 언제 바뀌나요?','[순위 도전]에 한 번이라도 참여하면 아이언 등급이 부여되고, 이후 순위 도전에서 쌓은 누적 점수에 따라 다음 등급으로 승급합니다. 별도로 신청하거나 초기화되는 절차는 없습니다.']
   ];
   return `<div style="max-width:820px;margin:0 auto;">
     <div class="card" style="margin-bottom:14px;"><h2 style="margin:0;">레벨 · 경험치 F&A</h2><p class="desc" style="margin-bottom:0;">운동 경험치와 레벨, 등급에 대해 자주 묻는 내용을 확인해보세요.</p></div>
@@ -212,9 +208,7 @@ function renderSupportFAQ(){
 
 function renderSupportInquiry(){
   const s=state.support;
-  const isAdmin = state.user.role === 'ADMIN';
-  const adminView = isAdmin && s.adminView;
-  const source = adminView ? s.adminTickets : s.tickets;
+  const source = s.tickets;
   const list = s.filter==='all' ? source : source.filter(t=>t.status===s.filter);
   return `
   <div class="flex-between" style="margin-bottom:14px;">
@@ -222,30 +216,28 @@ function renderSupportInquiry(){
       ${['all','접수','처리중','답변완료'].map(f=>`<button class="btn btn-sm ${s.filter===f?'btn-primary':'btn-secondary'}" onclick="setSupportFilter('${f}')">${f==='all'?'전체':f}</button>`).join('')}
     </div>
     <div style="display:flex;gap:8px;">
-      ${isAdmin ? `<button class="btn btn-sm ${adminView?'btn-primary':'btn-secondary'}" onclick="toggleSupportAdminView()">${adminView?'내 문의 보기':'🛠 전체 문의 (관리자)'}</button>` : ''}
-      ${!adminView ? `<button class="btn btn-primary btn-sm" onclick="${(state.guestMode && !s.composerOpen) ? "goto('login')" : 'toggleComposer()'}">${s.composerOpen?'접기':'불편사항 접수하기'}</button>` : ''}
+      <button class="btn btn-primary btn-sm" onclick="${(state.guestMode && !s.composerOpen) ? "goto('login')" : 'toggleComposer()'}">${s.composerOpen?'작성취소':'불편사항 접수하기'}</button>
     </div>
   </div>
-  ${adminView ? '' : `
   <div style="margin-bottom:20px;">
     <p class="section-label">자주하는 질문</p>
     <div style="display:flex;flex-direction:column;gap:12px;">${FAQ_ITEMS.map(renderFaqCard).join('')}</div>
-  </div>`}
+  </div>
 
-  ${(!adminView && s.composerOpen) ? `
+  ${s.composerOpen ? `
   <div class="card" style="max-width:560px;margin-bottom:20px;">
     <p class="section-label">새 불편사항 접수</p>
     <div class="field"><label for="sp-type">유형</label>
       <select id="sp-type"><option>Error</option><option>기능제안</option><option>기타</option></select>
     </div>
     <div class="field"><label for="sp-title">제목</label><input id="sp-title" placeholder="어떤 문제인지 한 줄로 요약해주세요"></div>
-    <div class="field"><label for="sp-body">내용</label><textarea id="sp-body" rows="4" placeholder="언제, 어떤 화면에서, 어떤 문제가 발생했는지 알려주세요"></textarea></div>
+    <div class="field"><label for="sp-body">내용</label><textarea id="sp-body" rows="4" style="resize:none;" placeholder="언제, 어떤 화면에서, 어떤 문제가 발생했는지 알려주세요"></textarea></div>
     <button class="btn btn-primary" onclick="submitTicket()">접수하기</button>
   </div>` : ''}
 
   <div class="grid grid-2">
-    ${list.length===0 ? `<div class="empty-note">해당하는 ${adminView?'문의':'접수'} 내역이 없습니다.</div>`
-      : list.map(t => adminView ? renderAdminTicketCard(t) : renderMyTicketCard(t)).join('')}
+    ${list.length===0 ? `<div class="empty-note">해당하는 접수 내역이 없습니다.</div>`
+      : list.map(renderMyTicketCard).join('')}
   </div>`;
 }
 function renderMyTicketCard(t){
@@ -291,11 +283,6 @@ function renderAdminTicketCard(t){
 }
 function setSupportFilter(f){state.support.filter=f; render();}
 function toggleComposer(){state.support.composerOpen=!state.support.composerOpen; render();}
-function toggleSupportAdminView(){
-  state.support.adminView = !state.support.adminView;
-  if(state.support.adminView) loadAllSupportTickets();
-  render();
-}
 async function submitTicket(){
   const type=document.getElementById('sp-type').value;
   const title=document.getElementById('sp-title').value.trim();

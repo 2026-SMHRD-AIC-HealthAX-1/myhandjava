@@ -24,6 +24,7 @@ Object.assign(state.user, {
   currentExp: Number.isFinite(state.user.currentExp) ? state.user.currentExp : state.user.exp,
   nextLevelExp: state.user.nextLevelExp ?? calculatedNextLevelExp(state.user.level),
   freeWorkoutsUsed: state.user.freeWorkoutsUsed || 0,
+  rankedWorkoutsUsed: state.user.rankedWorkoutsUsed || 0,
   freeWorkoutDate: state.user.freeWorkoutDate || '',
   attendanceRewardClaimed: !!state.user.attendanceRewardClaimed,
 });
@@ -35,7 +36,7 @@ state.crew.battleRequest = state.crew.battleRequest || {size:2,status:'idle'};
 function kstDateKey(){ return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()); }
 function syncDailyFreeWorkouts(){
   const today=kstDateKey();
-  if(state.user.freeWorkoutDate!==today){ state.user.freeWorkoutDate=today; state.user.freeWorkoutsUsed=0; state.user.setsUsedToday=0; }
+  if(state.user.freeWorkoutDate!==today){ state.user.freeWorkoutDate=today; state.user.freeWorkoutsUsed=0; state.user.rankedWorkoutsUsed=0; state.user.setsUsedToday=0; }
   else state.user.setsUsedToday=state.user.freeWorkoutsUsed;
 }
 syncDailyFreeWorkouts();
@@ -170,12 +171,33 @@ goToTutorial = function(){
     openCalibrationModal();
     return;
   }
-  if(state.user.freeWorkoutsUsed>=3){
-    if((state.user.retakeTickets||0)<1){ toast('오늘의 무료 운동 3회를 모두 사용했습니다. 운동 추가권이 필요합니다.'); setMenu('shop'); return; }
-    askConfirm('운동 추가권 사용',`무료 운동 3회를 모두 사용했습니다. 티켓 1장을 사용합니다.\n티켓 운동은 경험치가 지급되지 않습니다.`,()=>{closeConfirm();state.exercise.sessionType='ticket';goExStep(1);},'운동추가권 사용');
+  const ranked = state.exercise.mode==='ranked';
+  // 순위 도전은 무료 운동 횟수와 완전히 별개로, 보유한 '순위 도전 티켓'만 있으면 참여할 수
+  // 있다 — 포인트/경험치는 지급하지 않고 점수만 랭킹에 반영된다(renderExStepSave 참고).
+  if(ranked && (state.user.rankTickets||0)<=0){
+    toast('순위 도전 티켓이 없습니다. 티켓을 구매해주세요.');
     return;
   }
-  state.exercise.sessionType='free'; goExStep(1);
+  // 하루 운동 횟수 자체엔 제한이 없다 — 대신 자유 운동은 오늘 몇 번째인지에 따라 보상
+  // 등급이 정해진다(1~5회 free, 6회부터 reduced). 부상 위험 경고는 모드와 무관하게
+  // 자유 운동+순위 도전을 합친 "오늘 총 횟수"를 기준으로 뜬다.
+  const usedFree = state.user.freeWorkoutsUsed || 0;
+  const totalToday = usedFree + (state.user.rankedWorkoutsUsed || 0);
+  const start = () => {
+    state.exercise.sessionType = ranked ? 'ranked' : (usedFree>=5 ? 'reduced' : 'free');
+    goExStep(1);
+  };
+  if(totalToday>=10){
+    askConfirm(
+      '부상 위험 안내',
+      `오늘 벌써 ${totalToday}회 운동했어요. 무리하게 반복 운동을 하면 부상 위험이 높아질 수 있으니, 충분히 쉬고 다음에 다시 시도하는 걸 권장해요.\n그래도 계속 진행할까요?`,
+      ()=>{ closeConfirm(); start(); },
+      '그래도 진행할게요',
+      true
+    );
+    return;
+  }
+  start();
 };
 const _renderTutorialV1=renderExStepTutorial;
 renderExStepTutorial=()=>_renderTutorialV1().replaceAll('스마트폰 카메라 촬영','스마트폰 카메라 촬영').replaceAll('스마트폰 카메라','스마트폰 카메라');
@@ -183,31 +205,65 @@ startTutorialGate=function(){
   let left=TUTORIAL_GATE_SECONDS; const tick=()=>{const b=document.getElementById('ex-tutorial-start-btn');if(!b)return;b.textContent=left>0?`스마트폰 카메라 촬영 시작 (${left}초)`:'스마트폰 카메라 촬영 시작';b.disabled=left>0;b.style.opacity=left>0?'.5':'1';if(left-->0)setTimeout(tick,1000);};tick();
 };
 
-// 4, 7, 8. 1세트/실시간 점수/무료횟수/티켓 표시
-getDailySetLimit=()=>3;
+// 4, 7, 8. 1세트/실시간 점수/오늘 운동 횟수 표시
+// 하루 운동 횟수 제한은 없앴다 — 대신 오늘 몇 번째 운동인지에 따라 보상이 달라진다
+// (1~5회 전액 지급, 6회부터 포인트 미지급·경험치 1/3만 지급, 10회부터 부상 위험 경고를
+// 띄운다). goToTutorial()이 이 등급을 정해 state.exercise.sessionType에 담아둔다.
 const _renderExStepPickV1=renderExStepPick;
 renderExStepPick=function(){
   syncDailyFreeWorkouts();
-  const used=Math.min(3,Number(state.user.freeWorkoutsUsed)||0);
-  const remain=Math.max(0,3-used);
+  const used=Number(state.user.freeWorkoutsUsed)||0;
   let html=_renderExStepPickV1()
-    .replace('오늘 가능한 운동세트','오늘의 무료 운동')
-    .replace(/\d+ \/ \d+세트 사용 ·/,`사용 횟수 ${used}/3회 ·`)
-    .replace(/\d+세트 남음/,`${remain}회 남음`)
     .replace(/<p class="hint" style="margin-top:6px;">[\s\S]*?<\/p>/,'');
-  const guide=`<div class="attendance-reward-guide" style="margin:10px 0 0;padding:12px 14px;border:1px solid var(--line);border-radius:10px;font-size:12px;line-height:1.75;">
-    <div style="margin-bottom:4px;"><b>이용 안내</b></div>
-    <div>• 하루 무료 운동은 <b>기본 1회와 추가 기회 2회를 합쳐 총 3회</b> 제공됩니다.</div>
-    <div>• 운동을 완료할 때마다 오늘 사용한 무료 운동 횟수가 <b><code>0/3회 → 1/3회 → 2/3회 → 3/3회</code></b>로 표시됩니다.</div>
-    <div>• <code>운동 추가권 구매하기</code> 버튼을 누르면 <b>포인트 상점 → 기타</b> 메뉴로 이동하여 운동 추가권을 구매할 수 있습니다.</div>
-    <div>• 무료 운동 횟수는 매일 <b>대한민국 시간(KST) 오전 0시(00:00)</b>를 기준으로 초기화됩니다.</div>
-    <div>• 초기화 후 오늘의 무료 운동은 <b><code>0/3회</code></b>, 남은 무료 운동은 <b><code>3회</code></b>로 표시됩니다.</div>
-    <div style="margin-top:7px;">※ 무료 운동 횟수가 남아 있는 동안에는 <code>운동 추가권 구매하기</code> 버튼이 비활성화됩니다.</div>
-    <button class="btn btn-primary btn-block" style="margin-top:10px;${used<3?'opacity:.45;cursor:not-allowed;':''}" ${used<3?'disabled':''} onclick="setMenu('shop');state.shopFilter='기타';render();">운동 추가권 구매하기</button>
-  </div>`;
-  html=html.replace('</div>\n    <div style="margin-top:20px;">','</div>'+guide+'\n    <div style="margin-top:20px;">');
+  if(state.exercise.mode==='ranked'){
+    // 순위 도전은 오늘 운동 횟수가 아니라 포인트 상점의 '순위 도전 티켓'(state.user.rankTickets)을
+    // 소모해서 참여한다. 카드 오른쪽의 티켓 이미지를 누르면 바로 구매 확인창이 뜬다
+    // (openRankTicketPurchase 참고) — shop.js buyItem()과 별개로, 여기서는 서버 카탈로그
+    // 동기화(serverId) 없이도 바로 구매되는 간편 구매 경로다.
+    const rankTickets=state.user.rankTickets||0;
+    html=html.replace(
+      /<div class="card ex-daily-card" style="margin-bottom:16px;">[\s\S]*?<\/div>/,
+      `<div class="card ex-daily-card" style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:14px;">
+        <div>
+          <p class="section-label ex-mission-title" style="margin:0 0 4px;">순위 도전 티켓</p>
+          <p class="desc mono" style="margin:0;">보유 수량 <b>${rankTickets}장</b></p>
+        </div>
+        <button type="button" onclick="openRankTicketPurchase()" title="순위 도전 티켓 구매하기" style="background:none;border:none;padding:0;cursor:pointer;flex:none;display:flex;flex-direction:column;align-items:center;gap:4px;">
+          <img src="assets/shop-icons/rank-challenge-ticket.svg" alt="순위 도전 티켓 구매하기" style="width:76px;height:auto;border-radius:10px;display:block;">
+          <span class="mono" style="font-size:11px;font-weight:700;color:var(--ink);">구매</span>
+        </button>
+      </div>`
+    );
+  } else {
+    const tierText = used<5
+      ? `오늘 ${used}회 완료 · 5회까지 포인트·경험치 전액 지급`
+      : used<10
+        ? `오늘 ${used}회 완료 · 6회부터 포인트 미지급, 경험치는 1/3만 지급돼요`
+        : `오늘 ${used}회 완료 · 과도한 운동은 부상 위험이 있어요`;
+    html=html
+      .replace(/<p class="desc mono" style="margin:0;">[\s\S]*?<\/p>/,`<p class="desc mono" style="margin:0;">${tierText}</p>`);
+  }
   return html;
 };
+// 순위 도전 카드의 티켓 이미지 버튼 — 포인트 상점까지 안 가고 바로 구매할 수 있는 간편 구매
+// 흐름. shop.js buyItem()은 서버 카탈로그(serverId)와 동기화된 아이템만 구매되는데, 이
+// 티켓은 아직 백엔드에 없어서 여기서는 그 제약 없이 포인트만 확인하고 바로 지급한다.
+function openRankTicketPurchase(){
+  const it=state.shopItems.find(x=>x.name==='순위 도전 티켓');
+  if(!it) return;
+  if(state.user.points<it.price){ toast('포인트가 부족합니다'); return; }
+  askConfirm(
+    '순위 도전 티켓 구매',
+    `보유 포인트: ${state.user.points.toLocaleString()}P\n티켓 가격: ${it.price.toLocaleString()}P\n구매 후 남는 포인트: ${(state.user.points-it.price).toLocaleString()}P`,
+    ()=>{
+      state.user.points-=it.price;
+      state.user.rankTickets=(state.user.rankTickets||0)+1;
+      toast(`${it.name} 구매 완료 (보유 ${state.user.rankTickets}장)`);
+      closeConfirm();
+    },
+    '구매하기'
+  );
+}
 const _renderExStepCamV1=renderExStepCam;
 renderExStepCam=function(){
   const html=_renderExStepCamV1();
@@ -221,14 +277,25 @@ exRegisterRep=function(...args){ const out=_exRegisterRepV1(...args); const scor
 renderExStepSave=function(){
   const r=state.exercise.result;if(!r)return '<div class="empty-note">저장할 결과가 없습니다.</div>';
   const counts={PERFECT:0,GREAT:0,GOOD:0,MISS:0};(r.reps||[]).forEach(x=>counts[x.grade]++);
-  const ticket=state.exercise.sessionType==='ticket';
+  // sessionType: 'free'(1~5회) | 'reduced'(오늘 6회째부터, 포인트 0·경험치 1/3) |
+  // 'ranked'(순위 도전 — 포인트·경험치 항상 0, 점수만 랭킹에 반영). goToTutorial() 참고.
+  const type=state.exercise.sessionType;
+  const ranked=type==='ranked';
+  const reduced=type==='reduced';
   const serverExp=r.expAwarded!=null||r.experienceAwarded!=null;
-  const exp=ticket?0:Number(r.expAwarded ?? r.experienceAwarded ?? mockExpForScore(r.score));
-  const points=Number(r.pointsAwarded ?? Math.round(r.score*.4));
-  return `<div class="card result-summary"><div class="flex-between"><h2>운동 결과</h2><span class="pill ${ticket?'pill-gold':'pill-accent'}">${ticket?'운동추가권 사용 운동':'무료 운동'}</span></div>
-    ${ticket?'<p class="ticket-warning">티켓 운동에서는 경험치가 지급되지 않습니다.</p>':''}
+  const mockExp=mockExpForScore(r.score);
+  const exp=ranked?0:Number(r.expAwarded ?? r.experienceAwarded ?? (reduced?Math.round(mockExp/3):mockExp));
+  const points=ranked?0:(r.pointsAwarded!=null ? Number(r.pointsAwarded) : (reduced?0:Math.round(r.score*.4)));
+  const pillLabel=ranked?'순위 도전':reduced?'6회차 이후 운동':'무료 운동';
+  const warning=ranked
+    ? '<p class="ticket-warning">순위 도전은 포인트·경험치가 지급되지 않고, 점수만 랭킹에 반영됩니다.</p>'
+    : reduced
+      ? '<p class="ticket-warning">오늘 6회 이후 운동이라 포인트는 지급되지 않고, 경험치는 1/3만 지급됩니다.</p>'
+      : '';
+  return `<div class="card result-summary"><div class="flex-between"><h2>운동 결과</h2><span class="pill ${ranked||reduced?'pill-gold':'pill-accent'}">${pillLabel}</span></div>
+    ${warning}
     <div class="stat-row"><div class="stat-box"><div class="num mono">${r.total}</div><div class="lbl">전체 횟수</div></div>${Object.entries(counts).map(([k,v])=>`<div class="stat-box"><div class="num mono">${v}</div><div class="lbl">${k}</div></div>`).join('')}</div>
-    <div class="stat-row"><div class="stat-box"><div class="num mono">${r.score.toLocaleString()}</div><div class="lbl">총점</div></div><div class="stat-box"><div class="num mono">+${exp}</div><div class="lbl">획득 경험치${!serverExp&&!ticket?' (목)':''}</div></div><div class="stat-box"><div class="num mono">+${points}</div><div class="lbl">획득 포인트${r.pointsAwarded==null?' (목)':''}</div></div></div>
+    <div class="stat-row"><div class="stat-box"><div class="num mono">${r.score.toLocaleString()}</div><div class="lbl">총점</div></div><div class="stat-box"><div class="num mono">+${exp}</div><div class="lbl">획득 경험치${!serverExp&&!ranked?' (목)':''}</div></div><div class="stat-box"><div class="num mono">+${points}</div><div class="lbl">획득 포인트${r.pointsAwarded==null&&!ranked?' (목)':''}</div></div></div>
     <p class="${r.highScoreUpdated?'record-new':'hint'}">${r.highScoreUpdated?'🏆 최고점을 갱신했습니다!':'기존 최고점과 비교 후 갱신 여부가 표시됩니다.'}</p>
     <button class="btn btn-primary btn-block" onclick="saveExerciseResult()">결과 저장</button></div>`;
 };

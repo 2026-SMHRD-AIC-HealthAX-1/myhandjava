@@ -1,11 +1,11 @@
-// ranking.js — '랭킹' 카테고리: 지역별/종목별/크루 랭킹.
-// [담당] '랭킹' 탭(지역별/종목별/크루) + 랭킹 단상 클릭 시 뜨는 공개 프로필 팝업.
-// [백엔드 연동] GET /api/rankings/region, /api/rankings/exercise, /api/rankings/crew,
+// ranking.js — '랭킹' 카테고리: 지역별/크루 랭킹.
+// [담당] '랭킹' 탭(지역별/크루) + 랭킹 단상 클릭 시 뜨는 공개 프로필 팝업.
+// [백엔드 연동] GET /api/rankings/region, /api/rankings/crew,
 //              GET /api/users/{id}/public-profile → DB: users, exercise_records 집계 쿼리.
 // [주의] "전체" 옵션을 선택하면 city/gu/dong을 아예 안 보내 전국 랭킹을 받는다(null 파라미터를
 //        서버가 필터 없음으로 처리) — 빈 문자열과 null을 혼동하면 랭킹이 안 나온다.
 
-const RANK_TABS=['지역별 랭킹','운동 종목별 랭킹','크루 랭킹'];
+const RANK_TABS=['지역별 랭킹','크루 랭킹'];
 function renderRanking(){
   const i=state.subtabs.ranking;
   return `
@@ -13,14 +13,18 @@ function renderRanking(){
   <div class="subtabs">
     ${RANK_TABS.map((t,idx)=>`<div class="tab ${i===idx?'active':''}" onclick="setSub('ranking',${idx})">${t}</div>`).join('')}
   </div>
-  ${i===0?renderRankRegion(): i===1?renderRankExercise(): renderCrewRegionRank()}`;
+  ${i===0?renderRankRegion():renderCrewRegionRank()}`;
 }
 // (#7) 1~3등은 캐릭터를 올림픽 단상 형태로, 4등부터는 기존 리스트로 보여주는 공용 포디움 컴포넌트.
 // rows는 이미 순위(rank)가 매겨진 배열이어야 하며, name/level/score 필드를 사용한다.
 // (#2) 1~3위는 아바타 원이 아니라 실제 픽셀 캐릭터를 단상 위에 세운다. 랭킹에 오른 다른
 // 사용자의 실제 장착 아이템·성별 데이터는 없으므로, 이름을 시드로 한 결정론적 값으로
 // 캐릭터 외형(성별·의상 유무)만 살짝 다르게 흉내낸다.
-function renderPodium(rows){
+// opts.showScore=false면 점수 줄을 아예 안 그린다(크루 랭킹 — 크루명·레벨만 보여준다),
+// opts.scoreUnit은 점수 뒤에 붙일 단위 문자열이다(지역별 랭킹 — " P"로 포인트임을 표시).
+function renderPodium(rows,opts={}){
+  const showScore=opts.showScore!==false;
+  const scoreUnit=opts.scoreUnit||'';
   const byRank=r=>rows.find(x=>x.rank===r);
   const first=byRank(1), second=byRank(2), third=byRank(3);
   const step=(r,cls,size)=>{
@@ -33,7 +37,7 @@ function renderPodium(rows){
       <canvas class="podium-canvas" id="${cid}" data-seed="${r.name}" style="width:${size}px;height:${Math.round(size*1.22)}px;"></canvas>
       <div class="podium-name">${r.name}${r.isMe?' <span class="pill pill-accent">나</span>':''}</div>
       ${r.level!=null?`<div class="podium-lv mono">Lv.${r.level}</div>`:''}
-      <div class="podium-score mono">${r.isMe?'내 점수 ':''}${r.score.toLocaleString()}</div>
+      ${showScore?`<div class="podium-score mono">${r.isMe?'내 점수 ':''}${r.score.toLocaleString()}${scoreUnit}</div>`:''}
       <div class="podium-stand">${r.rank}</div>
     </div>`;
   };
@@ -122,7 +126,7 @@ function renderRankRegion(){
     <select onchange="setRankDong(this.value)" ${isAll?'disabled':''}>${isAll?`<option>--</option>`:dongs.map(d=>`<option ${d===dong?'selected':''}>${d}</option>`).join('')}</select>
   </div>
   ${rows.length===0 ? `<div class="empty-note">${isAll?'아직':'이 지역엔 아직'} 랭킹 데이터가 없습니다.</div>` : `
-  ${renderPodium(rows)}
+  ${renderPodium(rows,{scoreUnit:' P'})}
   ${rest.length?`
   <div class="table-wrap compact-table">
     <table>
@@ -134,8 +138,8 @@ function renderRankRegion(){
             <td><span class="name-cell"><span class="user-avatar" style="background:${avatarColor(r.rank-1)}">${avatarInitial(r.name)}</span>${r.name}${r.isMe?' <span class="pill pill-accent">나</span>':''}</span></td>
             <td class="mono">Lv.${r.level}</td>
             <td>${rankBadgeIcon(gradeFromLevel(r.level), USER_GRADE_NAMES[gradeFromLevel(r.level)], 24)}</td>
-            <td class="mono">${r.score.toLocaleString()}</td>
-            <td>${r.userId!=null?`<button class="btn btn-sm btn-secondary" onclick="openPublicProfile(${r.userId})">상대정보</button>`:''}</td>
+            <td class="mono">${r.score.toLocaleString()} P</td>
+            <td>${r.userId!=null?`<button class="btn btn-sm btn-secondary" onclick="openPublicProfile(${r.userId})">${r.isMe?'내 정보':'상대정보'}</button>`:''}</td>
           </tr>`).join('')}
       </tbody>
     </table>
@@ -144,71 +148,6 @@ function renderRankRegion(){
 function setRankCity(v){ state.rankFilter={city:v, gu:null, dong:null}; loadRegionRanking(); render(); }
 function setRankGu(v){ state.rankFilter.gu=v; state.rankFilter.dong=null; loadRegionRanking(); render(); }
 function setRankDong(v){ state.rankFilter.dong=v; loadRegionRanking(); render(); }
-
-// (#17) 운동 종목별 랭킹: 실제 GET /api/rankings/exercise?city&gu&dong&exerciseType 결과를 쓴다.
-// 시 드롭다운의 "전체"는 RANK_ALL_CITY(위쪽 지역별 랭킹 섹션 참고) — 고르면 city(따라서
-// gu·dong도)를 아예 안 보내 전국 랭킹을 받는다. 백엔드 findExerciseRanking()이 null 파라미터는
-// 필터링하지 않도록 되어 있다(UserRepository 참고).
-function resolveExRankFilter(f){
-  const cities=Object.keys(REGION_DATA);
-  if(f.city===RANK_ALL_CITY){
-    const ex=EXS.some(e=>e.name===f.ex)?f.ex:EXS[0].name;
-    return {cities, city:RANK_ALL_CITY, gus:[], gu:null, dongs:[], dong:null, ex};
-  }
-  const city=REGION_DATA[f.city]?f.city:cities[0];
-  const gus=Object.keys(REGION_DATA[city]);
-  const gu=REGION_DATA[city][f.gu]?f.gu:gus[0];
-  const dongs=REGION_DATA[city][gu];
-  const dong=dongs.includes(f.dong)?f.dong:dongs[0];
-  const ex=EXS.some(e=>e.name===f.ex)?f.ex:EXS[0].name;
-  return {cities, city, gus, gu, dongs, dong, ex};
-}
-async function loadExerciseRanking(){
-  const {city,gu,dong,ex}=resolveExRankFilter(state.exRankFilter);
-  const isAll=city===RANK_ALL_CITY;
-  const regionQuery=isAll?'':`&city=${encodeURIComponent(city)}&gu=${encodeURIComponent(gu)}&dong=${encodeURIComponent(dong)}`;
-  try{
-    const res = await fetch(`${API_BASE}/api/rankings/exercise?exerciseType=${encodeURIComponent(ex)}${regionQuery}`, {
-      headers: state.token ? { 'Authorization': 'Bearer ' + state.token } : {}
-    });
-    const body = await res.json();
-    if(!body.success) return;
-    state.rank.exercise = body.data.map(r=>({ rank:r.rank, userId:r.userId, name:r.nickname, level:r.level, score:r.score, isMe:r.me }));
-    render();
-  }catch(err){
-    console.error('종목별 랭킹 불러오기 실패', err);
-  }
-}
-function renderRankExercise(){
-  const {cities,city,gus,gu,dongs,dong,ex}=resolveExRankFilter(state.exRankFilter);
-  const isAll=city===RANK_ALL_CITY;
-  const rows=state.rank.exercise;
-  const rest=rows.filter(r=>r.rank>3);
-  return `
-  <div class="filter-bar">
-    <select onchange="setExRankCity(this.value)">
-      <option ${isAll?'selected':''}>${RANK_ALL_CITY}</option>
-      ${cities.map(c=>`<option ${c===city?'selected':''}>${c}</option>`).join('')}
-    </select>
-    <select onchange="setExRankGu(this.value)" ${isAll?'disabled':''}>${isAll?`<option>--</option>`:gus.map(g=>`<option ${g===gu?'selected':''}>${g}</option>`).join('')}</select>
-    <select onchange="setExRankDong(this.value)" ${isAll?'disabled':''}>${isAll?`<option>--</option>`:dongs.map(d=>`<option ${d===dong?'selected':''}>${d}</option>`).join('')}</select>
-    <select onchange="setExRankEx(this.value)">${EXS.map(e=>`<option ${e.name===ex?'selected':''}>${e.name}</option>`).join('')}</select>
-  </div>
-  <p class="hint" style="margin:-6px 0 14px;">점수는 ${isAll?'전국':''} ${ex} 종목의 누적 점수 기준입니다.</p>
-  ${rows.length===0 ? `<div class="empty-note">${isAll?'아직':'이 지역엔 아직'} ${ex} 기록이 없습니다.</div>` : `
-  ${renderPodium(rows)}
-  ${rest.length?`
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>순위</th><th>닉네임</th><th>${ex} 누적점수</th></tr></thead>
-      <tbody>${rest.map(r=>`<tr><td><span class="rank-num">${r.rank}</span></td><td>${r.name}${r.isMe?' <span class="pill pill-accent">나</span>':''}</td><td class="mono">${r.score.toLocaleString()}</td></tr>`).join('')}</tbody>
-    </table>
-  </div>`:''}`}`;
-}
-function setExRankCity(v){ state.exRankFilter={...state.exRankFilter, city:v, gu:null, dong:null}; loadExerciseRanking(); render(); }
-function setExRankGu(v){ state.exRankFilter.gu=v; state.exRankFilter.dong=null; loadExerciseRanking(); render(); }
-function setExRankDong(v){ state.exRankFilter.dong=v; loadExerciseRanking(); render(); }
-function setExRankEx(v){ state.exRankFilter.ex=v; loadExerciseRanking(); render(); }
 
 // 랭킹 단상(top3) 아바타를 클릭하면 그 사람의 공개 프로필을 팝업으로 보여준다. 백엔드가
 // isPublic=false면 nickname 말고는 아무것도 안 내려주니, 여기서 프론트가 뭘 더 막을 필요는 없다.

@@ -28,7 +28,7 @@ const state = {
     open:false, nickname:'', gender:'male',
     regionCity:'서울시', regionGu:'강남구', regionDong:'역삼동',
   },
-  user: {id: null, nickname:'', avatar:0, gender:'male', points:1240, exp:62, level:7, grade:'IRON', gradeName:'아이언', region:'서울시 강남구 역삼동', retakeTickets:0, nicknameTickets:0, bio:'',
+  user: {id: null, nickname:'', avatar:0, gender:'male', points:1240, exp:62, level:7, grade:'IRON', gradeName:'아이언', region:'서울시 강남구 역삼동', retakeTickets:0, nicknameTickets:0, rankTickets:0, bio:'',
     streak:10, streakRewardClaimed:false, setsUsedToday:0, role:'USER',
     regionRank:null}, // 내 동네(동 단위) 실제 순위 — ranking.js loadMyRegionRank() 참고. 아직 못 불러왔으면 null.
   menu: 'main',
@@ -36,7 +36,7 @@ const state = {
   // 마이페이지 '보유 아이템' 카드 페이지 번호 — 아이템이 늘어나도 카드 높이가 안 늘어나게
   // 4개씩 끊어 보여준다(profile.js renderMissionAvatar 참고).
   profileItemsPage: 0,
-  exercise: {step:0, picked:'squat', camPhase:'idle', camStream:null, timerId:null, seconds:0, result:null, retakesUsed:0, liveReps:[], replayOpen:false},
+  exercise: {step:0, mode:'free', picked:'squat', camPhase:'idle', camStream:null, timerId:null, seconds:0, result:null, retakesUsed:0, liveReps:[], replayOpen:false},
   crewBattle: null, // 5vs5 크루대전 진행 중 상태 — startCrewBattle() 참고
   crewParty: {open:false, statusOpen:false, selected:[], invites:null, incoming:[], ready:false, tickId:null, incomingTickId:null, battleSize:5}, // 크루대전 파티맺기 — openPartyInvite() 참고. invites=내가 보낸 초대(상태만 표시), incoming=내가 받은 초대(수락/거절 버튼)
   crewConceptEditor: {open:false, selected:[]}, // 크루 메인 카드에서 바로 태그 재선택하는 팝업 — openCrewConceptEditor() 참고
@@ -53,6 +53,7 @@ const state = {
     ...AVATAR_ITEM_CATALOG.map(item => ({...item, placement: {...item.placement}})),
     {name:'닉네임 컬러 이펙트', asset:'assets/shop-icons/name-color-effect.svg', price:180, owned:false, consumable:true, slot:'nickname', category:'기타', effect:'닉네임 컬러 변경 1회', effectDesc:'구매하면 바로 원하는 닉네임 색상을 골라 적용할 수 있습니다. 보유 아이템으로 쌓이지 않고, 다시 구매하면 색상을 또 바꿀 수 있어요.'},
     {name:'닉네임 변경권', asset:'assets/shop-icons/nickname-change-ticket.svg', price:150, owned:false, consumable:true, category:'기타', effect:'닉네임 변경 1회', effectDesc:'닉네임을 한 번 변경할 수 있습니다.'},
+    {name:'순위 도전 티켓', asset:'assets/shop-icons/rank-challenge-ticket.svg', price:100, owned:false, consumable:true, category:'기타', effect:'순위 도전 1회 참여', effectDesc:'운동 탭의 "순위 도전" 모드에 1회 참여할 수 있는 티켓입니다.<br><br>순위 도전은 무료 운동 횟수와 별개로, 이 티켓을 보유한 만큼만 참여할 수 있습니다.'},
   ],
   shopFilter: '전체',
   itemPreview: {open:false, idx:null},
@@ -92,8 +93,7 @@ const state = {
     filter:'all',
     faqOpen:{}, // 자주하는 질문 카드별 펼침 상태 — {questionId: true/false}
     tickets:[], // 서버에서 실제 내 문의 목록을 받아와 채우는 배열 (loadSupportTickets 참고)
-    adminView:false, // 관리자(role==='ADMIN')만 "전체 문의" 화면으로 전환 가능
-    adminTickets:[], // 전체 사용자 문의 목록 (loadAllSupportTickets 참고)
+    adminTickets:[], // 전체 사용자 문의 목록 — 관리자모드 "고객센터 문의 관리" 탭 전용(loadAllSupportTickets 참고)
   },
   confirm: null,
   publicProfileModal: {open:false, loading:false, data:null}, // 랭킹 단상 아바타 클릭 시 (ranking.js openPublicProfile 참고)
@@ -102,14 +102,13 @@ const state = {
   // "크루채팅 신고 관리"에서 확인할 수 있다. 차단은 여전히 로컬 전용(getBlockedChatUserIds).
   chatModeration: {open:false, messageId:null, targetUserId:null, targetNickname:null},
   // 관리자모드(admin.js) — state.user.role==='ADMIN'일 때만 사이드바에 진입 버튼이 보인다.
-  adminPanel: {tab:'dashboard', dashboard:null, users:[], usersSearch:'', reports:[], reportDetailId:null, missions:[], editingMissionId:null},
+  adminPanel: {tab:'dashboard', dashboard:null, users:[], usersSearch:'', reports:[], reportDetailId:null},
   // 회원탈퇴 확인 팝업 — 실수로 누르지 않도록 내 닉네임을 정확히 입력해야 탈퇴 버튼이
   // 눌린다(profile.js openWithdrawConfirm 참고).
   withdrawConfirm: {open:false, input:''},
   // 랭킹 탭 처음 들어왔을 때 특정 동네 대신 전국(전체) 랭킹이 먼저 보이게 기본값을 '전체'로 둔다.
   rankFilter: {city:'전체', gu:null, dong:null},
-  exRankFilter: {city:'전체', gu:null, dong:null, ex:null},
   // 랭킹 탭에서 서버로부터 실제로 받아온 데이터를 담아두는 캐시 (loadRegionRanking 등 참고)
-  rank: {region:[], exercise:[], crew:[]},
+  rank: {region:[], crew:[]},
 };
 

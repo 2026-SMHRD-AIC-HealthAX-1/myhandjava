@@ -298,6 +298,20 @@ button{font-family:inherit;}
 .topbar-avatar .mono{font-size:10px;color:var(--ink-faint);}
 
 .main{flex:1;min-width:0;}
+/* 운동 화면에서 "순위 도전" 모드를 선택했을 때만 씌우는 트로피/스타디움 테마 배경
+   (js/router.js의 .main 클래스 토글, js/exercise.js의 setExerciseMode 참고). */
+.main.ranked-mode{
+  background-image:url('assets/순위 도전 배경.png');
+  background-size:cover;background-position:center;background-repeat:no-repeat;background-attachment:fixed;
+}
+/* 모바일 폭에서는 가로로 넓은 데스크톱 배경 대신, 세로로 긴 전용 이미지를 쓴다 — 비율이
+   화면에 맞게 미리 디자인돼 있어 cover로 채워도 트로피·RANKING 패널이 잘리지 않는다. */
+@media (max-width:860px){
+  .main.ranked-mode{
+    background-image:url('assets/순위 도전 모바일배경.png');
+    background-size:cover;background-position:top center;background-attachment:scroll;
+  }
+}
 .view{padding:26px 28px 60px;max-width:1180px;margin:0 auto;} /* 넓은 PC 화면에서 왼쪽에 붙지 않고 가운데 정렬 */
 .view-head{margin-bottom:20px;text-align:center;}
 .view-head h1{font-size:30px;margin:0 0 4px;}
@@ -323,8 +337,9 @@ button{font-family:inherit;}
    .grid-2/.grid-3(auto-fill)를 그대로 쓴다. 모바일에서는 아래 미디어쿼리가 1열로 되돌린다. */
 .glance-grid{grid-template-columns:repeat(3,1fr);}
 .glance-row-3{grid-template-columns:repeat(3,1fr);}
-/* 메인 대시보드 2번째 줄(최근 운동 히스토리 · 크루 카드) — 히스토리가 더 넓게, 크루 카드는 좁게. */
-.glance-row-hist{grid-template-columns:3fr 2fr;}
+/* 메인 대시보드 2번째 줄(최근 운동 히스토리 · 크루 배너) — 크루 배너 이미지가 가로로 긴
+   비율이라 이미지가 덜 잘리도록 배너 쪽을 더 넓게 잡는다. */
+.glance-row-hist{grid-template-columns:2fr 3fr;}
 .grid-fixed-2{grid-template-columns:repeat(2,1fr);}
 .cal-grid{grid-template-columns:3fr 2fr;align-items:start;}
 .card{
@@ -586,6 +601,12 @@ tr:last-child td{border-bottom:none;}
 .att-day.checked{background:var(--surface-2);color:var(--ink);font-weight:700;}
 .att-day.today{background:var(--accent);color:#fff;font-weight:700;}
 .section-label{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--ink-faint);margin:0 0 10px;font-family:var(--font-mono);}
+/* 운동 화면의 "개인 일일 미션" — 바깥 카드는 배경을 투명하게 해서 뒤 배경이 비치게 하고,
+   미션 항목 하나하나(border 있는 줄)는 카드와 같은 흰 배경을 유지해 가독성을 지킨다
+   (js/exercise.js renderTutorialMissionList). */
+.ex-mission-card{background:transparent;border-color:transparent;box-shadow:none;}
+.ex-mission-title{font-size:15px;color:var(--ink);}
+.ex-mission-card-ranked .ex-mission-title{color:#fff;}
 .flex-between{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
 .filter-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
 .filter-bar select{padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:12.5px;}
@@ -683,7 +704,7 @@ tr:last-child td{border-bottom:none;}
 @media (max-width:860px){
   .sidebar{position:fixed;left:0;bottom:0;top:auto;width:100%;height:auto;flex-direction:row;
     justify-content:space-around;padding:6px 4px;border-right:none;border-top:2.5px solid var(--outline);z-index:20;}
-  .brand,.sidebar-footer{display:none;}
+  .sidebar .brand,.sidebar-footer{display:none;}
   /* 하단 탭바: 6개 항목이 균등하게 채우고, 이모지 아이콘 + 라벨 + 뚜렷한 활성 표시로
      한눈에 지금 어디에 있는지 알아보기 쉽게 한다. */
   .navitem{flex:1;flex-direction:column;gap:2px;font-size:10px;padding:6px 2px;border:none;border-radius:12px;

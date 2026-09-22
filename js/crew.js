@@ -1844,18 +1844,17 @@ function renderCrewRegionRank() {
   </div>
   <div class="ranking-data-offset crew-ranking-data-offset">
   ${dongRows.length === 0 ? `<div class="empty-note">이 동네엔 아직 등록된 크루가 없습니다.</div>` : `
-  ${renderPodium(dongRows)}
+  ${renderPodium(dongRows,{showScore:false})}
   ${rest.length ? `
   <div class="table-wrap">
     <table>
-      <thead><tr><th>순위</th><th>크루명</th><th>레벨</th><th>누적 점수</th></tr></thead>
+      <thead><tr><th>순위</th><th>크루명</th><th>레벨</th></tr></thead>
       <tbody>
         ${rest.map(r => `
           <tr>
             <td><span class="rank-num">${r.rank}</span></td>
             <td>${r.name}</td>
             <td class="mono">Lv.${r.level}</td>
-            <td class="mono">${r.score.toLocaleString()}</td>
           </tr>`).join('')}
       </tbody>
     </table>

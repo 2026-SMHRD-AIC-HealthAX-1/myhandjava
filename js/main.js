@@ -162,11 +162,8 @@ function renderMain(){
           <span class="mono" style="color:var(--gold);font-weight:700;">+${h.score}</span>
         </div>`).join('')}</div>` : '<p class="empty-note" style="margin-top:10px;">아직 운동 기록이 없어요. 운동을 시작해보세요!</p>'}
     </div>
-    <div class="card" style="background:var(--ink);border-color:var(--ink);display:flex;flex-direction:column;justify-content:center;">
-      <p class="section-label" style="color:var(--gold);margin:0 0 8px;">BETTER TOGETHER</p>
-      <h3 style="margin:0 0 6px;color:#fff;font-size:19px;">혼자보다, 함께</h3>
-      <p class="desc" style="color:rgba(255,255,255,.72);margin:0 0 12px;font-size:13px;">${state.crew.created ? '오늘도 우리 크루와 함께해요.' : '우리 동네 운동 친구들과 함께해요.'}</p>
-      <button class="btn btn-primary btn-sm btn-block" onclick="setMenu('crew')">${state.crew.created ? '우리 크루 페이지 →' : '크루 찾기 →'}</button>
+    <div class="card" style="padding:0;overflow:hidden;cursor:pointer;" onclick="setMenu('crew')" title="${state.crew.created ? '우리 크루 페이지로' : '크루 찾기'}">
+      <img src="${state.crew.created ? 'assets/메인 크루 이동 배너.png' : 'assets/메인 크루 찾기 배너.png'}" alt="${state.crew.created ? '크루 이동' : '크루 찾기'}" style="width:100%;height:100%;object-fit:cover;display:block;">
     </div>
   </div>`;
   const highlightBlock = `

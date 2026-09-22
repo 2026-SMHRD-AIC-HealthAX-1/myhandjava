@@ -1,10 +1,10 @@
 // admin.js — '관리자모드' 전용 화면. state.screen==='admin'일 때 router.js가 renderAdminApp()을
 // 부른다. 기존 오운홈 테마 클래스(.app-shell/.sidebar/.navitem/.card/.table-wrap/.btn*/.pill*)를
 // 그대로 재사용하고, 이 파일에서는 새 CSS를 거의 추가하지 않는다.
-// [담당] 관리자 전용 화면 5개 탭(대시보드/전체 사용자 관리/크루채팅 신고 관리/고객센터 문의
-//        관리/미션 관리). 일반 사용자 화면(state.screen='app')과는 완전히 분리된 별도 화면.
+// [담당] 관리자 전용 화면 4개 탭(대시보드/전체 사용자 관리/크루채팅 신고 관리/고객센터 문의
+//        관리). 일반 사용자 화면(state.screen='app')과는 완전히 분리된 별도 화면.
 // [백엔드 연동] GET /api/admin/dashboard, /api/admin/users(+suspend/activate),
-//              /api/admin/crew-chat-reports(+resolve), /api/admin/mission-definitions(CRUD)
+//              /api/admin/crew-chat-reports(+resolve)
 //              → 전부 백엔드에서 @PreAuthorize("hasRole('ADMIN')")로 막혀있다.
 // [주의] 로그인 계정의 role이 'ADMIN'이 아니면 사이드바에 진입 버튼 자체가 안 보인다.
 //        실제 관리자 권한 부여는 DB에서 직접 users.role='ADMIN'으로 바꿔야 한다(화면에서 못 줌).
@@ -23,7 +23,6 @@ const ADMIN_TABS = [
   { id: 'users', label: '전체 사용자 관리', icon: '👥' },
   { id: 'reports', label: '크루채팅 신고 관리', icon: '💬' },
   { id: 'tickets', label: '고객센터 문의 관리', icon: '🎧' },
-  { id: 'missions', label: '미션 관리', icon: '🛠️' },
 ];
 function setAdminTab(tab){
   state.adminPanel.tab = tab;
@@ -32,7 +31,6 @@ function setAdminTab(tab){
   else if(tab === 'users') loadAdminUsers(state.adminPanel.usersSearch);
   else if(tab === 'reports') loadAdminCrewChatReports();
   else if(tab === 'tickets') loadAllSupportTickets();
-  else if(tab === 'missions') loadAdminMissions();
 }
 function renderAdminApp(){
   const tab = state.adminPanel.tab;
@@ -64,8 +62,7 @@ function renderAdminApp(){
         ${tab === 'dashboard' ? renderAdminDashboard()
           : tab === 'users' ? renderAdminUsers()
           : tab === 'reports' ? renderAdminCrewChatReports()
-          : tab === 'tickets' ? renderAdminSupportTickets()
-          : renderAdminMissions()}
+          : renderAdminSupportTickets()}
       </div>
     </div>
   </div>`;
@@ -254,117 +251,5 @@ function renderAdminSupportTickets(){
   </div>
   <div class="grid grid-2">
     ${list.length===0 ? '<div class="empty-note">해당하는 문의 내역이 없습니다.</div>' : list.map(renderAdminTicketCard).join('')}
-  </div>`;
-}
-
-/* ---------- 미션 관리 — 실제 백엔드(/api/admin/mission-definitions)에 연결한다 ---------- */
-const ADMIN_MISSION_METRICS = [
-  { value: 'REPS', label: '운동 횟수 (REPS)', min: 15, max: 30 },
-  { value: 'PERFECT', label: '퍼펙트 횟수 (PERFECT)', min: 3, max: 8 },
-  { value: 'SESSIONS', label: '세트 완료 수 (SESSIONS)', min: 1, max: 2 },
-  { value: 'MISS_FREE_SESSION', label: 'MISS 0회 세트 (MISS_FREE_SESSION)', min: 1, max: 1 },
-  { value: 'ACC_SESSION', label: '정확도 90%+ 세트 (ACC_SESSION)', min: 1, max: 2 },
-];
-async function loadAdminMissions(){
-  try{
-    const res = await fetch(`${API_BASE}/api/admin/mission-definitions`, { headers: { 'Authorization': 'Bearer ' + state.token } });
-    const body = await res.json();
-    if(!body.success) return;
-    state.adminPanel.missions = body.data;
-    render();
-  }catch(err){ console.error('관리자 미션 목록 불러오기 실패', err); }
-}
-function adminMissionMetricInfo(value){
-  return ADMIN_MISSION_METRICS.find(m => m.value === value) || ADMIN_MISSION_METRICS[0];
-}
-function editAdminMission(id){
-  const m = state.adminPanel.missions.find(x => x.id === id);
-  if(!m) return;
-  state.adminPanel.editingMissionId = id;
-  render();
-  document.getElementById('am-scope').value = m.scope;
-  document.getElementById('am-metric').value = m.metric;
-  document.getElementById('am-ex').value = m.exerciseType;
-  document.getElementById('am-min').value = m.minTarget;
-  document.getElementById('am-max').value = m.maxTarget;
-  document.getElementById('am-points').value = m.rewardPoints;
-  document.getElementById('am-exp').value = m.rewardExp;
-  document.getElementById('am-label').value = m.label || '';
-}
-function cancelEditAdminMission(){
-  state.adminPanel.editingMissionId = null;
-  render();
-}
-async function submitAdminMission(){
-  const body = {
-    scope: document.getElementById('am-scope').value,
-    metric: document.getElementById('am-metric').value,
-    exerciseType: document.getElementById('am-ex').value.trim() || '스쿼트',
-    minTarget: Number(document.getElementById('am-min').value),
-    maxTarget: Number(document.getElementById('am-max').value),
-    rewardPoints: Number(document.getElementById('am-points').value),
-    rewardExp: Number(document.getElementById('am-exp').value),
-    label: document.getElementById('am-label').value.trim() || null,
-  };
-  const editingId = state.adminPanel.editingMissionId;
-  try{
-    const res = await fetch(`${API_BASE}/api/admin/mission-definitions${editingId ? '/' + editingId : ''}`, {
-      method: editingId ? 'PUT' : 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.token },
-      body: JSON.stringify(body)
-    });
-    const resBody = await res.json();
-    if(!resBody.success){ toast(resBody.message || '저장에 실패했습니다'); return; }
-    toast(editingId ? '미션을 수정했습니다' : '미션을 등록했습니다');
-    state.adminPanel.editingMissionId = null;
-    await loadAdminMissions();
-  }catch(err){ toast('서버에 연결할 수 없습니다'); }
-}
-async function toggleAdminMissionActive(id, active){
-  try{
-    const res = await fetch(`${API_BASE}/api/admin/mission-definitions/${id}/${active ? 'deactivate' : 'activate'}`, { method:'PATCH', headers: { 'Authorization': 'Bearer ' + state.token } });
-    const body = await res.json();
-    if(!body.success){ toast(body.message || '상태 변경에 실패했습니다'); return; }
-    await loadAdminMissions();
-  }catch(err){ toast('서버에 연결할 수 없습니다'); }
-}
-function renderAdminMissions(){
-  const missions = state.adminPanel.missions;
-  const editing = state.adminPanel.editingMissionId;
-  const editingMission = editing ? missions.find(m => m.id === editing) : null;
-  return `
-  <div class="view-head"><h1>미션 관리</h1><p>개인 미션과 크루 미션을 등록·수정·조회하고 활성 상태를 관리합니다.</p></div>
-  <div class="card" style="margin-bottom:20px;">
-    <p class="section-label">${editingMission ? '미션 수정' : '새 미션 등록'}</p>
-    <div class="grid grid-3">
-      <div class="field"><label>구분</label><select id="am-scope"><option value="PERSONAL">개인</option><option value="CREW">크루</option></select></div>
-      <div class="field"><label>미션 종류</label><select id="am-metric">${ADMIN_MISSION_METRICS.map(m => `<option value="${m.value}">${m.label}</option>`).join('')}</select></div>
-      <div class="field"><label>운동 종류</label><input id="am-ex" value="스쿼트"></div>
-      <div class="field"><label>최소/최대 목표값</label><div class="field-row"><input id="am-min" type="number" value="15"><input id="am-max" type="number" value="30"></div></div>
-      <div class="field"><label>보상(P/EXP)</label><div class="field-row"><input id="am-points" type="number" value="50"><input id="am-exp" type="number" value="50"></div></div>
-      <div class="field"><label>표시 이름(선택)</label><input id="am-label" placeholder="비워두면 자동 생성"></div>
-    </div>
-    <div style="display:flex;gap:8px;">
-      <button class="btn btn-primary" onclick="submitAdminMission()">${editingMission ? '수정 저장' : '미션 등록'}</button>
-      ${editingMission ? `<button class="btn btn-secondary" onclick="cancelEditAdminMission()">취소</button>` : ''}
-    </div>
-  </div>
-  <div class="table-wrap compact-table">
-    <table>
-      <thead><tr><th>구분</th><th>운동</th><th>미션 종류</th><th>범위</th><th>보상</th><th>이름</th><th>상태</th><th>관리</th></tr></thead>
-      <tbody>
-        ${missions.length ? missions.map(m => `
-        <tr>
-          <td>${m.scope==='PERSONAL'?'개인':'크루'}</td>
-          <td>${escapeHtml(m.exerciseType)}</td>
-          <td>${adminMissionMetricInfo(m.metric).label}</td>
-          <td class="mono">${m.minTarget}~${m.maxTarget}</td>
-          <td class="mono">${m.rewardPoints}P / ${m.rewardExp}EXP</td>
-          <td>${escapeHtml(m.label || '-')}</td>
-          <td><button class="btn btn-sm ${m.active?'btn-primary':'btn-ghost'}" onclick="toggleAdminMissionActive(${m.id}, ${m.active})">${m.active?'활성':'비활성'}</button></td>
-          <td><button class="btn btn-sm btn-secondary" onclick="editAdminMission(${m.id})">수정</button></td>
-        </tr>`).join('') : '<tr><td colspan="8"><div class="empty-note">등록된 미션이 없습니다.</div></td></tr>'}
-      </tbody>
-    </table>
   </div>`;
 }

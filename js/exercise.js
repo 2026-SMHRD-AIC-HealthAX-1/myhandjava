@@ -58,13 +58,24 @@ function showReadyRing(show) {
 const TORSO_STANDING_MIN_ANGLE = 130; // 정렬(서있는) 단계에서 허리가 곧게 펴져 있다고 볼 최소 각도(완화됨)
 const TORSO_LEAN_WARN_DEG = 60; // 렙 진행 중 "서 있을 때 허리 각도" 대비 이만큼 이상 더 숙여지면 위험으로 판단(완화됨)
 function exerciseStepHead() {
+  const ranked = state.exercise.mode === 'ranked';
   return `
   <div class="view-head">
-    <h1>운동</h1>
+    <h1${ranked ? ' style="color:#fff;"' : ''}>${ranked ? '순위 도전' : '운동'}</h1>
+  </div>
+  <div class="subtabs">
+    <div class="tab ${ranked ? '' : 'active'}" onclick="setExerciseMode('free')">자유 운동</div>
+    <div class="tab ${ranked ? 'active' : ''}" onclick="setExerciseMode('ranked')">🏆 순위 도전</div>
   </div>
   <div class="subtabs subtabs-compact">
     ${EX_STEPS.map((s, i) => `<div class="tab ${state.exercise.step === i ? 'active' : ''}">${i + 1}. ${s}</div>`).join('')}
   </div>`;
+}
+// 종목 선택 화면 상단의 "자유 운동 / 순위 도전" 토글 — 모드만 바꾸고 나머지 위저드 상태
+// (선택한 종목, 진행 단계 등)는 그대로 유지한다.
+function setExerciseMode(mode) {
+  state.exercise.mode = mode;
+  render();
 }
 function renderExercise() {
   const st = state.exercise.step;
@@ -99,22 +110,23 @@ const EX_PICKER_LIST = [
   { id: 'side-crunch', name: '사이드크런치', target: '코어 · 옆구리', level: '초급', comingSoon: true },
 ];
 function renderExStepPick() {
-  const limit = getDailySetLimit();
+  // 하루 운동 횟수 자체에는 더 이상 상한이 없다 — 대신 오늘 몇 번째인지에 따라 보상이
+  // 줄어든다(requirements-v2.js renderExStepPick/goToTutorial 참고: 1~5회 전액, 6회부터
+  // 포인트 미지급·경험치 1/3, 10회부터 부상 위험 경고).
   const used = state.user.setsUsedToday || 0;
-  const remain = Math.max(0, limit - used);
-  const noSetsLeft = !state.guestMode && remain <= 0 && (state.user.retakeTickets || 0) <= 0;
 
   let idx = EX_PICKER_LIST.findIndex(e => e.id === state.exercise.picked);
   if (idx < 0) idx = 0;
   const e = EX_PICKER_LIST[idx];
-  const canStart = !e.comingSoon && !noSetsLeft;
+  // 순위 도전은 보유 티켓이 있어야만 시작할 수 있다(requirements-v2.js goToTutorial 참고).
+  const noTicketsLeft = state.exercise.mode === 'ranked' && !state.guestMode && (state.user.rankTickets || 0) <= 0;
+  const canStart = !e.comingSoon && !noTicketsLeft;
 
   return `
   <div style="max-width:420px;margin:0 auto;">
-    <div class="card" style="margin-bottom:16px;">
-      <p class="section-label" style="margin:0 0 4px;">오늘 가능한 운동세트</p>
-      <p class="desc mono" style="margin:0;">${used} / ${limit}세트 사용 · ${remain > 0 ? `<b style="color:var(--accent);">${remain}세트 남음</b>` : '<b style="color:var(--danger);">모두 사용함</b>'}</p>
-      ${noSetsLeft ? `<p class="hint" style="margin-top:6px;">포인트 상점에서 '세트 추가권'을 구매하면 오늘 바로 더 운동할 수 있어요.</p>` : `<p class="hint" style="margin-top:6px;">레벨업(5레벨마다 +1) 또는 '세트 추가권' 구매로 한도를 늘릴 수 있어요.</p>`}
+    <div class="card ex-daily-card" style="margin-bottom:16px;">
+      <p class="section-label ex-mission-title" style="margin:0 0 4px;">오늘의 운동 횟수</p>
+      <p class="desc mono" style="margin:0;">오늘 ${used}회 완료</p>
     </div>
     <div class="ex-carousel">
       <button type="button" class="ex-carousel-arrow" aria-label="이전 운동" onclick="cycleExercisePick(-1)">‹</button>
@@ -123,7 +135,7 @@ function renderExStepPick() {
         <h3>${e.name}</h3>
         <p class="desc">타겟: ${e.target}</p>
         ${e.comingSoon ? `<p class="hint" style="margin:0 0 10px;">준비 중인 운동이에요</p>` : ''}
-        <button class="btn btn-primary btn-block" style="${canStart ? '' : 'opacity:.4;cursor:not-allowed;'}" ${canStart ? '' : 'disabled'} onclick="goToTutorial()">운동 시작하기</button>
+        <button class="btn btn-primary btn-block" style="${canStart ? '' : 'opacity:.4;cursor:not-allowed;'}" ${canStart ? '' : 'disabled'} onclick="goToTutorial()">${state.exercise.mode === 'ranked' ? '도전하기' : '운동 시작하기'}</button>
       </div>
       <button type="button" class="ex-carousel-arrow" aria-label="다음 운동" onclick="cycleExercisePick(1)">›</button>
     </div>
@@ -145,7 +157,7 @@ function cycleExercisePick(dir) {
 // 운동 위저드의 초기 상태 — 랜딩 페이지 "지금 체험하기"(landing.js startGuestExercise)와
 // "나중에 할게요"(resetExerciseWizard) 둘 다 여기서 시작한다.
 function freshExerciseState() {
-  return { step: 0, picked: 'squat', camPhase: 'idle', camStream: null, timerId: null, seconds: 0, result: null, retakesUsed: 0, liveReps: [], replayOpen: false, sessionId: null, idempotencyKey: null };
+  return { step: 0, mode: 'free', picked: 'squat', camPhase: 'idle', camStream: null, timerId: null, seconds: 0, result: null, retakesUsed: 0, liveReps: [], replayOpen: false, sessionId: null, idempotencyKey: null };
 }
 // 게스트 모드에서 "나중에 할게요"를 누르면 게스트 상태는 유지한 채(다른 카테고리도 계속
 // 둘러볼 수 있게) 운동 위저드만 종목 선택 화면으로 되돌린다.
@@ -225,15 +237,16 @@ function renderExStepTutorial() {
 // 운동을 시작하기 전에 바로 "아, 이만큼 더 하면 얼마 받는구나"를 알 수 있게.
 function renderTutorialMissionList() {
   const missions = allMissions();
+  const ranked = state.exercise.mode === 'ranked';
   return `
-  <div class="card">
-    <p class="section-label">개인 일일 미션</p>
+  <div class="card ex-mission-card ${ranked ? 'ex-mission-card-ranked' : ''}">
+    <p class="section-label ex-mission-title">개인 일일 미션</p>
     <div style="display:flex;flex-direction:column;gap:8px;max-height:460px;overflow-y:auto;">
       ${missions.map(m => {
     const cur = Math.min(m.current, m.target);
     const done = m.achieved;
     return `
-        <div style="border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;">
+        <div style="background:var(--surface);border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;">
           <div class="flex-between">
             <span class="mono mission-reward-fixed" style="font-size:11px;font-weight:700;">+50P / +50 EXP</span>
             <span class="mono" style="font-size:12px;color:${done ? 'var(--accent)' : 'var(--ink-dim)'};">${cur}/${m.target}</span>
@@ -336,6 +349,7 @@ async function startExerciseSession(sessionId) {
 
 function setupCamera() {
   ensureSquatBottomSilhouette(); // 카메라 화면에 들어오자마자 실루엣 이미지를 미리 로드해둔다
+  ensureStandingReadySilhouette(); // 대기(정렬) 단계용 실루엣 이미지도 같이 미리 로드해둔다
   // setupCamera()는 render()가 다시 돌 때마다 setTimeout으로 반복 호출될 수 있어서(router.js
   // 참고), sessionId가 아직 없어도 이미 생성 요청을 보낸 상태(sessionCreating)라면 또 보내지
   // 않도록 막는다 — 안 막으면 devtunnel처럼 왕복이 느릴 때 세션이 여러 개 만들어질 수 있다.
@@ -501,11 +515,116 @@ function exTorsoAngle(landmarks) {
   if (r == null) return l;
   return (l + r) / 2;
 }
+// ---- 대기(정렬) 단계 실루엣(이미지 기반): standing-ready-ref.png(사람 형태 발광 실루엣)를
+// 캠 화면 정중앙에 고정으로 씌운다. 캘리브레이션 landmark 좌표를 그대로 쓰면 사용자가
+// 캘리브레이션 당시 서 있던 위치에 따라 화면 중앙에서 벗어나 보일 수 있어서, 스쿼트 최저점
+// 고스트(exDrawSquatBottomGhostImage)와 똑같이 발 위치·키 비율을 고정값으로 잡아 항상
+// 화면 정중앙에 그린다.
+let standingReadySilhouette = null; // 로드 실패/전이면 null·false → 기존 도형 방식으로 폴백
+function buildGlowSilhouetteCanvas(img) {
+  const c = document.createElement('canvas');
+  c.width = img.naturalWidth; c.height = img.naturalHeight;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(img, 0, 0);
+  const data = ctx.getImageData(0, 0, c.width, c.height);
+  const d = data.data;
+  // 원본은 몸통 바깥으로 gaussian blur 발광 테두리가 넓게 퍼져 있어서, 밝기를 그대로
+  // 알파로 쓰면 그 흐릿한 테두리까지 다 살아나 전체적으로 안개 낀 것처럼 흐려 보인다.
+  // 몸통 경계(문턱값) 밖은 완전히 잘라내고, 경계 바로 안쪽만 좁게 안티에일리어싱해서
+  // 또렷한 실루엣으로 만든다.
+  const LO = 150, HI = 190; // 이 사이 좁은 구간에서만 부드럽게 전환, 나머지는 0 또는 255
+  for (let i = 0; i < d.length; i += 4) {
+    const brightness = (d[i] + d[i + 1] + d[i + 2]) / 3;
+    const alpha = brightness <= LO ? 0 : brightness >= HI ? 255 : Math.round((brightness - LO) / (HI - LO) * 255);
+    d[i] = 255; d[i + 1] = 255; d[i + 2] = 255; d[i + 3] = alpha;
+  }
+  ctx.putImageData(data, 0, 0);
+  return c;
+}
+// 원본 사진의 다리 사이 그림자 영역에 노이즈성 밝은 점이 섞여 있으면 문턱값 처리 후에도
+// 몸통과 떨어진 작은 흰 점으로 남는다 — 이미지를 다시 만들 필요 없이, 알파 채널에서
+// "가장 큰 연결 덩어리"(몸통)만 남기고 나머지 자잘한 점들은 여기서 지운다.
+function keepLargestOpaqueBlob(canvas) {
+  const ctx = canvas.getContext('2d');
+  const { width, height } = canvas;
+  const imgData = ctx.getImageData(0, 0, width, height);
+  const d = imgData.data;
+  const n = width * height;
+  const label = new Int32Array(n);
+  const sizes = [0];
+  const stack = new Int32Array(n);
+  let nextLabel = 1;
+  for (let i = 0; i < n; i++) {
+    if (label[i] !== 0 || d[i * 4 + 3] === 0) continue;
+    let sp = 0;
+    stack[sp++] = i;
+    label[i] = nextLabel;
+    let size = 0;
+    while (sp > 0) {
+      const p = stack[--sp];
+      size++;
+      const x = p % width, y = (p / width) | 0;
+      if (x > 0) { const np = p - 1; if (label[np] === 0 && d[np * 4 + 3] > 0) { label[np] = nextLabel; stack[sp++] = np; } }
+      if (x < width - 1) { const np = p + 1; if (label[np] === 0 && d[np * 4 + 3] > 0) { label[np] = nextLabel; stack[sp++] = np; } }
+      if (y > 0) { const np = p - width; if (label[np] === 0 && d[np * 4 + 3] > 0) { label[np] = nextLabel; stack[sp++] = np; } }
+      if (y < height - 1) { const np = p + width; if (label[np] === 0 && d[np * 4 + 3] > 0) { label[np] = nextLabel; stack[sp++] = np; } }
+    }
+    sizes[nextLabel] = size;
+    nextLabel++;
+  }
+  let bestLabel = 0, bestSize = 0;
+  for (let l = 1; l < nextLabel; l++) if (sizes[l] > bestSize) { bestSize = sizes[l]; bestLabel = l; }
+  for (let i = 0; i < n; i++) if (label[i] !== bestLabel && d[i * 4 + 3] > 0) d[i * 4 + 3] = 0;
+  ctx.putImageData(imgData, 0, 0);
+}
+async function ensureStandingReadySilhouette() {
+  if (standingReadySilhouette) return standingReadySilhouette;
+  try {
+    const img = new Image();
+    img.src = 'assets/실루엣_수정.png';
+    await img.decode();
+    const white = buildGlowSilhouetteCanvas(img);
+    keepLargestOpaqueBlob(white);
+    const bbox = opaqueBBox(white);
+    standingReadySilhouette = { bbox, white };
+  } catch (err) {
+    console.warn('assets/실루엣_수정.png를 못 찾았습니다 — 기존 도형 실루엣으로 표시됩니다', err);
+    standingReadySilhouette = false;
+  }
+  return standingReadySilhouette;
+}
+const READY_GHOST_FOOT_Y_RATIO = 0.95; // 캔버스 높이 대비 발 위치(하단 기준 비율) — 화면 하단에 고정
+const READY_GHOST_HEIGHT_RATIO = 0.62; // 캔버스 높이 대비 실루엣 키 비율 — 사용자 위치/거리와 무관하게 크기 고정
+function exDrawCalibrationGhostImage(ctx, w, h) {
+  const sil = standingReadySilhouette;
+  if (!sil) return;
+  const footY = h * READY_GHOST_FOOT_Y_RATIO;
+  const footCX = w / 2;
+  const targetH = h * READY_GHOST_HEIGHT_RATIO;
+  const scale = targetH / sil.bbox.h;
+  const drawW = sil.bbox.w * scale, drawH = sil.bbox.h * scale;
+  const dx = footCX - drawW / 2, dy = footY - drawH;
+  ctx.save();
+  ctx.globalAlpha = 0.55;
+  // 원본 실루엣을 목표 높이로 확대/축소해서 그리는 지점이라, 부드러운 스케일링은 여기서
+  // 적용해야 실제로 효과가 있다(전처리 단계인 buildGlowSilhouetteCanvas는 원본 크기 그대로
+  // 복사만 해서 확대/축소가 일어나지 않는다).
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(sil.white, sil.bbox.x, sil.bbox.y, sil.bbox.w, sil.bbox.h, dx, dy, drawW, drawH);
+  ctx.restore();
+}
+function exDrawCalibrationGhost(ctx, w, h) {
+  if (standingReadySilhouette) { exDrawCalibrationGhostImage(ctx, w, h); return; }
+  exDrawCalibrationGhostShape(ctx, w, h); // 이미지가 없거나 아직 로드 전이면 기존 도형 방식으로 폴백
+}
 // 저장된 내 체형 캘리브레이션 실루엣을 캠 화면 위에 고정 오버레이해서 자리 잡을 때 맞춰 서는
 // 기준으로 쓴다. 얇은 뼈대선(해골 모양)이라 잘 안 보인다는 피드백에 흰색 캡슐+원으로 채운
 // 실루엣으로 바꿨었는데, 두께가 실제 체형보다 두꺼워 "뚱뚱해 보인다"는 피드백이 다시 있어
 // 두께 배율을 슬림하게 낮추고, 회원가입 때 입력한 키·몸무게(BMI)로 두께를 보정한다.
-function exDrawCalibrationGhost(ctx, w, h) {
+// (이미지 로드 실패 시에만 쓰이는 폴백 — 캘리브레이션 landmark 실제 좌표를 그대로 쓰므로
+// 사용자가 캘리브레이션 당시 서 있던 위치에 따라 화면 중앙이 아닐 수 있다.)
+function exDrawCalibrationGhostShape(ctx, w, h) {
   const profile = state.user.calibration;
   if (!profile || !profile.landmarks) return;
   const pts = profile.landmarks;
@@ -1006,9 +1125,14 @@ function beginRecording() {
   // 크루대전 중엔 개인 무료 운동 횟수·티켓을 건드리지 않는다(setupCamera의 크루대전 분기 참고) —
   // 애초에 sessionId가 안 만들어지므로 startExerciseSession도 자연히 호출되지 않는다.
   if (state.menu !== 'crewBattle' && !state.exercise.sessionConsumed && !state.exercise.cameraFailed && !state.guestMode) {
-    if (state.exercise.sessionType === 'ticket') state.user.retakeTickets = Math.max(0, (state.user.retakeTickets || 0) - 1);
-    else {
-      state.user.freeWorkoutsUsed = Math.min(3, (state.user.freeWorkoutsUsed || 0) + 1);
+    if (state.exercise.mode === 'ranked') {
+      // 순위 도전은 무료 운동 횟수를 건드리지 않고 보유 티켓만 1장 소모한다.
+      state.user.rankTickets = Math.max(0, (state.user.rankTickets || 0) - 1);
+      state.user.rankedWorkoutsUsed = (state.user.rankedWorkoutsUsed || 0) + 1;
+    } else {
+      // 하루 운동 횟수는 더 이상 상한이 없다 — 그냥 오늘 몇 번째인지 계속 센다(goToTutorial의
+      // 보상 등급 계산 참고).
+      state.user.freeWorkoutsUsed = (state.user.freeWorkoutsUsed || 0) + 1;
       state.user.setsUsedToday = state.user.freeWorkoutsUsed;
     }
     state.exercise.sessionConsumed = true;
@@ -1383,7 +1507,7 @@ async function saveExerciseResult() {
     goodCount: gc.GOOD,
     missCount: gc.MISS,
     durationSeconds: r.dur,
-    sessionType: state.exercise.sessionType === 'ticket' ? 'TICKET' : 'FREE',
+    sessionType: state.exercise.sessionType === 'ranked' ? 'RANKED' : state.exercise.sessionType === 'reduced' ? 'REDUCED' : 'FREE',
   };
 
   try {

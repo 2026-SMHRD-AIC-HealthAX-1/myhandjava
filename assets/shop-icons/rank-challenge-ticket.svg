@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180" viewBox="0 0 320 180">
+ <rect width="320" height="180" rx="24" fill="#0d1c46"/>
+ <path d="M61 48h198a14 14 0 0 1 14 14v18a18 18 0 0 0 0 36v18a14 14 0 0 1-14 14H61a14 14 0 0 1-14-14v-18a18 18 0 0 0 0-36V62a14 14 0 0 1 14-14z" fill="#13285c" stroke="#ffcf6b" stroke-width="6"/>
+ <g transform="translate(160,84)" stroke="#ffcf6b" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M-14 -28h28v7h-28z" fill="#ffcf6b" stroke="none"/>
+  <path d="M-14 -21c0 14 5 23 14 23s14-9 14-23" fill="#ffcf6b" stroke="none"/>
+  <path d="M-14 -19c-11 0-15 10-7 16 4 2 7 3 7 3" fill="none" stroke-width="4.5"/>
+  <path d="M14 -19c11 0 15 10 7 16-4 2-7 3-7 3" fill="none" stroke-width="4.5"/>
+  <rect x="-3.5" y="2" width="7" height="10" fill="#ffcf6b" stroke="none"/>
+  <rect x="-13" y="12" width="26" height="7" rx="2" fill="#ffcf6b" stroke="none"/>
+ </g>
+ <text x="160" y="136" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#ffcf6b" letter-spacing="1">RANKING</text>
+</svg>

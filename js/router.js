@@ -122,7 +122,7 @@ function renderApp() {
         </div>
       </div>
     </aside>
-    <div class="main">
+    <div class="main ${state.menu === 'exercise' && state.exercise.mode === 'ranked' ? 'ranked-mode' : ''}">
       <div class="topbar">
         <div>
           <div class="topbar-title" style="cursor:pointer;text-decoration:underline;" onclick="${state.guestMode ? "goto('login')" : 'goToAccountSettings()'}" title="계정관리에서 동네 바꾸기">${state.guestMode ? '동네설정하기' : (state.user.region || '동네설정하기')}</div>
@@ -171,11 +171,9 @@ async function setMenu(id){
     render();
   } else if(id==='support'){
     await loadSupportTickets();
-    if(state.user.role === 'ADMIN') await loadAllSupportTickets();
   } else if(id==='ranking'){
     const idx = state.subtabs.ranking || 0;
     if(idx===0) await loadRegionRanking();
-    else if(idx===1) await loadExerciseRanking();
     else await loadCrewRegionRanking();
   } else if(id==='exercise' || id==='profile'){
     await loadTodayMissions(); // 종목선택 화면의 미션 리스트·마이페이지 미션 탭 둘 다 이 값을 쓴다
@@ -210,7 +208,6 @@ function setSub(key, idx) {
   if (crewTab === '크루대전') loadCrewBattleHistory();
   if (key === 'ranking') {
     if (idx === 0) loadRegionRanking();
-    else if (idx === 1) loadExerciseRanking();
     else loadCrewRegionRanking();
   }
   render();

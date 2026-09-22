@@ -15,7 +15,7 @@ const LANDING_FEATURES = [
    image:'assets/실시간 크루 대전.png', imageAlt:'앉은 자세 스쿼트 판정 카메라 화면과 팀별 실시간 점수·팀원 캐릭터가 함께 표시되는 5vs5 크루대전 화면 예시'},
   {title:'운동 히스토리 관리', desc:'날짜별 운동 기록과 점수·정확도를 한눈에 모아서 관리해요.', action:'startGuestHistory()', cta:'히스토리 보기',
    image:'assets/운동 히스토리 관리.png', imageAlt:'날짜별 운동 점수·정확도가 정리된 운동 히스토리 화면 예시'},
-  {title:'우리 동네 랭킹 확인', desc:'역삼동 1위는 892점의 "써니핏"님! 지역별·종목별 랭킹에서 내 순위는 어디쯤일지 확인해보세요.', action:'startGuestRanking()', cta:'랭킹 보기',
+  {title:'우리 동네 랭킹 확인', desc:'역삼동 1위는 892점의 "써니핏"님! 지역별 랭킹에서 내 순위는 어디쯤일지 확인해보세요.', action:'startGuestRanking()', cta:'랭킹 보기',
    image:'assets/우리동네 랭킹 확인.png', imageAlt:'지역별 랭킹 화면의 1~3위 포디움과 순위표 예시'},
 ];
 function renderLandingFeatures(){

@@ -16,7 +16,7 @@ const SHOP_CATEGORIES=['전체','헤어','상의','하의','신발','배경','�
 const SHOP_ENABLED_ITEM_NAMES = new Set([
   '네이비 스포츠 캡', '라벤더 후디', '라벤더 조거 팬츠', '라벤더 하이탑', '민트 운동화',
   '배경 - 맑은 강변 산책로', '배경 - 노을빛 강변', '배경 - 가을 호수 공원', '배경 - 비 오는 가로수길',
-  '닉네임 컬러 이펙트', '닉네임 변경권',
+  '닉네임 컬러 이펙트', '닉네임 변경권', '순위 도전 티켓',
 ]);
 function renderMissionShop(){
   const f=SHOP_CATEGORIES.includes(state.shopFilter)?state.shopFilter:'전체';
@@ -38,7 +38,7 @@ function renderMissionShop(){
         <div class="shop-item-body">
           <div class="flex-between shop-item-title"><h3 style="margin:0;">${it.name}</h3></div>
           <span class="pill ${it.name==='닉네임 컬러 이펙트'?'pill-accent':(it.effect.startsWith('능력치 없음')?'pill-muted':'pill-accent')} shop-item-effect">효과 · ${it.name==='닉네임 컬러 이펙트'?'닉네임 컬러 변경':it.effect}</span>
-          ${(it.consumable && it.name!=='닉네임 컬러 이펙트')?`<p class="desc shop-item-owned">보유 수량: ${it.name==='닉네임 변경권'?(state.user.nicknameTickets||0):state.user.retakeTickets}장</p>`:''}
+          ${(it.consumable && it.name!=='닉네임 컬러 이펙트')?`<p class="desc shop-item-owned">보유 수량: ${it.name==='닉네임 변경권'?(state.user.nicknameTickets||0):it.name==='순위 도전 티켓'?(state.user.rankTickets||0):(state.user.retakeTickets||0)}장</p>`:''}
           <div class="shop-item-desc">${it.effectDesc}</div>
           <div class="shop-item-footer">
             <span class="shop-price">P ${it.price}</span>
@@ -201,6 +201,9 @@ async function buyItem(idx){
       toast(`${it.name} 구매 완료 — 닉네임 색상이 적용됐어요`);
       closeItemPreview();
       return;
+    } else if(it.name==='순위 도전 티켓'){
+      state.user.rankTickets = (state.user.rankTickets||0) + 1;
+      toast(`${it.name} 구매 완료 (보유 ${state.user.rankTickets}장)`);
     } else {
       state.user.retakeTickets = (state.user.retakeTickets||0) + 1;
       toast(`${it.name} 구매 완료 (보유 ${state.user.retakeTickets}장)`);

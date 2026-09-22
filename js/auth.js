@@ -20,8 +20,8 @@ function renderLogin() {
   <div class="center-shell">
     <div class="auth-card login-card">
       <div class="brand" style="padding:0;margin-bottom:16px;cursor:default;">
-        <div class="brand-mark" style="width:56px;height:56px;"><img src="assets/오운홈 로고.png" alt="오운홈"></div>
-        <div class="brand-name"><small style="font-size:14px;margin-top:0;word-break:keep-all;color:#344563;font-weight:600;">오늘 운동은 홈에서</small></div>
+        <div class="brand-mark" style="width:88px;height:88px;"><img src="assets/오운홈 로고.png" alt="오운홈"></div>
+        <div class="brand-name"><small style="font-size:14px;margin-top:0;word-break:keep-all;color:#344563;font-weight:600;">오늘 운동은 집에서</small></div>
       </div>
       <h1 class="auth-title">로그인</h1>
       <p class="auth-sub">${state.user.nickname ? state.user.nickname + '님, 다시 오신 것을 환영해요' : 'SNS 계정으로 간편하게 시작해요'}</p>
