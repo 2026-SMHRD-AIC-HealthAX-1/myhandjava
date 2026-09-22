@@ -9,8 +9,10 @@
 //const API_BASE = 'http://127.0.0.1:8086';
 const API_BASE = 'https://m8zvvvvx-8086.jpe1.devtunnels.ms';
 
-const OAUTH_REDIRECT_URI =
-  'https://m8zvvvvx-5500.jpe1.devtunnels.ms/index.html';
+// 고정 주소 대신 "지금 열려있는 주소"를 그대로 써서, 팀원 각자 로컬(127.0.0.1:5500)이든
+// devtunnel이든 카카오/구글 로그인 후 원래 열었던 곳으로 돌아오게 한다 — 두 주소 다 카카오/구글
+// 콘솔에 Redirect URI로 등록해둬야 동작한다(README 참고).
+const OAUTH_REDIRECT_URI = window.location.origin + '/index.html';
 
 // 새로고침하면 랜딩페이지로 돌아가던 문제 — state가 메모리에만 있고 어디에도 저장이 안 됐던
 // 게 원인이라, 로그인 토큰·마지막으로 보던 메뉴를 localStorage에 저장해두고 새로고침 시
