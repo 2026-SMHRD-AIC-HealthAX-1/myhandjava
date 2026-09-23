@@ -65,8 +65,6 @@ public class DataSeeder implements CommandLineRunner {
         userItemRepository.deleteAllInBatch();
         shopItemRepository.deleteAllInBatch();
         shopItemRepository.saveAll(java.util.List.of(
-                ShopItem.of("운동 추가권", 80, ShopItem.Category.기타, true, null,
-                        "운동 1회 추가", "운동 기회를 1회 추가할 수 있는 이용권입니다."),
                 ShopItem.of("닉네임 변경권", 150, ShopItem.Category.기타, true, null,
                         "닉네임 변경 1회", "닉네임을 한 번 변경할 수 있습니다."),
                 ShopItem.of("순위 도전 티켓", 100, ShopItem.Category.기타, true, null,

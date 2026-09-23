@@ -88,11 +88,6 @@ class ExerciseSessionServiceTest {
                 user.getSetsUsedToday()
         );
 
-        assertEquals(
-                1,
-                user.getRetakeTickets()
-        );
-
         assertFalse(
                 response.usageCharged()
         );
@@ -135,11 +130,6 @@ class ExerciseSessionServiceTest {
         assertEquals(
                 1,
                 user.getSetsUsedToday()
-        );
-
-        assertEquals(
-                1,
-                user.getRetakeTickets()
         );
 
         assertTrue(
@@ -185,11 +175,6 @@ class ExerciseSessionServiceTest {
                 user.getSetsUsedToday()
         );
 
-        assertEquals(
-                1,
-                user.getRetakeTickets()
-        );
-
         /*
          * 같은 세션으로 두 번째 시작 요청을 보내면
          * BusinessException이 발생해야 합니다.
@@ -213,11 +198,6 @@ class ExerciseSessionServiceTest {
         /*
          * 무료 운동이므로 티켓은 그대로 유지돼야 합니다.
          */
-        assertEquals(
-                1,
-                user.getRetakeTickets()
-        );
-
         assertEquals(
                 ExerciseSessionStatus.STARTED,
                 session.getStatus()
@@ -275,11 +255,6 @@ class ExerciseSessionServiceTest {
                 user.getSetsUsedToday()
         );
 
-        assertEquals(
-                1,
-                user.getRetakeTickets()
-        );
-
         assertTrue(
                 response.usageCharged()
         );
@@ -325,11 +300,6 @@ class ExerciseSessionServiceTest {
         assertEquals(
                 0,
                 user.getSetsUsedToday()
-        );
-
-        assertEquals(
-                1,
-                user.getRetakeTickets()
         );
 
         assertFalse(
@@ -425,8 +395,6 @@ class ExerciseSessionServiceTest {
 
         user.setSetsUsedToday(0);
         user.setSetsResetDate(LocalDate.now());
-
-        user.setRetakeTickets(1);
 
         return user;
     }

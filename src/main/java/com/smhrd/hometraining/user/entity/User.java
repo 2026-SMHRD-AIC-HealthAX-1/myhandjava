@@ -200,12 +200,6 @@ public class User {
     private boolean streakRewardClaimed = false;
 
     @Column(
-            name = "retake_tickets",
-            nullable = false
-    )
-    private int retakeTickets = 0;
-
-    @Column(
             name = "nickname_tickets",
             nullable = false
     )

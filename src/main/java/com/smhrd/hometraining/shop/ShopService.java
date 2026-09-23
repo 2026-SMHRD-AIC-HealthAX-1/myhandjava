@@ -166,18 +166,6 @@ public class ShopService {
                         item.getId()
                 );
             }
-            case "운동 추가권" -> {
-                int before = user.getRetakeTickets();
-                user.setRetakeTickets(before + 1);
-                recordTicketChange(
-                        user,
-                        ResourceType.RETAKE_TICKET,
-                        1,
-                        before,
-                        user.getRetakeTickets(),
-                        item.getId()
-                );
-            }
             case "순위 도전 티켓" -> {
                 int before = user.getRankChallengeTickets();
                 user.setRankChallengeTickets(before + 1);

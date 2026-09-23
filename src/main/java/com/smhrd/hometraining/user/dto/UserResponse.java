@@ -30,7 +30,6 @@ public record UserResponse(
         int streak,
         boolean streakRewardClaimed,
 
-        int retakeTickets,
         int nicknameTickets,
         int rankChallengeTickets,
         int setsUsedToday,
@@ -97,7 +96,6 @@ public record UserResponse(
                 user.getStreak(),
                 user.isStreakRewardClaimed(),
 
-                user.getRetakeTickets(),
                 user.getNicknameTickets(),
                 user.getRankChallengeTickets(),
                 user.getSetsUsedToday(),
