@@ -114,7 +114,7 @@ function renderMissionAvatar() {
           <canvas id="avatar-char-canvas" class="profile-character-canvas"></canvas>
           <h3 class="profile-nickname" style="color:${nickColor};">${state.user.nickname || '홈트초보'}</h3>
           <span class="profile-grade-level" style="--profile-grade-color:${userGradeColor(state.user.grade)};color:${userGradeColor(state.user.grade)};">
-            ${rankBadgeIcon(state.user.grade, state.user.gradeName, 56)}
+            <canvas id="profile-tier-badge-3d" class="rank-icon-3d"></canvas>
             <span>${state.user.gradeName || USER_GRADE_NAMES[state.user.grade] || '아이언'} <b>Lv.${Math.min(500, state.user.level)}</b></span>
           </span>
         </div>

@@ -660,6 +660,7 @@ tr:last-child td{border-bottom:none;}
   /* 화면 폭 전체를 다 쓰던 캐릭터가 모바일에서 너무 크게 보여서 폭을 줄인다(가로세로 비율은
      aspect-ratio가 그대로 지켜준다). */
   .profile-character-canvas{width:190px;}
+  .profile-grade-level .rank-icon-3d{width:120px;height:120px;}
   /* 1열로 쌓이는 모바일에서는 옆 블록과 높이를 맞출 대상이 없어(그리드 stretch가 의미 없음)
      flex:1로 채우면 0에 가깝게 찌그러지므로, 고정 높이로 되돌린다 — 자기소개는 3줄 정도만
      보이는 높이로 줄인다. */
@@ -794,6 +795,7 @@ tr:last-child td{border-bottom:none;}
   font-weight:700;
 }
 .profile-grade-level .rank-icon{width:56px;height:56px;}
+.profile-grade-level .rank-icon-3d{width:160px;height:160px;display:block;max-width:100%;}
 .profile-grade-level b{font-family:var(--font-mono);font-size:17px;}
 
 .attendance-reward-guide{color:var(--ink-dim);}

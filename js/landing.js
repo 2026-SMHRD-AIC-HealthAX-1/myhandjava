@@ -10,20 +10,27 @@
 // action은 클릭 시 호출할 게스트 체험 진입 함수(startGuest*) 이름을 문자열로 받는다.
 const LANDING_FEATURES = [
   {title:'AI 자세 판정 및 운동', desc:'카메라만으로 스쿼트 같은 운동 자세를 실시간으로 분석하고 정확도를 채점해요.', action:'startGuestExercise()', cta:'지금 체험하기',
-   image:'assets/ai 자세 판정 및 운동.png', imageAlt:'캘리브레이션 실루엣 위에 스켈레톤이 겹쳐 스쿼트 자세를 실시간으로 판정하는 화면 예시'},
+   video:'assets/landing-card-1.mp4?v=2', imageAlt:'캘리브레이션 실루엣 위에 스켈레톤이 겹쳐 스쿼트 자세를 실시간으로 판정하는 화면 예시'},
   {title:'실시간 크루대전', desc:'우리 크루와 다른 동네 크루가 실시간으로 운동 점수 대결을 펼쳐요.', action:'startGuestCrew()', cta:'우리 동네 크루확인하기',
-   image:'assets/실시간 크루 대전.png', imageAlt:'앉은 자세 스쿼트 판정 카메라 화면과 팀별 실시간 점수·팀원 캐릭터가 함께 표시되는 5vs5 크루대전 화면 예시'},
+   video:'assets/landing-card-2.mp4?v=2', imageAlt:'앉은 자세 스쿼트 판정 카메라 화면과 팀별 실시간 점수·팀원 캐릭터가 함께 표시되는 5vs5 크루대전 화면 예시'},
   {title:'운동 히스토리 관리', desc:'날짜별 운동 기록과 점수·정확도를 한눈에 모아서 관리해요.', action:'startGuestHistory()', cta:'히스토리 보기',
-   image:'assets/운동 히스토리 관리.png', imageAlt:'날짜별 운동 점수·정확도가 정리된 운동 히스토리 화면 예시'},
+   video:'assets/landing-card-3.mp4', imageAlt:'날짜별 운동 점수·정확도가 정리된 운동 히스토리 화면 예시'},
   {title:'우리 동네 랭킹 확인', desc:'역삼동 1위는 892점의 "써니핏"님! 지역별 랭킹에서 내 순위는 어디쯤일지 확인해보세요.', action:'startGuestRanking()', cta:'랭킹 보기',
-   image:'assets/우리동네 랭킹 확인.png', imageAlt:'지역별 랭킹 화면의 1~3위 포디움과 순위표 예시'},
+   video:'assets/landing-card-4.mp4?v=2', imageAlt:'지역별 랭킹 화면의 1~3위 포디움과 순위표 예시'},
 ];
+// 카드 영상은 기본적으로 멈춰있다가(첫 프레임만 표시) 마우스를 올렸을 때만 재생된다 —
+// 4개를 전부 autoplay로 틀어두면 스크롤할 때마다 화면이 산만해지고 모바일 데이터도 낭비된다.
+function landingCardVideoPlay(video){ video.play(); }
+function landingCardVideoStop(video){ video.pause(); video.currentTime = 0; }
 function renderLandingFeatures(){
   return `
   <div class="grid landing-feature-grid">
     ${LANDING_FEATURES.map(f=>`
       <div class="card exercise-card landing-feature-card" style="text-align:center;display:flex;flex-direction:column;" onclick="${f.action}">
-        ${f.image ? `<img src="${f.image}" alt="${f.imageAlt||''}" style="width:100%;max-width:240px;height:auto;border-radius:12px;border:2px solid #102A56;margin:0 auto 16px;display:block;">` : ''}
+        ${f.video ? `<video src="${f.video}" aria-label="${f.imageAlt||''}" muted loop playsinline preload="metadata"
+            onmouseenter="landingCardVideoPlay(this)" onmouseleave="landingCardVideoStop(this)"
+            ontouchstart="landingCardVideoPlay(this)"
+            style="width:100%;max-width:240px;height:auto;border-radius:12px;border:2px solid #102A56;margin:0 auto 16px;display:block;object-fit:cover;"></video>` : ''}
         <h3 style="margin:0 0 6px;font-size:15px;">${f.title}</h3>
         <p class="desc" style="margin:0 0 8px;">${f.desc}</p>
         <span class="pill pill-accent" style="margin-top:auto;align-self:center;">${f.cta}</span>
@@ -55,7 +62,7 @@ function renderIntro(){
       </div>
     </div>
     <div class="landing-hero" id="home">
-      <img src="assets/오운홈 로고.png" alt="오운홈" style="width:204px;max-width:60%;margin:0 auto 26px;display:block;">
+      <video src="assets/landing-logo-new.mp4?v=4" autoplay muted loop playsinline aria-label="오운홈" style="width:320px;max-width:80%;margin:0 auto 26px;display:block;border-radius:16px;"></video>
       <h1>집에서, 우리 동네 사람들과 함께 운동해요</h1>
       <p style="font-size:clamp(15px, 2.5vw, 17px);max-width:100%;white-space:normal;word-break:keep-all;overflow-wrap:anywhere;">카메라로 운동 자세를 실시간 분석하고,<br>미션과 랭킹으로 이웃과 함께 성장하는 홈트레이닝 서비스</p>
       

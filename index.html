@@ -41,12 +41,24 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+<!-- 마이프로필 등급 배지 3D 회전 미리보기용. three.js는 ES 모듈이라 나머지 전역 스크립트와
+     별개로 로드되고, js/tier3d.js가 window.renderTier3D()를 전역에 노출해서
+     profile.js/router.js(일반 스크립트)에서 그냥 함수처럼 호출할 수 있게 한다. -->
+<script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+</script>
+<script type="module" src="js/tier3d.js?v=20260923-tier3d-1"></script>
 <script src="js/data.js?v=20260922-landing-auth-1"></script>
 <script src="js/avatar-items.js?v=20260922-landing-auth-1"></script>
 <script src="js/state.js?v=20260922-landing-auth-1"></script>
 <script src="js/utils.js?v=20260922-landing-auth-1"></script>
 <script src="js/router.js?v=20260922-landing-auth-1"></script>
-<script src="js/landing.js?v=20260922-landing-auth-1"></script>
+<script src="js/landing.js?v=20260923-landing-cards-video-1"></script>
 <script src="js/auth.js?v=20260922-landing-auth-1"></script>
 <script src="js/calibration.js?v=20260922-landing-auth-1"></script>
 <script src="js/main.js?v=20260922-landing-auth-1"></script>

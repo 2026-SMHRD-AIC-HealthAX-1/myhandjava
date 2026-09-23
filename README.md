@@ -80,3 +80,14 @@ renderFoo = function(){ ...; return _renderFooV1(); };
   인증되니, 백엔드가 꺼져 있거나 토큰이 없으면 크루 관련 실시간 기능이 안 됩니다.
 - 관리자모드(`admin.js`)는 로그인 계정의 `role`이 `'ADMIN'`이어야 사이드바에 진입 버튼이
   보입니다 — 권한 부여는 화면에 없고 DB에서 직접 바꿔야 합니다(백엔드 README 참고).
+
+## 최근 변경사항 (2026-09-23)
+
+- **마이프로필 등급 배지 3D 회전 미리보기 추가** — `js/tier3d.js`(새 파일, ES 모듈)가
+  three.js로 `assets/models/tiers/*.glb`(아이언~챌린저 10개 등급 모델)를 불러와 마이프로필
+  화면의 등급 배지를 평면 아이콘 대신 계속 회전하는 3D 모델로 보여준다. `index.html`에
+  three.js importmap + `tier3d.js` 모듈 스크립트 추가, `router.js`가 마이프로필 진입 시
+  `window.renderTier3D()`를 호출하도록 훅 추가, `profile.js`의 배지 자리를 `<canvas>`로 교체.
+- **랜딩페이지 로고/소개 카드 영상 교체** — `js/landing.js`: 상단 로고 영상 파일 교체
+  (`assets/landing-logo-new.mp4`), 하단 4개 소개 카드의 정적 이미지를 짧은 영상으로 교체하고
+  마우스를 올렸을 때만 재생되도록 변경(평소엔 첫 프레임에서 정지, 모바일은 터치 시 재생).

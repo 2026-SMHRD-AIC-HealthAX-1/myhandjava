@@ -65,6 +65,11 @@ function render() {
   }
   if (state.screen === 'app' && state.menu === 'profile' && state.subtabs.profile === 0) {
     setTimeout(drawAvatarCanvas, 0);
+    // 등급 배지는 회전하는 3D 미리보기로 보여준다 — tier3d.js는 ES 모듈이라 로드가
+    // 조금 늦을 수 있어 함수가 아직 없으면(초기 로딩 타이밍) 조용히 건너뛴다.
+    if (typeof window.renderTier3D === 'function') {
+      setTimeout(() => window.renderTier3D('profile-tier-badge-3d', state.user.grade), 0);
+    }
   }
   if (state.itemPreview.open) {
     setTimeout(drawItemPreviewCanvas, 0);
