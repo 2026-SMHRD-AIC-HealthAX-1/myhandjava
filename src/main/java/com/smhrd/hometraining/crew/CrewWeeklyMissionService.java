@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.smhrd.hometraining.common.exception.BusinessException;
+import com.smhrd.hometraining.crew.battle.repository.CrewBattleParticipantRepository;
 import com.smhrd.hometraining.crew.dto.CrewWeeklyMissionResponse;
 import com.smhrd.hometraining.crew.entity.Crew;
 import com.smhrd.hometraining.crew.entity.CrewMember;
@@ -47,6 +48,9 @@ public class CrewWeeklyMissionService {
 
     private final ExerciseRecordRepository
             exerciseRecordRepository;
+
+    private final CrewBattleParticipantRepository
+            crewBattleParticipantRepository;
 
     private final MissionDefinitionRepository
             missionDefinitionRepository;
@@ -123,7 +127,7 @@ public class CrewWeeklyMissionService {
             Long memberUserId =
                     crewMember.getUser().getId();
 
-            long calculatedReps =
+            long soloReps =
                     exerciseRecordRepository
                             .sumGoodOrBetterRepsByUserIdAndExerciseTypeAndPeriod(
                                     memberUserId,
@@ -133,6 +137,23 @@ public class CrewWeeklyMissionService {
                                     CrewWeeklyMissionPolicy
                                             .INCLUDE_RETAKE_TICKET_REPS
                             );
+
+            /*
+             * 크루대전 중 기록한 GOOD 이상 횟수도
+             * 개인 운동과 동일하게 크루 미션에 더합니다.
+             */
+            long battleReps =
+                    crewBattleParticipantRepository
+                            .sumGoodOrBetterCountsByUserIdAndCrewIdAndExerciseTypeAndPeriod(
+                                    memberUserId,
+                                    crew.getId(),
+                                    weeklyMission.getExerciseType(),
+                                    from,
+                                    to
+                            );
+
+            long calculatedReps =
+                    soloReps + battleReps;
 
             int safeCalculatedReps =
                     calculatedReps > Integer.MAX_VALUE

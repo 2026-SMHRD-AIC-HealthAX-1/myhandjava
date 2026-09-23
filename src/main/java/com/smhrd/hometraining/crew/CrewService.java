@@ -33,6 +33,7 @@ import com.smhrd.hometraining.crew.entity.CrewMember;
 import com.smhrd.hometraining.crew.battle.entity.CrewBattle;
 import com.smhrd.hometraining.crew.battle.repository.CrewBattleParticipantRepository;
 import com.smhrd.hometraining.crew.battle.repository.CrewBattleRepository;
+import com.smhrd.hometraining.crew.policy.CrewWeeklyMissionPolicy;
 import com.smhrd.hometraining.crew.repository.CrewChatMessageRepository;
 import com.smhrd.hometraining.crew.repository.CrewChatReportRepository;
 import com.smhrd.hometraining.crew.repository.CrewExperienceHistoryRepository;
@@ -1215,19 +1216,48 @@ public class CrewService {
                         .map(CrewMemberResponse::userId)
                         .toList();
 
-        LocalDateTime startOfDay =
-                LocalDate.now().atStartOfDay();
+        /*
+         * "자유 운동 미션"은 주간(월요일~일요일) 단위로 진행도가 쌓인다.
+         * exercise_records/crew_battle_participants는 항상 대문자 코드(예:
+         * "SQUAT")로 저장되므로, 화면에 보여줄 한글 이름(groupMissionExercise,
+         * 예: "스쿼트")과는 별도로 조회용 코드로 변환해서 맞춰준다.
+         */
+        LocalDate weekStart =
+                CrewWeeklyMissionPolicy.getCurrentWeekStart();
 
-        long current =
+        LocalDateTime from =
+                weekStart.atStartOfDay();
+
+        LocalDateTime to =
+                weekStart.plusWeeks(1).atStartOfDay();
+
+        String exerciseTypeCode =
+                "스쿼트".equals(crew.getGroupMissionExercise())
+                        ? "SQUAT"
+                        : crew.getGroupMissionExercise();
+
+        long soloReps =
                 memberIds.isEmpty()
                         ? 0
                         : exerciseRecordRepository
-                                .sumRepsByUserIdsAndExerciseTypeAndPeriod(
+                                .sumGoodOrBetterRepsByUserIdsAndExerciseTypeAndPeriod(
                                         memberIds,
-                                        crew.getGroupMissionExercise(),
-                                        startOfDay,
-                                        startOfDay.plusDays(1)
+                                        exerciseTypeCode,
+                                        from,
+                                        to
                                 );
+
+        long battleReps =
+                crewBattleParticipantRepository
+                        .sumGoodOrBetterCountsByCrewIdAndExerciseTypeAndPeriod(
+                                crew.getId(),
+                                exerciseTypeCode,
+                                from,
+                                to
+                        );
+
+        long current =
+                soloReps + battleReps;
 
         return CrewResponse.of(
                 crew,
