@@ -339,7 +339,11 @@ button{font-family:inherit;}
 .glance-row-3{grid-template-columns:repeat(3,1fr);}
 /* 메인 대시보드 2번째 줄(최근 운동 히스토리 · 크루 배너) — 크루 배너 이미지가 가로로 긴
    비율이라 이미지가 덜 잘리도록 배너 쪽을 더 넓게 잡는다. */
+/* 그리드 자식은 기본적으로 min-width:auto라 내용물 때문에 일정 너비 밑으로 안 줄어들려고
+   버틴다 — 그 상태로 폭이 계속 좁아지면 줄(row) 전체가 못 줄어들다가 540px 브레이크포인트에서
+   갑자기 세로로 쌓이는 것처럼 보인다. min-width:0으로 그 제약을 풀어서 부드럽게 줄어들게 한다. */
 .glance-row-hist{grid-template-columns:2fr 3fr;}
+.glance-row-hist>*{min-width:0;}
 .grid-fixed-2{grid-template-columns:repeat(2,1fr);}
 .cal-grid{grid-template-columns:3fr 2fr;align-items:start;}
 .card{

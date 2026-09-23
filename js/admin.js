@@ -245,7 +245,7 @@ function renderAdminSupportTickets(){
   const s = state.support;
   const list = s.filter === 'all' ? s.adminTickets : s.adminTickets.filter(t => t.status === s.filter);
   return `
-  <div class="view-head"><h1>고객센터 문의 관리</h1><p>접수된 불편사항을 확인하고 답변 상태를 관리하세요</p></div>
+  <div class="view-head"><h1>고객센터 문의 관리</h1><p>접수된 문의사항을 확인하고 답변 상태를 관리하세요</p></div>
   <div class="filter-bar" style="margin-bottom:14px;">
     ${['all','접수','처리중','답변완료'].map(f => `<button class="btn btn-sm ${s.filter===f?'btn-primary':'btn-secondary'}" onclick="setSupportFilter('${f}')">${f==='all'?'전체':f}</button>`).join('')}
   </div>

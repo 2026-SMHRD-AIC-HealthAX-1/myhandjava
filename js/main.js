@@ -162,7 +162,7 @@ function renderMain(){
           <span class="mono" style="color:var(--gold);font-weight:700;">+${h.score}</span>
         </div>`).join('')}</div>` : '<p class="empty-note" style="margin-top:10px;">아직 운동 기록이 없어요. 운동을 시작해보세요!</p>'}
     </div>
-    <div class="card" style="padding:0;overflow:hidden;cursor:pointer;" onclick="setMenu('crew')" title="${state.crew.created ? '우리 크루 페이지로' : '크루 찾기'}">
+    <div class="card" style="padding:0;overflow:hidden;cursor:pointer;aspect-ratio:1999/786;align-self:start;" onclick="setMenu('crew')" title="${state.crew.created ? '우리 크루 페이지로' : '크루 찾기'}">
       <img src="${state.crew.created ? 'assets/메인 크루 이동 배너.png' : 'assets/메인 크루 찾기 배너.png'}" alt="${state.crew.created ? '크루 이동' : '크루 찾기'}" style="width:100%;height:100%;object-fit:cover;display:block;">
     </div>
   </div>`;
