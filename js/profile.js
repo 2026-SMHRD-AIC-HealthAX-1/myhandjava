@@ -675,7 +675,6 @@ async function loadMyCrew() {
     state.crew.leaderRegion = (leaderDto && leaderDto.region) || c.leaderRegion || c.region || '';
     state.crew.level = c.level;
     state.crew.exp = c.exp;
-    state.crew.groupMission = { ex: c.groupMissionExercise, target: c.groupMissionTarget, progress: c.groupMissionCurrent };
     const apiMembers = Array.isArray(c.members) ? c.members : [];
     const completeMembers = leaderDto && !apiMembers.some(m => Number(m.userId) === Number(leaderDto.userId))
       ? [leaderDto, ...apiMembers] : apiMembers;
@@ -683,9 +682,37 @@ async function loadMyCrew() {
       userId: m.userId, n: m.nickname, role: m.role === 'LEADER' ? '팀장' : '팀원', level: m.level, score: m.points
     }));
     await loadCrewBattleContributions();
+    await loadCrewWeeklyMission();
     if (typeof loadMyDongCrewRank === 'function') await loadMyDongCrewRank();
   } catch (err) {
     console.error('내 크루 정보 불러오기 실패', err);
+  }
+}
+// exerciseType 코드("SQUAT")를 화면에 보여줄 한글 이름으로 바꾼다. 지금은 스쿼트만 있어서
+// 매핑이 하나뿐이지만, 나중에 운동 종류가 늘어나면 여기만 추가하면 된다.
+const CREW_MISSION_EXERCISE_LABELS = { SQUAT: '스쿼트' };
+function crewMissionExerciseLabel(code) {
+  return CREW_MISSION_EXERCISE_LABELS[code] || code || '';
+}
+// 크루 주간 미션(crew_weekly_missions 기반, 보상 지급까지 되는 정식 버전) 진행도를 불러온다.
+// 예전엔 Crew.groupMissionExercise/Target(고정 "스쿼트"/300, 보상 없음)을 대신 썼는데, 그건
+// 운동 종류 표기가 안 맞아 항상 0으로 보이는 버그가 있었고 완료해도 보상이 없었다.
+async function loadCrewWeeklyMission() {
+  if (!state.token || !state.crew.created) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/crews/me/weekly-mission`, {
+      headers: { 'Authorization': 'Bearer ' + state.token }
+    });
+    const body = await res.json();
+    if (!body.success || !body.data) return;
+    const d = body.data;
+    state.crew.groupMission = {
+      ex: crewMissionExerciseLabel(d.exerciseType),
+      target: d.targetReps, progress: d.currentReps,
+      completed: d.completed, rewardGranted: d.rewardGranted, rewardExp: d.rewardExp,
+    };
+  } catch (err) {
+    console.error('크루 주간 미션 불러오기 실패', err);
   }
 }
 // 크루 메인 화면의 "크루대전 기여도" 랭킹은 각 크루원의 포인트(m.points)가 아니라, 그 크루원이

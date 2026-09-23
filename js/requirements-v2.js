@@ -435,7 +435,7 @@ renderCrewBattle=function(){
 // 예전엔 여기서 "크루 주간 미션" 카드를 하나 더 붙였는데, state.crew.weeklyMission 자체가
 // 목데이터(진행도 120/300 고정값, 크루원별 40~80회 가짜 범위)였고 실제 크루원 닉네임과도
 // 안 맞아서 누가 뭘 했든 상관없이 "40회"만 떴다 — 진짜 크루 주간 미션은 이미 위(원본
-// renderCrewOverview)의 "개인운동에서 OO 하기" 카드가 서버 값(groupMission)으로 보여주고
+// renderCrewOverview)의 "자유 운동에서 OO 하기" 카드가 서버 값(groupMission)으로 보여주고
 // 있으므로, 라벨만 "일일"→"주간"으로 맞추고 가짜 카드는 제거한다.
 const _renderCrewOverviewV1=renderCrewOverview;
 renderCrewOverview=function(){return _renderCrewOverviewV1().replace('크루 미션 누적점수','크루대전 기여도').replace('오늘의 크루미션','크루 주간 미션').replace('일일','주간');};

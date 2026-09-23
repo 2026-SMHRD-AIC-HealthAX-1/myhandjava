@@ -477,12 +477,13 @@ function renderCrewOverview() {
   </div>
   <div class="card" style="margin-top:14px;">
     <p class="section-label">오늘의 크루미션</p>
-    <div class="flex-between"><h3 style="margin:0;">개인운동에서 ${gm.ex} 하기</h3><span class="pill pill-accent">일일</span></div>
-    <p class="desc" style="margin:8px 0 10px;">크루원이 각자 '운동' 탭에서 ${gm.ex}를 완료하면 그 기록이 크루 종합 점수에 자동으로 더해져요.</p>
+    <div class="flex-between"><h3 style="margin:0;">${gm.ex} 하기</h3>${gm.completed ? `<span class="pill pill-gold">완료</span>` : `<span class="pill pill-accent">일일</span>`}</div>
+    <p class="desc" style="margin:8px 0 10px;">크루원들과 함께 운동, 크루대전에 참여하여 미션을 달성해요!</p>
     <div class="gauge">
       <span class="fill" style="width:${gaugePct}%"></span>
       <span class="gauge-label">${gm.progress.toLocaleString()} / ${gm.target.toLocaleString()}</span>
     </div>
+    <p class="hint" style="margin:6px 0 0;">크루원 1인당 최대 80회까지 인정돼요.${gm.completed && gm.rewardGranted ? ` 이번 주 미션 완료로 크루 경험치 +${(gm.rewardExp||0).toLocaleString()}을 받았어요!` : ''}</p>
   </div>`;
 }
 
