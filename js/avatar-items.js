@@ -4,49 +4,49 @@
 // [담당] 마이페이지 '캐릭터 꾸미기'용 아이템 카탈로그(프론트 전용 데이터).
 // [백엔드 연동] 없음 — 실제 구매/보유 여부는 shop.js가 GET /api/shop/items로 받아와 merge한다.
 // [주의] AVATAR_COMBO_FULL_CANVAS의 조합 키가 실제 PNG 아트와 안 맞으면 캐릭터가 이상하게 합성된다
-//        (이번 세션에 '111' 조합 사진이 실제 아이템과 달라서 통째로 뺀 사례 있음 — profile.js drawPixelCharacter 참고).
+//        — profile.js drawPixelCharacter 참고. '1011'(모자+하의+신발) 조합만 제작된 그림이
+//        없어서 의도적으로 빠져 있다(레이어 합성으로 자동 폴백).
 
 const AVATAR_WEARABLE_SLOTS = ['top', 'bottom', 'shoes', 'head', 'accessory'];
 
-// 모자(head-cap)·후디(top-lavender-hoodie)·조거팬츠(bottom-lavender-joggers) 세 슬롯의
-// 조합(2×2×2=8가지, "아무것도 없음"은 기본 캐릭터라 제외한 7가지)마다 실제로 그려서 받은
-// 전신 이미지 — 이 세 슬롯이 정확히 이 조합일 때만 레이어 합성 대신 이 사진을 통째로 쓴다.
-// 배경이 흰색(불투명)이라 캐릭터 배경 아이템은 이 조합에서는 안 보인다는 제약이 있다
-// (단, 'background-riverside-day' 배경은 AVATAR_COMBO_BG_RIVERSIDE_DAY로 별도 대응함).
-// 키는 'cap-top-bottom' 순서로 0/1 세 자리(예: 모자만 착용 = '100').
-const AVATAR_COMBO_FULL_CANVAS = {
-  '100': { male: 'assets/avatar-items/full-canvas/combo-male-100.png', female: 'assets/avatar-items/full-canvas/combo-female-100.png' },
-  '010': { male: 'assets/avatar-items/full-canvas/combo-male-010.png', female: 'assets/avatar-items/full-canvas/combo-female-010.png' },
-  '001': { male: 'assets/avatar-items/full-canvas/combo-male-001.png', female: 'assets/avatar-items/full-canvas/combo-female-001.png' },
-  '110': { male: 'assets/avatar-items/full-canvas/combo-male-110.png', female: 'assets/avatar-items/full-canvas/combo-female-110.png' },
-  '101': { male: 'assets/avatar-items/full-canvas/combo-male-101.png', female: 'assets/avatar-items/full-canvas/combo-female-101.png' },
-  '011': { male: 'assets/avatar-items/full-canvas/combo-male-011.png', female: 'assets/avatar-items/full-canvas/combo-female-011.png' },
-  // '111'(모자+후디+조거팬츠 다 착용)은 준비된 사진이 실제로는 반바지·기본 운동화를 그리고
-  // 있어(조거팬츠가 반바지로 보이고, 하이탑 신발 레이어도 씌워지지 않음) 잘못된 사진이었다.
-  // 게다가 이 사진 경로는 drawAvatarBackground를 건너뛰어서 배경 아이템도 무시돼버렸다.
-  // 그래서 이 조합만은 의도적으로 빼서 기존 레이어 합성(개별 아이템 벡터 렌더링) 방식으로
-  // 되돌아가게 한다 — 조거팬츠·하이탑·배경이 다 정확히 반영된다.
+// 모자(head-cap)·상의(top-lavender-hoodie)·하의(bottom-lavender-joggers)·신발(shoes-mint-sneakers)
+// 네 슬롯의 조합(2^4=16가지)마다 실제로 그려서 받은 전신 일러스트 — 이 네 아이템이 정확히
+// 이 조합일 때만 레이어 합성 대신 이 그림을 통째로 쓴다. 키는 'cap-top-bottom-shoes' 순서로
+// 0/1 네 자리(예: 모자만 착용 = '1000'). assets/character_items/{성별}_배경없음 폴더 기준이며,
+// 딱 하나(모자+하의+신발, '1011')만 제작된 그림이 없어서 그 조합일 때는 기존 레이어 합성으로
+// 자동 폴백한다.
+const AVATAR_COMBO_FILE_BY_KEY = {
+  '1000': '02_모자.png', '0100': '03_상의.png', '0010': '04_하의.png', '0001': '05_신발.png',
+  '1100': '06_모자+상의.png', '1010': '07_모자+하의.png', '1001': '08_모자+신발.png',
+  '0110': '09_상의+하의.png', '0101': '10_상의+신발.png', '0011': '11_하의+신발.png',
+  '1110': '12_모자+상의+하의.png', '1101': '13_모자+상의+신발.png', '0111': '14_상의+하의+신발.png',
+  '1111': '15_모자+상의+하의+신발.png',
 };
-// 위 세 슬롯 조합 + 'background-riverside-day' 배경(상점의 "맑은 강변 산책로")을 동시에 장착했을
-// 때 쓰는 전신 사진 — 배경까지 함께 그려져 있어 AVATAR_COMBO_FULL_CANVAS와 달리 '000'(세 슬롯
-// 다 미착용)도 포함한다. 이 배경일 때는 이 맵을 먼저 찾고, 없으면 기존 흰 배경 조합으로 되돌아간다.
+const AVATAR_COMBO_FULL_CANVAS = {};
+// 위 네 슬롯 조합 + 'background-riverside-day' 배경(상점의 "맑은 강변 산책로")을 동시에 장착했을
+// 때 쓰는 전신 사진 — 배경까지 함께 그려져 있어 AVATAR_COMBO_FULL_CANVAS와 달리 '0000'(네 슬롯
+// 다 미착용, 배경만 착용)도 포함한다. 이 배경일 때는 이 맵을 먼저 찾고, 없으면 기존 방식으로 되돌아간다.
 const AVATAR_COMBO_BG_RIVERSIDE_DAY = {
-  '000': { male: 'assets/avatar-items/full-canvas/combo-bg-riverside-day-male-000.png', female: 'assets/avatar-items/full-canvas/combo-bg-riverside-day-female-000.png' },
-  '100': { male: 'assets/avatar-items/full-canvas/combo-bg-riverside-day-male-100.png', female: 'assets/avatar-items/full-canvas/combo-bg-riverside-day-female-100.png' },
-  '010': { male: 'assets/avatar-items/full-canvas/combo-bg-riverside-day-male-010.png', female: 'assets/avatar-items/full-canvas/combo-bg-riverside-day-female-010.png' },
-  '001': { male: 'assets/avatar-items/full-canvas/combo-bg-riverside-day-male-001.png', female: 'assets/avatar-items/full-canvas/combo-bg-riverside-day-female-001.png' },
-  '110': { male: 'assets/avatar-items/full-canvas/combo-bg-riverside-day-male-110.png', female: 'assets/avatar-items/full-canvas/combo-bg-riverside-day-female-110.png' },
-  '101': { male: 'assets/avatar-items/full-canvas/combo-bg-riverside-day-male-101.png', female: 'assets/avatar-items/full-canvas/combo-bg-riverside-day-female-101.png' },
-  '011': { male: 'assets/avatar-items/full-canvas/combo-bg-riverside-day-male-011.png', female: 'assets/avatar-items/full-canvas/combo-bg-riverside-day-female-011.png' },
-  // '111'(모자+후디+조거팬츠+이 배경 전부)은 사진이 없어 기존 방식(흰 배경 조합 또는 레이어 합성)으로 되돌아간다.
+  '0000': { male: 'assets/character_items/남자_강변배경/01_기본.png', female: 'assets/character_items/여자_강변배경/01_기본.png' },
 };
-// equip(getEquipState() 결과)에서 지금 이 세 슬롯이 어떤 조합인지 키를 만든다.
+Object.entries(AVATAR_COMBO_FILE_BY_KEY).forEach(([key, file]) => {
+  AVATAR_COMBO_FULL_CANVAS[key] = {
+    male: `assets/character_items/남자_배경없음/${file}`,
+    female: `assets/character_items/여자_배경없음/${file}`,
+  };
+  AVATAR_COMBO_BG_RIVERSIDE_DAY[key] = {
+    male: `assets/character_items/남자_강변배경/${file}`,
+    female: `assets/character_items/여자_강변배경/${file}`,
+  };
+});
+// equip(getEquipState() 결과)에서 지금 이 네 슬롯이 어떤 조합인지 키를 만든다.
 // 매칭되는 사진이 없으면 null을 반환해 기존 레이어 합성 방식으로 되돌아간다.
 function getAvatarComboKey(equip, gender){
   const cap = equip.head && equip.head.id === 'head-cap' ? 1 : 0;
-  const hoodie = equip.top && equip.top.id === 'top-lavender-hoodie' ? 1 : 0;
-  const joggers = equip.bottom && equip.bottom.id === 'bottom-lavender-joggers' ? 1 : 0;
-  const key = `${cap}${hoodie}${joggers}`;
+  const top = equip.top && equip.top.id === 'top-lavender-hoodie' ? 1 : 0;
+  const bottom = equip.bottom && equip.bottom.id === 'bottom-lavender-joggers' ? 1 : 0;
+  const shoes = equip.shoes && equip.shoes.id === 'shoes-mint-sneakers' ? 1 : 0;
+  const key = `${cap}${top}${bottom}${shoes}`;
   const g = gender === 'female' ? 'female' : 'male';
 
   if (equip.background && equip.background.id === 'background-riverside-day') {
@@ -55,7 +55,7 @@ function getAvatarComboKey(equip, gender){
     if (bgSrc) return { key: `bg-riverside-${key}`, src: bgSrc, hasBackground: true };
   }
 
-  if (key === '000') return null;
+  if (key === '0000') return null; // 아무것도 안 입었으면 기본 캐릭터(레이어 방식)로 — 사진으로 대체하지 않는다
   const entry = AVATAR_COMBO_FULL_CANVAS[key];
   if (!entry) return null;
   const src = entry[g];

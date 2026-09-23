@@ -249,7 +249,7 @@ function drawPixelCharacter(canvas, equip, gender) {
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
 
-  // 모자+후디+조거팬츠 조합이 실제로 그려둔 전신 사진과 일치하면, 기본 캐릭터+개별 레이어
+  // 모자+상의+하의+신발 조합이 실제로 그려둔 전신 사진과 일치하면, 기본 캐릭터+개별 레이어
   // 합성 대신 그 사진을 통째로 쓴다. 사진 자체가 흰 배경(또는 riverside-day 배경이 이미
   // 그려진 사진)이라 이 경우엔 drawAvatarBackground를 따로 호출하지 않는다.
   const combo = (typeof getAvatarComboKey === 'function') ? getAvatarComboKey(equip, gender) : null;
@@ -260,7 +260,7 @@ function drawPixelCharacter(canvas, equip, gender) {
       const scale = Math.min(logicalWidth / sw, logicalHeight / sh);
       const dw = sw * scale, dh = sh * scale;
       ctx.drawImage(overlay, (logicalWidth - dw) / 2, logicalHeight - dh, dw, dh);
-      drawAvatarWearables(ctx, equip, gender, { skipIds: ['head-cap', 'top-lavender-hoodie', 'bottom-lavender-joggers'] });
+      drawAvatarWearables(ctx, equip, gender, { skipIds: ['head-cap', 'top-lavender-hoodie', 'bottom-lavender-joggers', 'shoes-mint-sneakers'] });
       return;
     }
   }
@@ -303,21 +303,9 @@ function drawAvatarBackground(ctx, backgroundItem, width, height) {
     }
   }
 
-  // v11.1: 기본 미리보기 배경은 검정/갈색 대신 밝은 아이보리-블루 격자.
-  // 별도 배경 아이템을 착용한 경우에만 해당 배경 이미지를 사용한다.
-  ctx.fillStyle = '#f8fbff';
-  ctx.fillRect(0, 0, width, height);
-  ctx.save();
-  ctx.strokeStyle = '#dfe8f2';
-  ctx.lineWidth = 0.7;
-  const grid = 16;
-  for (let x=0; x<=width; x+=grid) {
-    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,height); ctx.stroke();
-  }
-  for (let y=0; y<=height; y+=grid) {
-    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(width,y); ctx.stroke();
-  }
-  ctx.restore();
+  // 배경 아이템이 없으면 그냥 투명하게 둔다 — 격자무늬를 그리면 아이템을 하나라도 착용했을
+  // 때(콤보 사진 경로, 캔버스를 투명하게 두고 카드의 흰 배경이 비쳐 보임)와 색이 달라져
+  // 보였다. 아무것도 안 채우면 기본 상태도 동일하게 카드 배경이 그대로 비친다.
 }
 
 function drawAvatarWearables(ctx, equip, gender, opts) {
