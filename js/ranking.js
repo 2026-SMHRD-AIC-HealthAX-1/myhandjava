@@ -126,7 +126,7 @@ function renderRankRegion(){
     <select onchange="setRankDong(this.value)" ${isAll?'disabled':''}>${isAll?`<option>--</option>`:dongs.map(d=>`<option ${d===dong?'selected':''}>${d}</option>`).join('')}</select>
   </div>
   ${rows.length===0 ? `<div class="empty-note">${isAll?'아직':'이 지역엔 아직'} 랭킹 데이터가 없습니다.</div>` : `
-  ${renderPodium(rows,{scoreUnit:' P'})}
+  ${renderPodium(rows,{scoreUnit:' 점'})}
   ${rest.length?`
   <div class="table-wrap compact-table">
     <table>
@@ -138,7 +138,7 @@ function renderRankRegion(){
             <td><span class="name-cell"><span class="user-avatar" style="background:${avatarColor(r.rank-1)}">${avatarInitial(r.name)}</span>${r.name}${r.isMe?' <span class="pill pill-accent">나</span>':''}</span></td>
             <td class="mono">Lv.${r.level}</td>
             <td>${rankBadgeIcon(gradeFromLevel(r.level), USER_GRADE_NAMES[gradeFromLevel(r.level)], 24)}</td>
-            <td class="mono">${r.score.toLocaleString()} P</td>
+            <td class="mono">${r.score.toLocaleString()} 점</td>
             <td>${r.userId!=null?`<button class="btn btn-sm btn-secondary" onclick="openPublicProfile(${r.userId})">${r.isMe?'내 정보':'상대정보'}</button>`:''}</td>
           </tr>`).join('')}
       </tbody>
@@ -189,7 +189,7 @@ function renderPublicProfileModal(){
           </div>
           <p class="desc" style="margin:0 0 14px;">${d.bio || '자기소개가 없어요.'}</p>
           <p class="section-label" style="margin:0 0 6px;">누적 성과</p>
-          <p class="desc mono" style="margin:0 0 14px;">누적 점수 <b>${d.totalScore.toLocaleString()}</b></p>
+          <p class="desc mono" style="margin:0 0 14px;">누적 점수 <b>${d.totalScore.toLocaleString()}점</b></p>
           <p class="section-label" style="margin:0 0 6px;">등급 비율 (전체 세션 기준)</p>
           <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;">
             <span>PERFECT <b style="color:var(--accent)">${Math.round(gc.PERFECT/gcTotal*100)}%</b></span>

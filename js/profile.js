@@ -569,7 +569,7 @@ function renderHistorySummaryCard() {
   return `
   <div class="card">
     <p class="section-label">누적 성과</p>
-    <p class="desc mono" style="margin:0;">누적 점수 <b>${stats.total.toLocaleString()} 점</b> · 동네 랭킹 <b>${stats.myRank ? '#'+stats.myRank : '-'}</b> · 레벨업까지 <b>100 exp</b></p>
+    <p class="desc mono" style="margin:0;">누적 점수 <b>${stats.total.toLocaleString()} 점</b> · 동네 랭킹 <b>${stats.myRank ? '#'+stats.myRank : '-'}</b> · 레벨업까지 <b>100 Exp</b></p>
     <div class="progress" style="margin-top:10px;"><span style="width:${state.user.exp}%"></span></div>
     <p class="hint" style="margin-top:4px;">Lv.${state.user.level} 진행도 ${state.user.exp}%</p>
     <p class="section-label" style="margin-top:14px;">등급 비율 (전체 세션 기준)</p>
@@ -736,7 +736,11 @@ function renderSetAccount() {
       <p class="section-label">프로필</p>
       <div class="field">
         <label for="acc-nick">닉네임</label>
-        <input id="acc-nick" value="${state.user.nickname}" ${canEditNick ? '' : 'disabled'}>
+        <div class="field-row">
+          <input id="acc-nick" value="${state.user.nickname}" style="flex:1;min-width:0;" ${canEditNick ? '' : 'disabled'}>
+          <button type="button" class="btn btn-secondary btn-sm" style="flex:none;white-space:nowrap;" ${canEditNick ? '' : 'disabled'} onclick="checkAccountNickDup()">중복확인</button>
+        </div>
+        <p class="hint" id="acc-nick-msg" style="display:none;"></p>
         <p class="hint">${canEditNick ? `닉네임 변경권 보유중 · 저장 시 1장이 사용됩니다 (남은 수량 ${state.user.nicknameTickets}장)` : `닉네임 변경은 포인트 상점에서 '닉네임 변경권'을 구매한 뒤 가능합니다.`}</p>
         ${canEditNick ? '' : '<button class="btn btn-sm btn-secondary" style="margin-top:6px;" onclick="setMenu(\'shop\')">포인트 상점으로 이동</button>'}
       </div>
@@ -751,6 +755,7 @@ function renderSetAccount() {
       <button class="btn btn-primary" onclick="saveAccount()">저장</button>
     </div>
     <div style="margin-top:20px;">${renderSetPrivacy()}</div>
+    <div style="margin-top:20px;">${renderBlockedChatCard()}</div>
     <div style="margin-top:20px;">${renderSetCalib()}</div>
     <div style="margin-top:20px;">${renderSetLogout()}</div>
   </div>`;
@@ -785,6 +790,32 @@ async function setProfilePublic(pub) {
     render();
   } catch (err) {
     toast('서버에 연결할 수 없습니다');
+  }
+}
+// 회원가입(소셜 온보딩) checkOnboardingNickDup()과 동일한 패턴 — 실제 중복 차단은
+// saveAccount()가 호출하는 PATCH /api/users/me가 서버에서 검증해서 막아준다. 이 버튼은
+// 저장 누르기 전에 미리 확인해볼 수 있는 용도.
+async function checkAccountNickDup() {
+  const nick = document.getElementById('acc-nick').value.trim();
+  const msg = document.getElementById('acc-nick-msg');
+  if (!nick) { msg.style.color = 'var(--danger)'; msg.textContent = '닉네임을 입력해주세요'; msg.style.display = 'block'; return; }
+  if (nick === state.user.nickname) {
+    msg.style.color = 'var(--accent)'; msg.textContent = '지금 쓰고 있는 닉네임이에요. 그대로 사용할 수 있어요'; msg.style.display = 'block';
+    return;
+  }
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/check-nickname`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nickname: nick })
+    });
+    const body = await res.json();
+    const dup = body.data.duplicate;
+    msg.style.color = dup ? 'var(--danger)' : 'var(--accent)';
+    msg.textContent = dup ? '이미 사용중인 닉네임입니다' : '사용 가능한 닉네임입니다';
+    msg.style.display = 'block';
+  } catch (err) {
+    msg.style.color = 'var(--danger)'; msg.textContent = '서버에 연결할 수 없습니다'; msg.style.display = 'block';
   }
 }
 function setAccountCity(v) { state.settings.account.regionCity = v; state.settings.account.regionGu = null; state.settings.account.regionDong = null; render(); }

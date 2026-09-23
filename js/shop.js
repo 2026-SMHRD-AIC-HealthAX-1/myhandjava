@@ -14,7 +14,7 @@ const SHOP_CATEGORIES=['전체','헤어','상의','하의','신발','배경','�
 // 지금 실제로 판매 중인 아이템만 넣어둔 목록 — 나머지는 이미지가 멀쩡해도 "준비중"으로 표시하고
 // 구매/미리보기를 막는다(공개 범위를 좁혀둔 임시 조치, unavailable 계산 참고).
 const SHOP_ENABLED_ITEM_NAMES = new Set([
-  '네이비 스포츠 캡', '라벤더 후디', '라벤더 조거 팬츠', '라벤더 하이탑', '민트 운동화',
+  '네이비 스포츠 캡', '라벤더 후디', '라벤더 조거 팬츠', '민트 운동화',
   '배경 - 맑은 강변 산책로', '배경 - 노을빛 강변', '배경 - 가을 호수 공원', '배경 - 비 오는 가로수길',
   '닉네임 컬러 이펙트', '닉네임 변경권', '순위 도전 티켓',
 ]);
@@ -107,12 +107,13 @@ function markShopAssetMissing(idx){
   render();
 }
 const NICKNAME_PREVIEW_COLORS = [
-  {name:'기본', value:'var(--gold)'},
+  {name:'기본', value:'#1a1a1a'},
   {name:'코랄', value:'#ff6f61'},
   {name:'하늘', value:'#4aa8ff'},
   {name:'민트', value:'#27b89a'},
   {name:'보라', value:'#8b6cff'},
   {name:'핑크', value:'#e85aa5'},
+  {name:'노랑', value:'#ffc400'},
 ];
 // 닉네임 컬러 이펙트는 보유/착용 아이템이 아니라 소모 아이템이라, 적용된 색은 shopItems의
 // owned/equipped가 아니라 로컬에 직접 저장한다(서버에 별도 컬럼이 없음 — requirements-v2.js의

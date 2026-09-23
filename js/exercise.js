@@ -27,7 +27,8 @@ const EX_STEPS = ['종목 선택', '튜토리얼', '스마트폰 카메라 촬�
 // standing = 서 있을 때 무릎 각도, bottom = 정자세 최저점 무릎 각도, 나머지는 bottom과의
 // 오차(도) 허용범위.
 const SQUAT_REFERENCE = {
-  standingKneeAngle: 174.8, bottomKneeAngle: 120.6,
+  standingKneeAngle: 174.8,
+  bottomKneeAngleMin: 90, bottomKneeAngleMax: 100,
   perfectTol: 6, greatTol: 12, goodTol: 20,
 };
 const EXERCISE_REP_TARGET = 15; // 1세트는 최대 15회
@@ -674,7 +675,7 @@ function exDrawCalibrationGhostShape(ctx, w, h) {
   ctx.restore();
 }
 // 실제 측정(recording)이 시작되면 서있는 고스트 대신 "앉은(스쿼트 최저점) 자세" 고스트를
-// 보여준다 — 정확도 판정 자체가 무릎이 목표 각도(SQUAT_REFERENCE.bottomKneeAngle)까지
+// 보여준다 — 정확도 판정 자체가 무릎이 목표 각도 범위(SQUAT_REFERENCE.bottomKneeAngleMin~Max)까지
 // 굽혀졌는지를 보는 것이라, 서있는 자세보다 이쪽이 실제로 맞춰야 할 목표에 훨씬 가깝다.
 // 실제 캘리브레이션 landmark를 IK로 구부리는 대신(작은 오차에도 실루엣이 뒤틀려 보일 위험),
 // 발 위치·몸 크기·기울어진 방향만 캘리브레이션에서 그대로 가져오고 나머지 관절은 "허벅지가
@@ -891,14 +892,17 @@ function exGradeRep(bottomAngle, torsoDrop) {
     };
   }
   const ref = SQUAT_REFERENCE;
-  const diff = Math.abs(bottomAngle - ref.bottomKneeAngle);
+  // 90~100도 범위 안이면 오차 0(그대로 PERFECT), 범위를 벗어난 만큼만 오차로 계산한다.
+  const diff = bottomAngle < ref.bottomKneeAngleMin ? ref.bottomKneeAngleMin - bottomAngle
+    : bottomAngle > ref.bottomKneeAngleMax ? bottomAngle - ref.bottomKneeAngleMax
+    : 0;
   const angle = Math.round(bottomAngle);
   let grade = diff <= ref.perfectTol ? 'PERFECT' : diff <= ref.greatTol ? 'GREAT' : diff <= ref.goodTol ? 'GOOD' : 'MISS';
   if (grade !== 'MISS') return { grade, angle, voice: GRADE_VOICE_LINES[grade] };
-  const tooShallow = bottomAngle > ref.bottomKneeAngle; // 무릎이 목표보다 덜 굽혀짐(각도가 큼)
+  const tooShallow = bottomAngle > ref.bottomKneeAngleMax; // 무릎이 목표보다 덜 굽혀짐(각도가 큼)
   const reason = tooShallow
-    ? `무릎 각도 부족(${angle}°, 기준 ${Math.round(ref.bottomKneeAngle)}° 이하)`
-    : `너무 깊게 앉음(${angle}°, 기준 ${Math.round(ref.bottomKneeAngle)}° 근처)`;
+    ? `무릎 각도 부족(${angle}°, 기준 ${ref.bottomKneeAngleMin}~${ref.bottomKneeAngleMax}° 이하)`
+    : `너무 깊게 앉음(${angle}°, 기준 ${ref.bottomKneeAngleMin}~${ref.bottomKneeAngleMax}° 근처)`;
   const voice = tooShallow ? '무릎을 더 굽혀주세요' : '너무 깊이 앉았어요';
   return { grade, angle, reason, failedJoint: 'knee', voice };
 }

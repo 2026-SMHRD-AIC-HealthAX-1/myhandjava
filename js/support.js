@@ -202,7 +202,8 @@ function renderSupportFAQ(){
   ];
   return `<div style="max-width:820px;margin:0 auto;">
     <div class="card" style="margin-bottom:14px;"><h2 style="margin:0;">레벨 · 경험치 F&A</h2><p class="desc" style="margin-bottom:0;">운동 경험치와 레벨, 등급에 대해 자주 묻는 내용을 확인해보세요.</p></div>
-    ${faqs.map((f,i)=>`<details class="card" ${i===0?'open':''} style="margin-bottom:10px;"><summary style="cursor:pointer;font-weight:700;">${f[0]}</summary><p class="desc" style="margin:12px 0 0;line-height:1.7;">${f[1]}</p></details>`).join('')}
+    <div style="margin-bottom:14px;display:flex;flex-direction:column;gap:12px;">${FAQ_ITEMS.map(renderFaqCard).join('')}</div>
+    ${faqs.map((f)=>`<details class="card" style="margin-bottom:10px;"><summary style="cursor:pointer;font-weight:700;">${f[0]}</summary><p class="desc" style="margin:12px 0 0;line-height:1.7;">${f[1]}</p></details>`).join('')}
   </div>`;
 }
 
@@ -216,14 +217,9 @@ function renderSupportInquiry(){
       ${['all','접수','처리중','답변완료'].map(f=>`<button class="btn btn-sm ${s.filter===f?'btn-primary':'btn-secondary'}" onclick="setSupportFilter('${f}')">${f==='all'?'전체':f}</button>`).join('')}
     </div>
     <div style="display:flex;gap:8px;">
-      <button class="btn btn-primary btn-sm" onclick="${(state.guestMode && !s.composerOpen) ? "goto('login')" : 'toggleComposer()'}">${s.composerOpen?'작성취소':'불편사항 접수하기'}</button>
+      <button class="btn btn-primary btn-sm" onclick="${(state.guestMode && !s.composerOpen) ? "goto('login')" : 'toggleComposer()'}">${s.composerOpen?'작성취소':'접수하기'}</button>
     </div>
   </div>
-  <div style="margin-bottom:20px;">
-    <p class="section-label">자주하는 질문</p>
-    <div style="display:flex;flex-direction:column;gap:12px;">${FAQ_ITEMS.map(renderFaqCard).join('')}</div>
-  </div>
-
   ${s.composerOpen ? `
   <div class="card" style="max-width:560px;margin-bottom:20px;">
     <p class="section-label">새 불편사항 접수</p>

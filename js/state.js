@@ -52,7 +52,7 @@ const state = {
   shopItems: [
     ...AVATAR_ITEM_CATALOG.map(item => ({...item, placement: {...item.placement}})),
     {name:'닉네임 컬러 이펙트', asset:'assets/shop-icons/name-color-effect.svg', price:180, owned:false, consumable:true, slot:'nickname', category:'기타', effect:'닉네임 컬러 변경 1회', effectDesc:'구매하면 바로 원하는 닉네임 색상을 골라 적용할 수 있습니다. 보유 아이템으로 쌓이지 않고, 다시 구매하면 색상을 또 바꿀 수 있어요.'},
-    {name:'닉네임 변경권', asset:'assets/shop-icons/nickname-change-ticket.svg', price:150, owned:false, consumable:true, category:'기타', effect:'닉네임 변경 1회', effectDesc:'닉네임을 한 번 변경할 수 있습니다.'},
+    {name:'닉네임 변경권', asset:'assets/shop-icons/nickname-change-ticket.svg', price:150, owned:false, consumable:true, category:'기타', effect:'닉네임 변경 1회', effectDesc:'닉네임을 한 번 변경할 수 있습니다.<br><br>닉네임 변경은 마이페이지 계정관리에서 가능합니다.'},
     {name:'순위 도전 티켓', asset:'assets/shop-icons/rank-challenge-ticket.svg', price:100, owned:false, consumable:true, category:'기타', effect:'순위 도전 1회 참여', effectDesc:'운동 탭의 "순위 도전" 모드에 1회 참여할 수 있는 티켓입니다.<br><br>순위 도전은 무료 운동 횟수와 별개로, 이 티켓을 보유한 만큼만 참여할 수 있습니다.'},
   ],
   shopFilter: '전체',
@@ -101,6 +101,9 @@ const state = {
   // 신고는 실제 서버(POST /api/crews/me/chat/{messageId}/report)에 저장되어 관리자모드의
   // "크루채팅 신고 관리"에서 확인할 수 있다. 차단은 여전히 로컬 전용(getBlockedChatUserIds).
   chatModeration: {open:false, messageId:null, targetUserId:null, targetNickname:null},
+  // 크루채팅 차단 목록(마이페이지 계정관리 카드) — 채팅 내용 표시/가림 상태만 담아둔다
+  // (crew.js renderBlockedChatCard 참고).
+  crewChatBlockList: {revealed:{}},
   // 관리자모드(admin.js) — state.user.role==='ADMIN'일 때만 사이드바에 진입 버튼이 보인다.
   adminPanel: {tab:'dashboard', dashboard:null, users:[], usersSearch:'', reports:[], reportDetailId:null},
   // 회원탈퇴 확인 팝업 — 실수로 누르지 않도록 내 닉네임을 정확히 입력해야 탈퇴 버튼이

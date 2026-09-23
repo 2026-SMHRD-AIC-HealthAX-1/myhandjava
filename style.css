@@ -621,19 +621,19 @@ tr:last-child td{border-bottom:none;}
 .profile-character-block{width:100%;text-align:center;justify-self:start;align-self:start;}
 .profile-character-canvas{width:300px;max-width:100%;height:auto;aspect-ratio:18/22;margin:4px auto 10px;display:block;border-radius:14px;image-rendering:auto;}
 .profile-character-block h3{margin:0 0 8px;}
-/* 자기소개 칸은 왼쪽 아바타 박스(캐릭터 캔버스+닉네임+등급)와 높이를 맞춰야 해서, 고정 px
-   대신 옆 블록의 실제 높이만큼 늘어나는 flex 세로 배치로 만든다 — textarea가 라벨/버튼을
-   뺀 나머지 공간을 그대로 채우므로 아바타 박스 높이가 바뀌어도 항상 맞는다. 사용자가 직접
-   드래그로 늘리고 줄이지 못하게 resize도 꺼둔다. */
-.profile-bio-block{width:100%;min-width:0;align-self:stretch;display:flex;flex-direction:column;}
-.profile-bio-block .field{width:100%;margin:0;flex:1;display:flex;flex-direction:column;min-height:0;}
-.profile-bio-block textarea{flex:1;min-height:0;resize:none;}
+/* 자기소개 입력창은 왼쪽 캐릭터 캔버스(닉네임·등급 배지 제외, 캔버스 자체 높이)와 딱
+   맞춰서 끝나야 한다 — 캔버스가 width:300px, aspect-ratio:18/22라 높이가 300*22/18로
+   고정되므로, 같은 값을 그대로 옮겨 쓴다. 사용자가 직접 드래그로 늘리고 줄이지 못하게
+   resize도 꺼둔다. */
+.profile-bio-block{width:100%;min-width:0;display:flex;flex-direction:column;}
+.profile-bio-block .field{width:100%;margin:0;display:flex;flex-direction:column;}
+.profile-bio-block textarea{height:366px;resize:none;}
 /* 아이템 그리드는 항상 2행을 고정폭(각 행 230px)으로 예약해서, 현재 페이지에 아이템이
    1개뿐이어도(마지막 페이지) 칸이 줄어들지 않고 빈 칸으로 남는다 — 이게 왼쪽 카드가 맞춰야 할
    "기준" 높이가 된다. */
-.profile-items-card .profile-items-grid{grid-template-rows:repeat(2,230px);}
+.profile-items-card .profile-items-grid{grid-template-rows:repeat(2,260px);}
 .cosmetic-item-card{border:1px solid var(--line);border-radius:10px;padding:12px;height:100%;display:flex;flex-direction:column;overflow:hidden;}
-.cosmetic-item-card .desc{flex:1;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+.cosmetic-item-card .desc{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding-right:4px;}
 .cosmetic-item-card .btn{margin-top:8px;flex:none;}
 
 @media (max-width:1120px){
@@ -663,9 +663,9 @@ tr:last-child td{border-bottom:none;}
   /* 1열로 쌓이는 모바일에서는 옆 블록과 높이를 맞출 대상이 없어(그리드 stretch가 의미 없음)
      flex:1로 채우면 0에 가깝게 찌그러지므로, 고정 높이로 되돌린다 — 자기소개는 3줄 정도만
      보이는 높이로 줄인다. */
-  .profile-bio-block{align-self:auto;}
+  .profile-bio-block{align-self:auto;min-height:0;}
   .profile-bio-block .field{flex:none;}
-  .profile-bio-block textarea{flex:none;min-height:84px;}
+  .profile-bio-block textarea{height:84px;}
 }
 
 .map-box{
@@ -863,6 +863,11 @@ tr:last-child td{border-bottom:none;}
   .crew-ranking-data-offset{margin-top:12px;}
 }
 
+/* 가입 신청 카드에서 닉네임 옆에 붙는 작은 돋보기(정보 보기) 아이콘 — 버튼처럼 안 보이게
+   테두리/배경 없이 아이콘만 둔다. */
+.btn-icon-plain{background:none;border:none;padding:0;margin:0;font-size:14px;line-height:1;cursor:pointer;flex:none;}
+.btn-icon-plain:hover{opacity:.7;}
+
 /* 추가 수정: 크루 관리 가입 활성 ON/OFF 토글 */
 .crew-join-toggle{display:flex;align-items:center;gap:10px;flex:none;}
 .crew-join-toggle-label{font-size:13px;font-weight:800;color:var(--ink-dim);white-space:nowrap;}
@@ -884,14 +889,14 @@ tr:last-child td{border-bottom:none;}
 
 /* 추가 수정: 포인트 상점 카드 고정 레이아웃 / 닉네임 컬러 미리보기 */
 .shop-item-grid{align-items:start;}
-.shop-item-card{display:flex;flex-direction:column;height:auto;min-height:0;box-sizing:border-box;overflow:hidden;padding:14px;}
+.shop-item-card{display:flex;flex-direction:column;height:420px;min-height:420px;box-sizing:border-box;overflow:hidden;padding:14px;}
 .shop-item-media{height:128px;min-height:128px;flex:none;}
-.shop-item-body{display:flex;flex:none;min-height:0;flex-direction:column;}
+.shop-item-body{display:flex;flex:1;min-height:0;flex-direction:column;}
 .shop-item-title{margin-top:10px;align-items:flex-start;}
 .shop-item-effect{margin-top:8px;align-self:flex-start;}
 .shop-item-owned{margin:4px 0 0;font-size:11.5px;}
 .shop-item-comingsoon{color:var(--ink-faint);font-size:12.5px;font-weight:600;text-align:center;padding:0 12px;}
-.shop-item-desc{margin-top:8px;min-height:0;color:var(--ink-dim);font-size:13px;line-height:1.55;word-break:keep-all;overflow-wrap:break-word;}
+.shop-item-desc{margin-top:8px;flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding-right:4px;color:var(--ink-dim);font-size:13px;line-height:1.55;word-break:keep-all;overflow-wrap:break-word;}
 .shop-item-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;flex:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--line);}
 .shop-item-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:nowrap;}
 .shop-item-actions .btn{white-space:nowrap;}
@@ -913,7 +918,7 @@ tr:last-child td{border-bottom:none;}
 .att-day-star{font-size:7px;color:var(--gold);margin-left:1px;vertical-align:super;}
 .main-nickname-effect{word-break:keep-all;}
 @media(max-width:720px){
-  .shop-item-card{height:auto;min-height:0;}
+  .shop-item-card{height:410px;min-height:410px;}
   .shop-item-actions .btn{padding-left:8px;padding-right:8px;font-size:11.5px;}
   .nickname-preview-palette{grid-template-columns:repeat(2,minmax(0,1fr));}
 }

@@ -106,7 +106,7 @@ function renderApp() {
     <aside class="sidebar">
       <div class="brand" onclick="goHome()" style="cursor:pointer;" title="메인으로 이동">
         <div class="brand-mark"><img src="assets/오운홈 로고.png" alt="오운홈"></div>
-        <div class="brand-name">오운홈<small>오늘 운동은 홈에서</small></div>
+        <div class="brand-name">오운홈<small>오늘 운동은 집에서</small></div>
       </div>
       ${MENUS.filter(m => !m.adminOnly || state.user.role === 'ADMIN').map(m => `
         <div class="navitem ${state.menu === m.id ? 'active' : ''}" onclick="setMenu('${m.id}')">

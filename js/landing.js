@@ -11,7 +11,7 @@
 const LANDING_FEATURES = [
   {title:'AI 자세 판정 및 운동', desc:'카메라만으로 스쿼트 같은 운동 자세를 실시간으로 분석하고 정확도를 채점해요.', action:'startGuestExercise()', cta:'지금 체험하기',
    image:'assets/ai 자세 판정 및 운동.png', imageAlt:'캘리브레이션 실루엣 위에 스켈레톤이 겹쳐 스쿼트 자세를 실시간으로 판정하는 화면 예시'},
-  {title:'실시간 크루대전', desc:'우리 크루와 다른 동네 크루가 실시간으로 스쿼트 점수 대결을 펼쳐요.', action:'startGuestCrew()', cta:'우리 동네 크루확인하기',
+  {title:'실시간 크루대전', desc:'우리 크루와 다른 동네 크루가 실시간으로 운동 점수 대결을 펼쳐요.', action:'startGuestCrew()', cta:'우리 동네 크루확인하기',
    image:'assets/실시간 크루 대전.png', imageAlt:'앉은 자세 스쿼트 판정 카메라 화면과 팀별 실시간 점수·팀원 캐릭터가 함께 표시되는 5vs5 크루대전 화면 예시'},
   {title:'운동 히스토리 관리', desc:'날짜별 운동 기록과 점수·정확도를 한눈에 모아서 관리해요.', action:'startGuestHistory()', cta:'히스토리 보기',
    image:'assets/운동 히스토리 관리.png', imageAlt:'날짜별 운동 점수·정확도가 정리된 운동 히스토리 화면 예시'},
@@ -51,7 +51,7 @@ function renderIntro(){
     <div class="landing-topbar">
       <div class="brand" style="cursor:default;">
         <div class="brand-mark"><img src="assets/오운홈 로고.png" alt="오운홈"></div>
-        <div class="brand-name">오운홈<small>오늘 운동은 홈에서</small></div>
+        <div class="brand-name">오운홈<small>오늘 운동은 집에서</small></div>
       </div>
     </div>
     <div class="landing-hero" id="home">

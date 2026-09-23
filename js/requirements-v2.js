@@ -363,7 +363,31 @@ async function toggleCrewAutoApprove(){
   }
 }
 function isCurrentCrewMember(m){return Number(m.userId)===Number(state.user.id)||m.n==='나';}
-function transferCrewLeader(userId){const m=state.crew.members.find(x=>Number(x.userId)===Number(userId));if(!m||isCurrentCrewMember(m)){toast('본인에게는 크루장을 양도할 수 없습니다');return;}askConfirm('크루장 양도',`${m.n}님에게 크루장을 양도하시겠습니까?`,()=>{state.crew.members.forEach(x=>x.role=x===m?'팀장':(isCurrentCrewMember(x)?'팀원':x.role));closeConfirm();toast('크루장을 양도했습니다');render();},'양도');}
+// v1은 서버 호출 없이 로컬 state.crew.members만 바꿔서, 양도한 나한테만(그것도 새로고침
+// 전까지만) 반영된 것처럼 보였다 — 새 크루장 화면엔 전혀 안 알려지고, 다음에 loadMyCrew()가
+// 서버의 예전 크루장 값으로 이 로컬 변경을 덮어써서 "일정 시간 뒤 원상복구"된 것처럼 보였다.
+// 백엔드에 이미 구현되어 있는 PATCH /api/crews/me/leader/{targetUserId}
+// (CrewService.transferLeadership, LEADER_CHANGED 브로드캐스트까지 완비)를 그대로 호출한다.
+function transferCrewLeader(userId){
+  const m=state.crew.members.find(x=>Number(x.userId)===Number(userId));
+  if(!m||isCurrentCrewMember(m)){toast('본인에게는 크루장을 양도할 수 없습니다');return;}
+  askConfirm('크루장 양도',`${m.n}님에게 크루장을 양도하시겠습니까?`,async ()=>{
+    closeConfirm();
+    try{
+      const res=await fetch(`${API_BASE}/api/crews/me/leader/${userId}`,{method:'PATCH',headers:{'Authorization':'Bearer '+state.token}});
+      const body=await res.json();
+      if(!body.success){ toast(body.message||'크루장 양도에 실패했습니다'); return; }
+      toast('크루장을 양도했습니다');
+      // 서버가 /topic/crews/{id}/members로 브로드캐스트하면 handleCrewMemberEvent()가 새
+      // 크루장을 포함한 전원의 화면을 갱신해준다 — 그 브로드캐스트를 놓쳤을 때를 대비해
+      // 내 화면만은 여기서도 한 번 더 확실히 최신화해둔다.
+      await loadMyCrew();
+      render();
+    }catch(err){
+      toast('서버에 연결할 수 없습니다');
+    }
+  },'양도');
+}
 function leaveOrDisbandCrew(){
   const leader=getMyCrewRole()==='팀장';
   const others=state.crew.members.filter(m=>!isCurrentCrewMember(m));
@@ -398,7 +422,7 @@ async function disbandCrew(){
 function renderCrewManagementV2(){
   const leader=getMyCrewRole()==='팀장',members=state.crew.members,others=members.filter(m=>!isCurrentCrewMember(m)&&m.role!=='팀장'),requests=state.crew.joinRequests||[];
   return `<div class="card"><div class="flex-between"><h3>크루 관리</h3>${leader?`<div class="crew-join-toggle"><span class="crew-join-toggle-label">자동가입승인</span><button type="button" class="switch ${state.crew.autoApprove?'on':''}" role="switch" aria-checked="${state.crew.autoApprove?'true':'false'}" aria-label="자동가입승인 ${state.crew.autoApprove?'ON':'OFF'}" onclick="toggleCrewAutoApprove()"><span class="switch-state">${state.crew.autoApprove?'ON':'OFF'}</span><span class="knob"></span></button></div>`:''}</div>
-  ${leader?`<p class="section-label" style="margin-top:16px;">가입 신청 대기 (${requests.length})</p><div class="grid grid-2">${requests.length?requests.map(r=>`<div class="card"><div class="flex-between"><b>${r.n}</b><span class="pill pill-gold">PENDING</span></div><p class="hint">Lv.${r.level}${r.requestedAt?` · ${new Date(r.requestedAt).toLocaleString('ko-KR')}`:''}</p><p class="desc">${r.msg||'가입 메시지가 없습니다.'}</p><div class="crew-join-actions"><button class="btn btn-sm btn-secondary" onclick="rejectJoinRequest(${r.id})" aria-label="${r.n} 가입 요청 거절">거절</button><button class="btn btn-sm btn-primary" onclick="approveJoinRequest(${r.id})" aria-label="${r.n} 가입 요청 승인">승인</button></div></div>`).join(''):'<div class="empty-note" style="grid-column:1/-1;">대기 중인 가입 신청이 없습니다.</div>'}</div>`:''}
+  ${leader?`<p class="section-label" style="margin-top:16px;">가입 신청 대기 (${requests.length})</p><div class="grid grid-2">${requests.length?requests.map(r=>`<div class="card"><div class="flex-between"><span style="display:flex;align-items:center;gap:6px;"><b>${r.n}</b>${r.userId!=null?`<button type="button" class="btn-icon-plain" onclick="openPublicProfile(${r.userId})" aria-label="${r.n} 정보 보기" title="정보 보기">🔍</button>`:''}</span><span class="pill pill-gold">보류중</span></div><p class="hint">Lv.${r.level}${r.requestedAt?` · ${new Date(r.requestedAt).toLocaleString('ko-KR')}`:''}</p><p class="desc">${r.msg||'가입 메시지가 없습니다.'}</p><div class="crew-join-actions"><button class="btn btn-sm btn-secondary" onclick="rejectJoinRequest(${r.id})" aria-label="${r.n} 가입 요청 거절">거절</button><button class="btn btn-sm btn-primary" onclick="approveJoinRequest(${r.id})" aria-label="${r.n} 가입 요청 승인">승인</button></div></div>`).join(''):'<div class="empty-note" style="grid-column:1/-1;">대기 중인 가입 신청이 없습니다.</div>'}</div>`:''}
   <p class="hint">최대 인원 5명 · 현재 ${members.length}/5명</p>${leader?`<div class="table-wrap"><table><thead><tr><th>크루원</th><th>역할</th><th>레벨</th><th>관리</th></tr></thead><tbody>${members.map(m=>`<tr><td>${m.n}${isCurrentCrewMember(m)?' <span class="pill pill-accent">나</span>':''}${m.role==='팀장'?' <span class="pill pill-gold">크루장</span>':''}</td><td>${crewRoleLabel(m.role)}</td><td>Lv.${m.level}</td><td>${!isCurrentCrewMember(m)&&m.role!=='팀장'?`<button class="btn btn-sm btn-secondary" onclick="transferCrewLeader(${m.userId||0})">크루장 양도</button> <button class="btn btn-sm btn-danger" onclick="kickMember(${m.userId})">강퇴</button>`:'<span class="hint">관리 제외</span>'}</td></tr>`).join('')}</tbody></table></div>`:''}
   <div class="crew-management-danger-zone"><button class="btn btn-danger" ${leader&&others.length?'disabled style="opacity:.5"':''} onclick="leaveOrDisbandCrew()">크루 해체</button>${leader&&others.length?'<p class="hint">다른 크루원이 있는 동안 해체할 수 없습니다.</p>':''}</div></div>`;
 }

@@ -340,8 +340,7 @@ async function joinCrew(crewId) {
   try {
     const res = await fetch(`${API_BASE}/api/crews/${crewId}/join-requests`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.token },
-      body: JSON.stringify({ message: '', status: 'PENDING' })
+      headers: { 'Authorization': 'Bearer ' + state.token }
     });
     const body = await res.json();
     if (!body.success) {
@@ -381,7 +380,7 @@ async function loadCrewJoinRequests() {
       .filter(r => !r.status || r.status === 'PENDING')
       .map(r => ({
         id: r.id, userId: r.requesterId, n: r.requesterNickname, level: r.requesterLevel,
-        msg: r.message || '', status: r.status || 'PENDING', requestedAt: r.requestedAt || r.createdAt || null
+        status: r.status || 'PENDING', requestedAt: r.requestedAt || r.createdAt || null
       }));
     render();
   } catch (err) {
@@ -501,19 +500,78 @@ function fmtChatTime(value) {
 }
 // 채팅 차단은 서버에 저장할 곳이 없어서(state.chatModeration 주석 참고) 이 브라우저·이
 // 크루·이 계정 조합으로 로컬에만 저장한다 — 다른 기기에서는 차단이 유지되지 않는다.
-function getBlockedChatUserIds() {
-  if (!state.crew.id || !state.user.id) return new Set();
+// {id, nickname, messageText, blockedAt} 형태로 저장해서 마이페이지 > 계정관리의 차단
+// 목록 카드(renderBlockedChatCard)에 닉네임·차단일·차단 사유가 된 채팅을 같이 보여준다.
+function getBlockedChatUsers() {
+  if (!state.crew.id || !state.user.id) return [];
   try {
     const arr = JSON.parse(localStorage.getItem(`ounhome_crew_chat_blocked_${state.crew.id}_${state.user.id}`) || '[]');
-    return new Set(Array.isArray(arr) ? arr.map(Number) : []);
-  } catch (_e) { return new Set(); }
+    return Array.isArray(arr) ? arr.filter(x => x && x.id != null) : [];
+  } catch (_e) { return []; }
 }
-function blockChatUser(userId) {
+function saveBlockedChatUsers(list) {
   if (!state.crew.id || !state.user.id) return;
-  const ids = getBlockedChatUserIds();
-  ids.add(Number(userId));
-  try { localStorage.setItem(`ounhome_crew_chat_blocked_${state.crew.id}_${state.user.id}`, JSON.stringify(Array.from(ids))); } catch (_e) {}
+  try { localStorage.setItem(`ounhome_crew_chat_blocked_${state.crew.id}_${state.user.id}`, JSON.stringify(list)); } catch (_e) {}
+}
+function getBlockedChatUserIds() {
+  return new Set(getBlockedChatUsers().map(u => Number(u.id)));
+}
+function blockChatUser(userId, nickname, messageText) {
+  if (!state.crew.id || !state.user.id) return;
+  const list = getBlockedChatUsers().filter(u => Number(u.id) !== Number(userId));
+  list.push({ id: Number(userId), nickname: nickname || '', messageText: messageText || '', blockedAt: Date.now() });
+  saveBlockedChatUsers(list);
   state.crew.chat.messages = state.crew.chat.messages.filter(m => Number(m.senderId) !== Number(userId));
+}
+function unblockChatUser(userId) {
+  if (!state.crew.id || !state.user.id) return;
+  saveBlockedChatUsers(getBlockedChatUsers().filter(u => Number(u.id) !== Number(userId)));
+  // 차단 해제 후엔 그 사람 메시지도 다시 보여야 하니 히스토리를 다시 불러온다.
+  if (typeof loadCrewChatHistory === 'function') loadCrewChatHistory();
+  render();
+}
+// 채팅 내용은 기본적으로 가려두고(민감할 수 있어서), '표시'를 누른 사람만 그 자리에서
+// 다시 렌더링해서 보여준다 — state.crewChatBlockList.revealed에 사용자별로 펼침 상태를 담아둔다.
+function toggleBlockedChatReveal(userId) {
+  const revealed = state.crewChatBlockList.revealed || (state.crewChatBlockList.revealed = {});
+  revealed[userId] = !revealed[userId];
+  render();
+}
+function fmtBlockedDate(ts) {
+  if (!ts) return '-';
+  const d = new Date(ts);
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+// 마이페이지 > 계정관리에 넣는 채팅 차단 목록 카드 — 크루원 정보 화면(renderCrewMembers)과
+// 같은 테이블 스타일로 통일한다.
+function renderBlockedChatCard() {
+  const list = getBlockedChatUsers();
+  const revealed = state.crewChatBlockList.revealed || {};
+  return `
+  <div class="card">
+    <p class="section-label">채팅 차단 목록</p>
+    ${list.length ? `
+    <div class="table-wrap compact-table">
+      <table>
+        <thead><tr><th style="padding-left:24px;">닉네임</th><th>차단한 날짜</th><th>차단한 채팅 내용</th><th>차단 해제</th></tr></thead>
+        <tbody>
+          ${list.map(u => `
+          <tr>
+            <td style="padding-left:24px;">${escapeHtml(u.nickname || ('사용자 #' + u.id))}</td>
+            <td class="mono">${fmtBlockedDate(u.blockedAt)}</td>
+            <td>
+              <span style="display:inline-flex;align-items:center;gap:8px;">
+                <span>${revealed[u.id] ? escapeHtml(u.messageText || '(내용 없음)') : '가려짐'}</span>
+                <button class="btn btn-sm btn-secondary" onclick="toggleBlockedChatReveal(${u.id})">${revealed[u.id] ? '가림' : '표시'}</button>
+              </span>
+            </td>
+            <td><button class="btn btn-sm btn-danger" onclick="unblockChatUser(${u.id})">차단 해제</button></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>` : '<p class="empty-note">차단한 크루원이 없어요.</p>'}
+  </div>`;
 }
 // 남의 말풍선을 누르면 뜨는 차단/신고 팝업(renderChatModerationModal, router.js가 이미 이
 // 모달을 render()에 붙여두고 있었다 — state.chatModeration 주석 참고). 여기서 실제로 채운다.
@@ -526,9 +584,10 @@ function closeChatModeration() {
   render();
 }
 function blockChatModerationTarget() {
-  const { targetUserId, targetNickname } = state.chatModeration;
+  const { targetUserId, targetNickname, messageId } = state.chatModeration;
   if (targetUserId == null) return;
-  blockChatUser(targetUserId);
+  const msg = (state.crew.chat.messages || []).find(m => Number(m.id) === Number(messageId));
+  blockChatUser(targetUserId, targetNickname, msg ? msg.text : '');
   closeChatModeration();
   toast(`${targetNickname}님의 채팅을 차단했어요. 이제부터 안 보여요.`);
 }
@@ -718,6 +777,17 @@ async function handleCrewMemberEvent(ev){
       toast(`${ev.targetNickname}님이 크루에 합류했습니다`);
       await loadMyCrew();
     }
+    render();
+  } else if(ev.type === 'LEADER_CHANGED'){
+    // 크루장 양도(transferCrewLeader)가 성공하면 서버가 쏴주는 이벤트 — 이게 있어야 양도
+    // 대상 본인 화면에도 "크루장" 배지가 실시간으로 반영된다(양도한 사람 화면만 갱신되는
+    // 걸로는 부족함).
+    if(Number(ev.targetUserId) === Number(state.user.id)){
+      toast('크루장을 위임받았습니다');
+    } else {
+      toast(`${ev.targetNickname}님이 새 크루장이 되었습니다`);
+    }
+    await loadMyCrew();
     render();
   }
 }
@@ -1636,7 +1706,7 @@ function confirmCrewLeave(){
   if(getMyCrewRole()==='팀장'){toast('크루장은 이 메뉴에서 탈퇴할 수 없습니다');return;}
   askConfirm(
     '크루 탈퇴',
-    '탈퇴하면 현재 크루의 멤버 목록에서 제외되며,\n크루 활동 및 관련 기능을 더 이상 이용할 수 없습니다.\n\n[탈퇴 후 가입 제한 안내]\n- 현재 크루 재가입: 탈퇴일로부터 7일 후 가입할 수 있습니다.\n- 다른 크루 가입: 탈퇴 시점으로부터 24시간 후 가입할 수 있습니다.\n\n※ 탈퇴 후에는 위 기간 동안 크루 가입이 제한됩니다.\n정말 크루에서 탈퇴하시겠습니까?',
+    '탈퇴하면 현재 크루의 멤버 목록에서 제외되며,\n크루 활동 및 관련 기능을 더 이상 이용할 수 없습니다.\n\n정말 크루에서 탈퇴하시겠습니까?',
     ()=>{leaveCrewMember();},
     '크루 탈퇴',
     true
@@ -1702,7 +1772,6 @@ function renderCrewManage() {
     ${reqs.length ? reqs.map((r, idx) => `
       <div class="card">
         <div class="flex-between"><h3 style="margin:0;">${r.n}</h3><span class="pill pill-gold">Lv.${r.level}</span></div>
-       <p class="desc" style="margin-top:8px;">${r.msg}</p>
         <div class="flex-between" style="margin-top:10px;gap:8px;">
           <button class="btn btn-sm btn-secondary" style="flex:1;" onclick="rejectJoinRequest(${r.id})">거절</button>
           <button class="btn btn-sm btn-primary" style="flex:1;" onclick="approveJoinRequest(${r.id})">승인</button>
@@ -1759,7 +1828,15 @@ async function kickMember(targetUserId) {
       method:'DELETE', headers:{ 'Authorization': 'Bearer ' + state.token }
     });
     const body = await res.json();
-    if(!body.success){ toast(body.message || '강퇴에 실패했습니다'); return; }
+    if(!body.success){
+      toast(body.message || '강퇴에 실패했습니다');
+      // 실패 사유가 "이미 크루원이 아님"처럼 서버-화면 목록이 어긋난 경우일 수 있다 —
+      // 웹소켓 멤버십 이벤트를 놓쳐서(다른 탭에 있었거나 순간 연결이 끊겼거나) 이미 나간
+      // 사람이 화면엔 유령처럼 남아있는 상태. 목록을 다시 불러와 바로 맞춰준다.
+      await loadMyCrew();
+      render();
+      return;
+    }
     // 성공하면 서버가 /topic/crews/{id}/members로 브로드캐스트하고, 크루장인 나를 포함한
     // 크루원 전원이 handleCrewMemberEvent()에서 그 이벤트로 화면을 갱신한다 — 여기서 별도로
     // 갱신하면 브로드캐스트 도착분과 중복되어 토스트가 두 번 뜬다.
