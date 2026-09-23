@@ -178,6 +178,18 @@ public class ShopService {
                         item.getId()
                 );
             }
+            case "순위 도전 티켓" -> {
+                int before = user.getRankChallengeTickets();
+                user.setRankChallengeTickets(before + 1);
+                recordTicketChange(
+                        user,
+                        ResourceType.RANK_CHALLENGE_TICKET,
+                        1,
+                        before,
+                        user.getRankChallengeTickets(),
+                        item.getId()
+                );
+            }
             default -> {
                 // Unknown consumables only spend their server-side price.
             }

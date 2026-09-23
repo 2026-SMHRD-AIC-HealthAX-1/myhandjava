@@ -193,16 +193,24 @@ class ExerciseServiceTest {
                 1,
                 user.getSetsUsedToday()
         );
+
+        /*
+         * 자유 운동(FREE)은 순위 도전 누적 점수에 반영되지 않습니다.
+         */
+        assertEquals(
+                0,
+                user.getRankedScoreTotal()
+        );
     }
 
     @Test
-    void ticketExerciseStoresScoreWithoutRewards() {
+    void rankedExerciseStoresScoreWithoutRewards() {
 
         Long userId = 1L;
         User user = createUser();
 
         ExerciseSession session =
-                createTicketStartedSession(user);
+                createFreeStartedSession(user);
 
         String sessionId =
                 session.getSessionId();
@@ -213,7 +221,10 @@ class ExerciseServiceTest {
         );
 
         ExerciseResultRequest request =
-                createPerfectRequest(sessionId);
+                createPerfectRequest(
+                        sessionId,
+                        ExerciseResultRequest.SessionType.RANKED
+                );
 
         ExerciseRecordResponse response =
                 exerciseService.saveResult(
@@ -222,7 +233,7 @@ class ExerciseServiceTest {
                 );
 
         /*
-         * 티켓 운동도 점수와 기록은 정상 저장됩니다.
+         * 순위 도전 세션도 점수와 기록은 정상 저장됩니다.
          */
         assertEquals(
                 1500,
@@ -230,7 +241,7 @@ class ExerciseServiceTest {
         );
 
         /*
-         * 티켓 운동은 경험치와 포인트를 지급하지 않습니다.
+         * 순위 도전 세션은 경험치와 포인트를 지급하지 않습니다.
          */
         assertEquals(
                 0,
@@ -246,10 +257,6 @@ class ExerciseServiceTest {
                 response.rewardEligible()
         );
 
-        assertTrue(
-                response.ticketUsed()
-        );
-
         /*
          * 사용자 보상 지급이 호출되면 안 됩니다.
          */
@@ -262,19 +269,82 @@ class ExerciseServiceTest {
                 anyLong()
         );
 
-        /*
-         * 경험치를 지급하는 일일 미션에서도 제외합니다.
-         */
-        verify(
-                missionService,
-                never()
-        ).recordSquatSession(
-                anyLong(),
-                anyInt(),
-                anyInt(),
-                anyInt(),
-                anyInt()
+        assertEquals(
+                ExerciseSessionStatus.COMPLETED,
+                session.getStatus()
         );
+
+        /*
+         * 보상은 없지만 순위 도전 누적 점수에는 반영되어
+         * 첫 참여만으로 아이언 등급이 부여됩니다.
+         */
+        assertEquals(
+                1500,
+                user.getRankedScoreTotal()
+        );
+
+        assertEquals(
+                UserGrade.IRON,
+                user.getGrade()
+        );
+    }
+
+    @Test
+    void reducedExerciseGrantsOneThirdExpAndNoPoints() {
+
+        Long userId = 1L;
+        User user = createUser();
+
+        ExerciseSession session =
+                createFreeStartedSession(user);
+
+        String sessionId =
+                session.getSessionId();
+
+        prepareSession(
+                userId,
+                session
+        );
+
+        ExerciseResultRequest request =
+                createPerfectRequest(
+                        sessionId,
+                        ExerciseResultRequest.SessionType.REDUCED
+                );
+
+        ExerciseRecordResponse response =
+                exerciseService.saveResult(
+                        userId,
+                        request
+                );
+
+        assertEquals(
+                1500,
+                response.score()
+        );
+
+        /*
+         * 1,500점 PERFECT의 정상 경험치는 500이므로,
+         * REDUCED는 그 1/3인 166만 지급됩니다.
+         */
+        assertEquals(
+                166,
+                response.expAwarded()
+        );
+
+        assertEquals(
+                0,
+                response.pointsAwarded()
+        );
+
+        verify(userService)
+                .grantRewards(
+                        user,
+                        166,
+                        0,
+                        Reason.EXERCISE_REWARD,
+                        sessionId
+                );
 
         assertEquals(
                 ExerciseSessionStatus.COMPLETED,
@@ -365,7 +435,8 @@ class ExerciseServiceTest {
                         0,
                         0,
                         500,
-                        600
+                        600,
+                        ExerciseRecord.SessionType.FREE
                 );
 
         when(
@@ -535,6 +606,29 @@ class ExerciseServiceTest {
     }
 
     /**
+     * sessionType을 직접 지정하는 PERFECT 15회 요청입니다.
+     */
+    private ExerciseResultRequest createPerfectRequest(
+            String sessionId,
+            ExerciseResultRequest.SessionType sessionType
+    ) {
+
+        return new ExerciseResultRequest(
+                sessionId,
+                java.util.UUID.randomUUID().toString(),
+                "스쿼트",
+                15,
+                100,
+                0,
+                15,
+                0,
+                0,
+                0,
+                sessionType
+        );
+    }
+
+    /**
      * 무료 운동 STARTED 세션입니다.
      */
     private ExerciseSession createFreeStartedSession(
@@ -548,25 +642,6 @@ class ExerciseServiceTest {
                 );
 
         session.configureFreeExercise();
-        session.markStarted();
-
-        return session;
-    }
-
-    /**
-     * 다시찍기 티켓 STARTED 세션입니다.
-     */
-    private ExerciseSession createTicketStartedSession(
-            User user
-    ) {
-
-        ExerciseSession session =
-                ExerciseSession.create(
-                        user,
-                        "스쿼트"
-                );
-
-        session.configureRetakeTicket();
         session.markStarted();
 
         return session;

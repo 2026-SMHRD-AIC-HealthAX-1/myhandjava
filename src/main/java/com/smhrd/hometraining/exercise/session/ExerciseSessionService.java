@@ -11,10 +11,7 @@ import com.smhrd.hometraining.exercise.session.dto.ExerciseSessionResponse;
 import com.smhrd.hometraining.exercise.session.entity.ExerciseSession;
 import com.smhrd.hometraining.exercise.session.repository.ExerciseSessionRepository;
 import com.smhrd.hometraining.user.UserService;
-import com.smhrd.hometraining.user.UserResourceHistoryService;
 import com.smhrd.hometraining.user.entity.User;
-import com.smhrd.hometraining.user.entity.UserResourceHistory.Reason;
-import com.smhrd.hometraining.user.entity.UserResourceHistory.ResourceType;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
@@ -26,7 +23,6 @@ public class ExerciseSessionService {
 
     private final ExerciseSessionRepository exerciseSessionRepository;
     private final UserService userService;
-    private final UserResourceHistoryService resourceHistoryService;
     private final EntityManager entityManager;
 
     /**
@@ -60,8 +56,9 @@ public class ExerciseSessionService {
     /**
      * 새로운 운동 세션을 생성합니다.
      *
-     * 이 단계에서는 무료 횟수나 티켓을
-     * 차감하지 않습니다.
+     * 하루 운동 횟수에는 더 이상 상한이 없습니다 — 보상 등급(FREE/REDUCED/
+     * RANKED)은 결과 저장 시점에 프론트가 보낸 sessionType으로 정해지므로,
+     * 이 단계에서는 무료 횟수나 티켓을 확인하거나 차감하지 않습니다.
      */
     @Transactional
     public ExerciseSessionResponse createSession(
@@ -74,35 +71,13 @@ public class ExerciseSessionService {
 
         user.resetDailySetsIfNeeded();
 
-        boolean hasFreeUsage =
-                hasFreeUsage(user);
-
-        boolean hasRetakeTicket =
-                user.getRetakeTickets() > 0;
-
-        if (!hasFreeUsage && !hasRetakeTicket) {
-            throw new BusinessException(
-                    "오늘 가능한 무료 운동 횟수를 모두 사용했고 다시찍기 티켓도 없습니다."
-            );
-        }
-
         ExerciseSession session =
                 ExerciseSession.create(
                         user,
                         exerciseType
                 );
 
-        /*
-         * 세션 생성 시점의 이용 가능 상태를 표시합니다.
-         *
-         * 실제 차감은 startSession에서
-         * 최신 상태를 다시 확인한 후 처리합니다.
-         */
-        if (hasFreeUsage) {
-            session.configureFreeExercise();
-        } else {
-            session.configureRetakeTicket();
-        }
+        session.configureFreeExercise();
 
         ExerciseSession savedSession =
                 exerciseSessionRepository.save(session);
@@ -155,48 +130,16 @@ public class ExerciseSessionService {
         user.resetDailySetsIfNeeded();
 
         /*
-         * 실제 시작 시점의 최신 무료 횟수와
-         * 티켓 보유량을 다시 확인합니다.
+         * 하루 운동 횟수 상한이 없어졌으므로 무료 횟수나 티켓 보유량을
+         * 확인하지 않습니다. setsUsedToday는 차단 없이 통계용으로만
+         * 계속 누적합니다.
          */
-        if (hasFreeUsage(user)) {
+        user.setSetsUsedToday(
+                user.getSetsUsedToday() + 1
+        );
 
-            user.setSetsUsedToday(
-                    user.getSetsUsedToday() + 1
-            );
+        session.configureFreeExercise();
 
-            session.configureFreeExercise();
-
-        } else if (user.getRetakeTickets() > 0) {
-
-            int ticketsBefore = user.getRetakeTickets();
-
-            user.setRetakeTickets(
-                    ticketsBefore - 1
-            );
-
-            resourceHistoryService.record(
-                    user,
-                    ResourceType.RETAKE_TICKET,
-                    -1,
-                    ticketsBefore,
-                    user.getRetakeTickets(),
-                    Reason.EXERCISE_SESSION,
-                    session.getSessionId()
-            );
-
-            session.configureRetakeTicket();
-
-        } else {
-
-            throw new BusinessException(
-                    "사용 가능한 무료 운동 횟수나 다시찍기 티켓이 없습니다."
-            );
-        }
-
-        /*
-         * 무료 횟수 또는 티켓 차감과
-         * STARTED 상태 변경은 같은 트랜잭션에서 처리됩니다.
-         */
         session.markStarted();
 
         return ExerciseSessionResponse.from(session);
@@ -302,16 +245,6 @@ public class ExerciseSessionService {
                 userId,
                 sessionId
         );
-    }
-
-    /**
-     * 오늘 사용할 수 있는 무료 운동 횟수가
-     * 남아 있는지 확인합니다.
-     */
-    private boolean hasFreeUsage(User user) {
-
-        return user.getSetsUsedToday()
-                < user.getDailySetLimit();
     }
 
     /**

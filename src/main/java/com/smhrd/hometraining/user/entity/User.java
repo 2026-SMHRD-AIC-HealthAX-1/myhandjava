@@ -64,19 +64,6 @@ public class User {
     public static final ZoneId KOREA_ZONE_ID =
             ZoneId.of("Asia/Seoul");
 
-    /**
-     * 하루 무료 운동 횟수입니다.
-     *
-     * 레벨과 관계없이 하루 총 3회로 고정합니다.
-     */
-    public static final int DAILY_FREE_SET_LIMIT = 3;
-
-    /**
-     * 기존 코드와의 호환성을 위해 유지합니다.
-     */
-    public static final int DAILY_SETS_BASE =
-            DAILY_FREE_SET_LIMIT;
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -120,7 +107,29 @@ public class User {
             length = 20,
             columnDefinition = "varchar(20) default 'IRON'"
     )
-    private UserGrade grade = UserGrade.IRON;
+    private UserGrade grade = UserGrade.UNRANKED;
+
+    /**
+     * 순위 도전에서 쌓은 누적 점수입니다.
+     *
+     * 등급(아이언~챌린저)은 이 값으로 결정됩니다 — UserGrade.forRankedScore 참고.
+     */
+    @Column(
+            name = "ranked_score_total",
+            nullable = false
+    )
+    private long rankedScoreTotal = 0;
+
+    /**
+     * 순위 도전에 참여한 횟수입니다.
+     *
+     * 0이면 아직 등급이 없는 UNRANKED 상태이고, 1 이상이면 최소 아이언입니다.
+     */
+    @Column(
+            name = "ranked_session_count",
+            nullable = false
+    )
+    private int rankedSessionCount = 0;
 
     @Enumerated(EnumType.STRING)
     @Column(
@@ -203,6 +212,12 @@ public class User {
     private int nicknameTickets = 2;
 
     @Column(
+            name = "rank_challenge_tickets",
+            nullable = false
+    )
+    private int rankChallengeTickets = 0;
+
+    @Column(
             name = "sets_used_today",
             nullable = false
     )
@@ -239,7 +254,7 @@ public class User {
         }
 
         if (grade == null) {
-            grade = UserGrade.IRON;
+            grade = UserGrade.UNRANKED;
         }
     }
 
@@ -276,7 +291,7 @@ public class User {
                         ? 1
                         : 0;
 
-        user.grade = UserGrade.IRON;
+        user.grade = UserGrade.UNRANKED;
         user.level = 1;
         user.exp = 0;
 
@@ -284,31 +299,27 @@ public class User {
     }
 
     /**
-     * 하루 무료 운동 한도를 반환합니다.
+     * 순위 도전 세션 결과를 누적 점수에 반영하고 등급을 다시 계산합니다.
      *
-     * 레벨과 관계없이 3회입니다.
+     * 첫 참여부터 최소 아이언이 부여되고, 이후 누적 점수가 구간을 넘을
+     * 때마다 자동으로 승급합니다(UserGrade.forRankedScore 참고).
      */
-    public int getDailySetLimit() {
-        return DAILY_FREE_SET_LIMIT;
-    }
+    public void recordRankedChallengeScore(int score) {
 
-    /**
-     * 오늘 남은 무료 운동 횟수를 반환합니다.
-     */
-    public int getRemainingDailyFreeSets() {
+        rankedSessionCount++;
+        rankedScoreTotal += score;
 
-        return Math.max(
-                getDailySetLimit() - setsUsedToday,
-                0
+        grade = UserGrade.forRankedScore(
+                true,
+                rankedScoreTotal
         );
     }
 
     /**
-     * 오늘 무료 운동을 사용할 수 있는지 확인합니다.
+     * 순위 도전에 한 번이라도 참여했는지 확인합니다.
      */
-    public boolean hasRemainingDailyFreeSet() {
-
-        return getRemainingDailyFreeSets() > 0;
+    public boolean hasJoinedRankedChallenge() {
+        return rankedSessionCount > 0;
     }
 
     /**

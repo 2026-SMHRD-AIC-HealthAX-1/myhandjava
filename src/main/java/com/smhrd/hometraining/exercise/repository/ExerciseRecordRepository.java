@@ -67,15 +67,21 @@ public interface ExerciseRecordRepository
 
     /**
      * 여러 사용자의 운동 점수 총합을 조회합니다.
+     *
+     * 랭킹 집계용이므로 sessionType이 RANKED인 기록만 더합니다.
      */
     @Query("""
             SELECT COALESCE(SUM(record.score), 0)
             FROM ExerciseRecord record
             WHERE record.user.id IN :userIds
+              AND record.sessionType = :sessionType
             """)
     long sumScoreByUserIds(
             @Param("userIds")
-            Collection<Long> userIds
+            Collection<Long> userIds,
+
+            @Param("sessionType")
+            ExerciseRecord.SessionType sessionType
     );
 
     /**

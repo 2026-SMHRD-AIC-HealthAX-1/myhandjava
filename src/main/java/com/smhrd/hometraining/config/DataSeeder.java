@@ -69,6 +69,8 @@ public class DataSeeder implements CommandLineRunner {
                         "운동 1회 추가", "운동 기회를 1회 추가할 수 있는 이용권입니다."),
                 ShopItem.of("닉네임 변경권", 150, ShopItem.Category.기타, true, null,
                         "닉네임 변경 1회", "닉네임을 한 번 변경할 수 있습니다."),
+                ShopItem.of("순위 도전 티켓", 100, ShopItem.Category.기타, true, null,
+                        "순위 도전 1회", "순위 도전에 1회 참여할 수 있는 티켓입니다."),
                 // 보유/착용 개념 없이 구매 즉시 색을 골라 적용하는 소모 아이템(shop.js buyItem 참고).
                 ShopItem.of("닉네임 컬러 이펙트", 180, ShopItem.Category.기타, true, "nickname",
                         "닉네임 컬러 변경 1회", "구매하면 바로 원하는 닉네임 색상을 골라 적용할 수 있습니다. 보유 아이템으로 쌓이지 않고, 다시 구매하면 색상을 또 바꿀 수 있어요."),

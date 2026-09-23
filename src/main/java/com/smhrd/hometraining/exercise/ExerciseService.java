@@ -128,25 +128,45 @@ public class ExerciseService {
                 );
 
         /*
-         * 기본값은 보상 없음입니다.
+         * 보상은 요청의 sessionType 등급에 따라 차등 지급됩니다.
          *
-         * 다시찍기 티켓 세션은 기록과 점수만 저장하고
-         * 운동 자체 경험치와 포인트는 지급하지 않습니다.
+         * FREE: 정상 지급. REDUCED: 포인트 미지급, 경험치는 1/3만 지급
+         * (하루 6번째 운동부터 이 등급으로 옴). RANKED: 포인트·경험치 모두
+         * 미지급(순위 도전 모드 — 점수만 기록).
          */
-        int expAwarded = 0;
-        int pointsAwarded = 0;
+        int fullExpAwarded =
+                ExerciseExpPolicy.calculateExp(
+                        calculatedScore
+                );
 
-        if (session.isRewardEligible()) {
+        int fullPointsAwarded =
+                ExercisePointPolicy.calculatePoints(
+                        calculatedScore
+                );
 
-            expAwarded =
-                    ExerciseExpPolicy.calculateExp(
-                            calculatedScore
-                    );
+        int expAwarded;
+        int pointsAwarded;
 
-            pointsAwarded =
-                    ExercisePointPolicy.calculatePoints(
-                            calculatedScore
-                    );
+        switch (req.sessionType()) {
+
+            case FREE -> {
+                expAwarded = fullExpAwarded;
+                pointsAwarded = fullPointsAwarded;
+            }
+
+            case REDUCED -> {
+                expAwarded = fullExpAwarded / 3;
+                pointsAwarded = 0;
+            }
+
+            case RANKED -> {
+                expAwarded = 0;
+                pointsAwarded = 0;
+            }
+
+            default -> throw new BusinessException(
+                    "알 수 없는 세션 보상 등급입니다."
+            );
         }
 
         User user =
@@ -170,7 +190,10 @@ public class ExerciseService {
                         req.goodCount(),
                         req.missCount(),
                         expAwarded,
-                        pointsAwarded
+                        pointsAwarded,
+                        ExerciseRecord.SessionType.valueOf(
+                                req.sessionType().name()
+                        )
                 );
 
         /*
@@ -188,13 +211,22 @@ public class ExerciseService {
         session.markCompleted();
 
         /*
-         * 무료 운동인 경우에만
-         * 운동 점수에 따른 경험치와 포인트를 지급합니다.
-         *
-         * 다시찍기 티켓 운동은 여기에서
-         * 경험치와 포인트를 지급하지 않습니다.
+         * 순위 도전 세션은 exp/포인트 보상은 없지만, 점수는 사용자의 순위 도전
+         * 누적 점수에 반영되어 등급(아이언~챌린저)을 올리는 데 쓰입니다.
          */
-        if (session.isRewardEligible()) {
+        if (req.sessionType() == ExerciseResultRequest.SessionType.RANKED) {
+
+            user.recordRankedChallengeScore(
+                    calculatedScore
+            );
+        }
+
+        /*
+         * REDUCED 세션이 경험치 1/3 계산에서 0으로 내려갈 수도 있고,
+         * RANKED 세션은 항상 0이므로, 실제 지급할 보상이 있을 때만
+         * 재화 변동 이력을 남깁니다.
+         */
+        if (expAwarded > 0 || pointsAwarded > 0) {
 
             userService.grantRewards(
                     user,

@@ -32,6 +32,7 @@ public record UserResponse(
 
         int retakeTickets,
         int nicknameTickets,
+        int rankChallengeTickets,
         int setsUsedToday,
 
         String bio,
@@ -50,10 +51,13 @@ public record UserResponse(
                         ? "female"
                         : "male";
 
-        // 등급은 저장된 값을 그대로 믿지 않고 항상 현재 레벨로 다시 계산한다 — 레벨→등급
-        // 매핑 기준이 바뀌어도(UserGrade.forLevel) 예전에 저장된 값 때문에 화면에 옛날 등급이
-        // 남아있는 일이 없게 하기 위함.
-        UserGrade grade = UserGrade.forLevel(user.getLevel());
+        // 등급은 저장된 값을 그대로 믿지 않고 항상 순위 도전 누적 점수로 다시 계산한다 —
+        // 점수 구간(UserGrade.forRankedScore)이 바뀌어도 예전에 저장된 값 때문에 화면에
+        // 옛날 등급이 남아있는 일이 없게 하기 위함.
+        UserGrade grade = UserGrade.forRankedScore(
+                user.hasJoinedRankedChallenge(),
+                user.getRankedScoreTotal()
+        );
 
         // 현재 레벨에서 필요한 전체 경험치를 가져옵니다.
         int requiredExp =
@@ -95,6 +99,7 @@ public record UserResponse(
 
                 user.getRetakeTickets(),
                 user.getNicknameTickets(),
+                user.getRankChallengeTickets(),
                 user.getSetsUsedToday(),
 
                 user.getBio(),

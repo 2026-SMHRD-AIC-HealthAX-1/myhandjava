@@ -38,12 +38,10 @@ public class ExerciseSessionController {
     private final ExerciseSessionService exerciseSessionService;
 
     /**
-     * 오늘 무료 운동 이용 현황을 조회합니다.
+     * 오늘 운동 이용 현황을 조회합니다.
      *
-     * 하루 무료 운동 한도,
-     * 오늘 사용한 무료 운동 횟수,
-     * 남은 무료 운동 횟수,
-     * 보유 재도전권 개수를 반환합니다.
+     * 하루 운동 횟수 상한은 없으며, 오늘 사용한 운동 횟수와
+     * 보유 재도전권 개수를 통계용으로 반환합니다.
      */
     @GetMapping("/daily-status")
     public ApiResponse<DailyExerciseStatusResponse> getDailyExerciseStatus(

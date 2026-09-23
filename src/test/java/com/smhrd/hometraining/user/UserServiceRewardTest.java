@@ -123,34 +123,34 @@ class UserServiceRewardTest {
         );
     }
 
+    /**
+     * 등급은 이제 레벨/경험치가 아니라 순위 도전 누적 점수로만 정해지므로
+     * (UserGrade.forRankedScore), 레벨업을 만드는 grantRewards 호출로는
+     * 등급이 바뀌지 않아야 합니다.
+     */
     @Test
-    void level500CompletionPromotesGrade() {
+    void grantRewardsDoesNotChangeGrade() {
 
         User user = createUser();
 
-        user.setLevel(500);
-        user.setExp(2450);
-        user.setGrade(UserGrade.IRON);
+        user.setLevel(1);
+        user.setExp(0);
+        user.setGrade(UserGrade.BRONZE);
 
         userService.grantRewards(
                 user,
-                100,
+                250,
                 0
+        );
+
+        assertEquals(
+                3,
+                user.getLevel()
         );
 
         assertEquals(
                 UserGrade.BRONZE,
                 user.getGrade()
-        );
-
-        assertEquals(
-                1,
-                user.getLevel()
-        );
-
-        assertEquals(
-                50,
-                user.getExp()
         );
     }
 

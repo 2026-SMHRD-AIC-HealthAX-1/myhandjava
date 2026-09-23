@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.smhrd.hometraining.crew.entity.Crew;
 import com.smhrd.hometraining.crew.repository.CrewMemberRepository;
 import com.smhrd.hometraining.crew.repository.CrewRepository;
+import com.smhrd.hometraining.exercise.entity.ExerciseRecord;
 import com.smhrd.hometraining.exercise.repository.ExerciseRecordRepository;
 import com.smhrd.hometraining.ranking.dto.CrewRankingRowResponse;
 import com.smhrd.hometraining.ranking.dto.RankingRowResponse;
@@ -41,7 +42,8 @@ public class RankingService {
                 userRepository.findRegionRanking(
                         city,
                         gu,
-                        dong
+                        dong,
+                        ExerciseRecord.SessionType.RANKED
                 ),
                 requesterId
         );
@@ -64,7 +66,8 @@ public class RankingService {
                         city,
                         gu,
                         dong,
-                        exerciseType
+                        exerciseType,
+                        ExerciseRecord.SessionType.RANKED
                 ),
                 requesterId
         );
@@ -141,7 +144,8 @@ public class RankingService {
                             ? 0
                             : exerciseRecordRepository
                                     .sumScoreByUserIds(
-                                            memberIds
+                                            memberIds,
+                                            ExerciseRecord.SessionType.RANKED
                                     );
 
             CrewRankingRowResponse response =
