@@ -268,8 +268,7 @@ public class CrewService {
     @Transactional
     public void requestJoin(
             Long userId,
-            Long crewId,
-            String message
+            Long crewId
     ) {
 
         if (crewMemberRepository
@@ -337,8 +336,7 @@ public class CrewService {
         crewJoinRequestRepository.save(
                 CrewJoinRequest.of(
                         crew,
-                        requester,
-                        message
+                        requester
                 )
         );
     }
@@ -855,6 +853,7 @@ public class CrewService {
      * 외래키 제약에 걸려 삭제가 실패합니다.
      */
     private void deleteCrewChildData(Long crewId) {
+        crewChatReportRepository.deleteByCrewId(crewId);
         crewChatMessageRepository.deleteByCrewId(crewId);
         crewJoinRequestRepository.deleteByCrewId(crewId);
         crewExperienceHistoryRepository.deleteByCrewId(crewId);

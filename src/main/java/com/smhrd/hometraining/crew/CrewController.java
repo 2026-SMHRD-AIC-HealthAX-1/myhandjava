@@ -243,16 +243,12 @@ public class CrewController {
             CustomUserPrincipal principal,
 
             @PathVariable
-            Long crewId,
-
-            @RequestBody
-            CrewJoinRequestDto.Create request
+            Long crewId
     ) {
 
         crewService.requestJoin(
                 principal.getUserId(),
-                crewId,
-                request.message()
+                crewId
         );
 
         return ApiResponse.ok();

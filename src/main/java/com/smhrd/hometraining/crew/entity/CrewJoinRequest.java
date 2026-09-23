@@ -28,17 +28,13 @@ public class CrewJoinRequest {
     @JoinColumn(name = "requester_id", nullable = false)
     private User requester;
 
-    @Column(length = 200)
-    private String message;
-
     @Column(name = "requested_at", nullable = false)
     private LocalDateTime requestedAt;
 
-    public static CrewJoinRequest of(Crew crew, User requester, String message) {
+    public static CrewJoinRequest of(Crew crew, User requester) {
         CrewJoinRequest r = new CrewJoinRequest();
         r.crew = crew;
         r.requester = requester;
-        r.message = message;
         r.requestedAt = LocalDateTime.now();
         return r;
     }

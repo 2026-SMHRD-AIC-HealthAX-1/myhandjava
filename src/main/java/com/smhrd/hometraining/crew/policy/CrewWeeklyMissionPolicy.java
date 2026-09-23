@@ -13,11 +13,6 @@ public final class CrewWeeklyMissionPolicy {
     public static final int WEEKLY_TARGET_REPS = 300;
 
     /**
-     * 크루원 한 명의 최소 인정 기준입니다.
-     */
-    public static final int MIN_MEMBER_REPS = 40;
-
-    /**
      * 크루원 한 명당 주간 최대 인정 횟수입니다.
      */
     public static final int MAX_MEMBER_REPS = 80;
@@ -106,17 +101,5 @@ public final class CrewWeeklyMissionPolicy {
                 Math.max(totalReps, 0),
                 MAX_MEMBER_REPS
         );
-    }
-
-    /**
-     * 크루원 개인이 최소 인정 기준인
-     * 40회를 달성했는지 확인합니다.
-     */
-    public static boolean meetsMinimumMemberReps(
-            int totalReps
-    ) {
-
-        return totalReps
-                >= MIN_MEMBER_REPS;
     }
 }

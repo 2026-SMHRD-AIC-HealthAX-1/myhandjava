@@ -125,7 +125,7 @@ public class CrewWeeklyMissionService {
 
             long calculatedReps =
                     exerciseRecordRepository
-                            .sumRepsByUserIdAndExerciseTypeAndPeriod(
+                            .sumGoodOrBetterRepsByUserIdAndExerciseTypeAndPeriod(
                                     memberUserId,
                                     weeklyMission.getExerciseType(),
                                     from,
