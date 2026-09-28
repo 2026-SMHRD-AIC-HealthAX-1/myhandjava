@@ -326,6 +326,9 @@ button{font-family:inherit;}
 }
 .tab:hover{background:var(--line);}
 .tab.active{color:var(--gold-ink);background:var(--gold);}
+.tab.disabled{cursor:not-allowed;opacity:.5;}
+.tab.disabled:hover{background:var(--surface-2);}
+.tab.disabled.active:hover{background:var(--gold);}
 
 /* cards & grids */
 .grid{display:grid;gap:14px;}
@@ -722,7 +725,9 @@ tr:last-child td{border-bottom:none;}
   .main{padding-bottom:70px;}
   .view{padding:18px 16px 90px;}
   .topbar{padding:14px 16px;flex-wrap:wrap;gap:10px;row-gap:8px;}
-  .user-chip{flex-wrap:wrap;gap:8px;}
+  /* topbar가 줄바꿈되면 user-chip이 둘째 줄에 혼자 남는데, space-between은 그 줄에 아이템이
+     하나뿐이면 왼쪽에 붙여버린다 — margin-left:auto로 웹 화면처럼 오른쪽 끝에 붙인다. */
+  .user-chip{flex-wrap:wrap;gap:8px;margin-left:auto;}
   .cta-row{flex-wrap:wrap;}
   .cal-grid{grid-template-columns:1fr;}
   .cal-grid .cam-stage{max-height:none;aspect-ratio:3/4;}

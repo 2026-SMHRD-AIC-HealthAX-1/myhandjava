@@ -54,21 +54,26 @@ function showReadyRing(show) {
 const TORSO_STANDING_MIN_ANGLE = 130; // 정렬(서있는) 단계에서 허리가 곧게 펴져 있다고 볼 최소 각도(완화됨)
 function exerciseStepHead() {
   const ranked = state.exercise.mode === 'ranked';
+  // 튜토리얼(1단계)부터는 모드를 못 바꾸게 잠근다 — 판정 보정치(SQUAT_GRADE_TOLERANCE)와
+  // 티켓 소모가 모드에 따라 갈리는데, 진행 중에 바꾸면 이미 시작한 세션과 어긋난다.
+  const modeLocked = state.exercise.step > 0;
   return `
   <div class="view-head">
     <h1${ranked ? ' style="color:#fff;"' : ''}>${ranked ? '순위 도전' : '운동'}</h1>
   </div>
   <div class="subtabs">
-    <div class="tab ${ranked ? '' : 'active'}" onclick="setExerciseMode('free')">자유 운동</div>
-    <div class="tab ${ranked ? 'active' : ''}" onclick="setExerciseMode('ranked')">🏆 순위 도전</div>
+    <div class="tab ${ranked ? '' : 'active'}${modeLocked ? ' disabled' : ''}" ${modeLocked ? '' : `onclick="setExerciseMode('free')"`}>자유 운동</div>
+    <div class="tab ${ranked ? 'active' : ''}${modeLocked ? ' disabled' : ''}" ${modeLocked ? '' : `onclick="setExerciseMode('ranked')"`}>🏆 순위 도전</div>
   </div>
   <div class="subtabs subtabs-compact">
     ${EX_STEPS.map((s, i) => `<div class="tab ${state.exercise.step === i ? 'active' : ''}">${i + 1}. ${s}</div>`).join('')}
   </div>`;
 }
 // 종목 선택 화면 상단의 "자유 운동 / 순위 도전" 토글 — 모드만 바꾸고 나머지 위저드 상태
-// (선택한 종목, 진행 단계 등)는 그대로 유지한다.
+// (선택한 종목, 진행 단계 등)는 그대로 유지한다. 종목 선택(0단계) 이후엔 exerciseStepHead가
+// 탭 자체를 잠가서 onclick을 안 붙이지만, 방어적으로 여기서도 한 번 더 막는다.
 function setExerciseMode(mode) {
+  if (state.exercise.step > 0) return;
   state.exercise.mode = mode;
   render();
 }

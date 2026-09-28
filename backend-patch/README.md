@@ -3,6 +3,7 @@
 첨부 파일에 백엔드 프로젝트가 포함되지 않아, 아래 파일은 기존 Spring Boot 프로젝트에 옮겨 적용하는 기준 코드입니다. `com.ounhome.crew` 패키지와 엔티티명은 실제 프로젝트에 맞게 변경하세요.
 
 - `db/V20260916__crew_bugfix.sql`: 컨셉 배열과 가입 상태 스키마
+- `db/V20260928__crew_weekly_mission_delete_fix.sql`: 크루 해체/회원탈퇴 시 crew_weekly_missions 삭제가 crew_weekly_contributions FK 위반으로 실패하는 문제 수정(ON DELETE CASCADE)
 - `CrewJoinRequestStatus.java`: 가입 요청 상태 enum
 - `CrewDtos.java`: 멤버·컨셉·가입 요청 응답 계약
 - `CrewQueryServicePatch.java`: 크루장을 포함한 멤버 조회, PENDING 대기열, 컨셉 변환
