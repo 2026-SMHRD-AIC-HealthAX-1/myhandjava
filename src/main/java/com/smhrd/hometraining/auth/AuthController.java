@@ -50,12 +50,12 @@ public class AuthController {
 
     @PostMapping("/kakao/login")
     public ApiResponse<LoginResponse> kakaoLogin(@RequestBody Map<String, String> body) {
-        return ApiResponse.ok(authService.kakaoLogin(body.get("code")));
+        return ApiResponse.ok(authService.kakaoLogin(body.get("code"), body.get("redirectUri")));
     }
 
     @PostMapping("/google/login")
     public ApiResponse<LoginResponse> googleLogin(@RequestBody Map<String, String> body) {
-        return ApiResponse.ok(authService.googleLogin(body.get("code")));
+        return ApiResponse.ok(authService.googleLogin(body.get("code"), body.get("redirectUri")));
     }
 
 }

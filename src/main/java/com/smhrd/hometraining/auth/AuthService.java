@@ -131,14 +131,17 @@ public class AuthService {
     }
 
     @Transactional
-    public LoginResponse kakaoLogin(String code) {
+    public LoginResponse kakaoLogin(String code, String redirectUri) {
         try {
             HttpClient client = HttpClient.newHttpClient();
 
             // ① 인가코드 -> 카카오 액세스 토큰 교환
+            // redirect_uri는 프론트가 인가 요청을 시작할 때 쓴 주소와 정확히 같아야 한다(OAuth 스펙) —
+            // 프론트가 매번 보내주는 값을 우선 쓰고, 안 보내면(구버전 프론트 호환용) 서버 설정값으로 폴백.
+            String effectiveRedirectUri = (redirectUri != null && !redirectUri.isBlank()) ? redirectUri : kakaoRedirectUri;
             String tokenBody = "grant_type=authorization_code"
                     + "&client_id=" + kakaoRestApiKey
-                    + "&redirect_uri=" + URLEncoder.encode(kakaoRedirectUri, StandardCharsets.UTF_8)
+                    + "&redirect_uri=" + URLEncoder.encode(effectiveRedirectUri, StandardCharsets.UTF_8)
                     + "&code=" + code;
             HttpRequest tokenRequest = HttpRequest.newBuilder()
                     .uri(URI.create("https://kauth.kakao.com/oauth/token"))
@@ -175,14 +178,16 @@ public class AuthService {
     }
 
     @Transactional
-    public LoginResponse googleLogin(String code) {
+    public LoginResponse googleLogin(String code, String redirectUri) {
         try {
             HttpClient client = HttpClient.newHttpClient();
 
+            // kakaoLogin과 동일한 이유로 프론트가 보낸 redirect_uri를 우선 사용한다.
+            String effectiveRedirectUri = (redirectUri != null && !redirectUri.isBlank()) ? redirectUri : googleRedirectUri;
             String tokenBody = "grant_type=authorization_code"
                     + "&client_id=" + googleClientId
                     + "&client_secret=" + googleClientSecret
-                    + "&redirect_uri=" + URLEncoder.encode(googleRedirectUri, StandardCharsets.UTF_8)
+                    + "&redirect_uri=" + URLEncoder.encode(effectiveRedirectUri, StandardCharsets.UTF_8)
                     + "&code=" + code;
             HttpRequest tokenRequest = HttpRequest.newBuilder()
                     .uri(URI.create("https://oauth2.googleapis.com/token"))
