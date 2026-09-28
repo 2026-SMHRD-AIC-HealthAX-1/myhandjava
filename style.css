@@ -794,13 +794,15 @@ tr:last-child td{border-bottom:none;}
   justify-content:center;
   gap:4px;
   margin-top:6px;
-  color:var(--profile-grade-color);
   font-size:15px;
   font-weight:700;
 }
 .profile-grade-level .rank-icon{width:56px;height:56px;}
 .profile-grade-level .rank-icon-3d{width:160px;height:160px;display:block;max-width:100%;}
-.profile-grade-level b{font-family:var(--font-mono);font-size:17px;}
+/* 티어(등급)는 등급 색상으로, 레벨은 등급과 무관한 경험치 기반 지표라 중립 색상으로 분리해서 보여준다. */
+.profile-tier-name{font-size:15px;}
+.profile-level-text{color:var(--ink-dim);font-size:13px;font-weight:500;}
+.profile-level-text b{font-family:var(--font-mono);font-size:15px;font-weight:700;color:var(--ink);}
 
 .attendance-reward-guide{color:var(--ink-dim);}
 .attendance-reward-guide b{color:var(--ink);}

@@ -156,7 +156,7 @@ function renderUserProgressSummary(){
   // 그 내용(누적 점수·레벨업까지 남은 EXP)을 여기로 옮겼다 — 레벨업 바는 그대로 위에 있는 걸 쓴다.
   return `<div class="user-progress-summary">
     ${rankBadgeIcon(grade, gradeName, 32)}
-    <div><b>${gradeName} · Lv.${Math.min(500,state.user.level)}</b><div class="progress"><span style="width:${levelProgressPct()}%;background:${color};"></span></div>
+    <div><span style="color:${color};font-weight:700;">${gradeName}</span> · <b>Lv.${Math.min(500,state.user.level)}</b><div class="progress"><span style="width:${levelProgressPct()}%;"></span></div>
     <small>누적 점수 ${total.toLocaleString()}점 · 레벨업까지 ${expToNext.toLocaleString()} EXP 남았어요</small></div>
   </div>`;
 }
@@ -251,14 +251,30 @@ renderExStepPick=function(){
 function openRankTicketPurchase(){
   const it=state.shopItems.find(x=>x.name==='순위 도전 티켓');
   if(!it) return;
-  if(state.user.points<it.price){ toast('포인트가 부족합니다'); return; }
+  const maxQty=Math.floor(state.user.points/it.price);
+  if(maxQty<1){ toast('포인트가 부족합니다'); return; }
   askConfirm(
     '순위 도전 티켓 구매',
-    `보유 포인트: ${state.user.points.toLocaleString()}P\n티켓 가격: ${it.price.toLocaleString()}P\n구매 후 남는 포인트: ${(state.user.points-it.price).toLocaleString()}P`,
+    `<div style="text-align:left;">
+      <p style="margin:0 0 6px;">보유 포인트: <b>${state.user.points.toLocaleString()}P</b></p>
+      <p style="margin:0 0 12px;">티켓 가격: ${it.price.toLocaleString()}P / 장 (최대 ${maxQty.toLocaleString()}장 구매 가능)</p>
+      <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        구매 수량
+        <input type="number" id="rank-ticket-qty" min="1" max="${maxQty}" value="1" class="field"
+          style="width:72px;padding:4px 8px;"
+          oninput="this.value=Math.max(1,Math.min(${maxQty},Math.floor(Number(this.value)||1)));document.getElementById('rank-ticket-total').textContent=(Number(this.value)*${it.price}).toLocaleString();">
+        장
+      </label>
+      <p style="margin:0;">총 결제 금액: <b id="rank-ticket-total">${it.price.toLocaleString()}</b>P</p>
+    </div>`,
     ()=>{
-      state.user.points-=it.price;
-      state.user.rankTickets=(state.user.rankTickets||0)+1;
-      toast(`${it.name} 구매 완료 (보유 ${state.user.rankTickets}장)`);
+      const input=document.getElementById('rank-ticket-qty');
+      const qty=Math.max(1,Math.min(maxQty,Math.floor(Number(input && input.value)||1)));
+      const cost=qty*it.price;
+      if(state.user.points<cost){ toast('포인트가 부족합니다'); return; }
+      state.user.points-=cost;
+      state.user.rankTickets=(state.user.rankTickets||0)+qty;
+      toast(`${it.name} ${qty}장 구매 완료 (보유 ${state.user.rankTickets}장)`);
       closeConfirm();
     },
     '구매하기'

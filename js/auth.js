@@ -59,8 +59,12 @@ async function loadMyProfile() {
     state.user.gender = normalizeGender(u.gender, loadSessionGender());
     saveSessionGender(state.user.gender);
     state.user.avatar = u.avatar ?? state.user.avatar;
-    state.user.grade = u.grade; // 'IRON'~'CHALLENGER' — userLevelBadge()의 배지 색을 정하는 값
-    state.user.gradeName = u.gradeName; // '아이언'~'챌린저' — 배지 title 툴팁용
+    // 백엔드는 순위 도전에 한 번도 참여하지 않은 회원을 'UNRANKED'(언랭크)로 내려주지만,
+    // 화면에는 별도의 "언랭크" 등급을 노출하지 않고 기존처럼 아이언으로 보여준다 — 아이콘/색상은
+    // RANK_ICONS·USER_GRADE_COLORS가 이미 매핑 없는 키를 아이언으로 폴백하므로, 이름만 맞춰주면 된다.
+    const isUnranked = u.grade === 'UNRANKED';
+    state.user.grade = isUnranked ? 'IRON' : u.grade; // 'IRON'~'CHALLENGER' — userLevelBadge()의 배지 색을 정하는 값
+    state.user.gradeName = isUnranked ? '아이언' : u.gradeName; // '아이언'~'챌린저' — 배지 title 툴팁용
     state.user.streak = u.streak;
     state.user.nicknameTickets = u.nicknameTickets;
     state.user.setsUsedToday = u.setsUsedToday;

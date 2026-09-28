@@ -113,9 +113,10 @@ function renderMissionAvatar() {
           <p class="section-label" style="text-align:left;">내 캐릭터</p>
           <canvas id="avatar-char-canvas" class="profile-character-canvas"></canvas>
           <h3 class="profile-nickname" style="color:${nickColor};">${state.user.nickname || '홈트초보'}</h3>
-          <span class="profile-grade-level" style="--profile-grade-color:${userGradeColor(state.user.grade)};color:${userGradeColor(state.user.grade)};">
+          <span class="profile-grade-level">
             <canvas id="profile-tier-badge-3d" class="rank-icon-3d"></canvas>
-            <span>${state.user.gradeName || USER_GRADE_NAMES[state.user.grade] || '아이언'} <b>Lv.${Math.min(500, state.user.level)}</b></span>
+            <span class="profile-tier-name" style="color:${userGradeColor(state.user.grade)};">${state.user.gradeName || USER_GRADE_NAMES[state.user.grade] || '아이언'}</span>
+            <span class="profile-level-text">Lv.<b>${Math.min(500, state.user.level)}</b></span>
           </span>
         </div>
         <div class="profile-bio-block">
