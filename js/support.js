@@ -123,7 +123,7 @@ const FAQ_ITEMS = [
             ${rankBadgeIcon(code, USER_GRADE_NAMES[code], 26)}
             <b style="font-size:13.5px;">${USER_GRADE_NAMES[code]}</b>
           </div>
-          <span class="hint" style="margin:0;">Lv.${USER_GRADE_LEVEL_RANGE[code]}</span>
+          <span class="hint" style="margin:0;">${userGradeScoreRangeText(code)}</span>
         </div>`).join('')}
       </div>`,
   },
@@ -184,7 +184,7 @@ function renderSupportGuide(){
       <li>레벨 구간에 따라 다음 레벨에 필요한 경험치가 달라집니다.</li>
       <li>획득한 EXP는 계속 누적됩니다.</li>
       <li>레벨업에 필요한 경험치를 초과하여 획득한 EXP는 <b>다음 레벨에 자동으로 이월됩니다.</b></li>
-      <li><b>등급은 [순위 도전]에 참여하면 가장 낮은 등급부터 시작되며, 순위 도전에서 쌓은 누적 점수가 각 등급의 기준을 넘으면 다음 등급으로 자동 승급합니다.</b> 등급별 필요 누적 점수는 문의 탭의 자주하는 질문에서 확인할 수 있습니다.</li>
+      <li><b>등급은 [순위 도전]에 참여하면 가장 낮은 등급부터 시작되며, 순위 도전에서 쌓은 누적 점수가 각 등급의 기준을 넘으면 다음 등급으로 자동 승급합니다.</b> 등급별 필요 누적 점수는 F&A에서 확인할 수 있습니다.</li>
       <li>현재 등급은 레벨 옆에 표시되는 <b>등급 문양과 고유 색상</b>으로 확인할 수 있습니다.</li>
     </ul>
   </div>`;

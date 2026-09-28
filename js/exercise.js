@@ -24,12 +24,16 @@ const EX_STEPS = ['종목 선택', '튜토리얼', '스마트폰 카메라 촬�
 // 스쿼트 실시간 판정 기준. tools/extract-exercise-reference.html(종목별 캡처 이미지로
 // 관절 각도를 뽑는 공용 도구, 스쿼트 항목)로 분석해서 나온 값으로 교체한다
 // (지금은 일반적인 스쿼트 각도로 잡은 임시값).
-// standing = 서 있을 때 무릎 각도, bottom = 정자세 최저점 무릎 각도, 나머지는 bottom과의
-// 오차(도) 허용범위.
+// standing = 서 있을 때 무릎 각도, bottom = 정자세 최저점 무릎 각도.
 const SQUAT_REFERENCE = {
   standingKneeAngle: 174.8,
   bottomKneeAngleMin: 90, bottomKneeAngleMax: 100,
-  perfectTol: 6, greatTol: 12, goodTol: 20,
+};
+// bottom 각도 구간(90~100도)과의 오차(도) 허용범위 — 자유 운동은 기존 폭을 그대로 유지하고,
+// 순위 도전은 더 엄격하게 90~100도(오차 0)여야만 PERFECT를 준다.
+const SQUAT_GRADE_TOLERANCE = {
+  free: { perfectTol: 6, greatTol: 12, goodTol: 20 },
+  ranked: { perfectTol: 0, greatTol: 6, goodTol: 12 },
 };
 const EXERCISE_REP_TARGET = 15; // 1세트는 최대 15회
 const EXERCISE_TIME_LIMIT_SECONDS = 120;
@@ -48,7 +52,6 @@ function showReadyRing(show) {
 // 허리(상체) 각도 기준값. 튜토리얼 영상에서 별도로 뽑은 값이 아니라, 일반적인 스쿼트 안전
 // 자세 기준으로 잡은 값이라 나중에 tools/extract-exercise-reference.html처럼 실측 보정 가능.
 const TORSO_STANDING_MIN_ANGLE = 130; // 정렬(서있는) 단계에서 허리가 곧게 펴져 있다고 볼 최소 각도(완화됨)
-const TORSO_LEAN_WARN_DEG = 60; // 렙 진행 중 "서 있을 때 허리 각도" 대비 이만큼 이상 더 숙여지면 위험으로 판단(완화됨)
 function exerciseStepHead() {
   const ranked = state.exercise.mode === 'ranked';
   return `
@@ -458,8 +461,6 @@ let exRAF = null;
 let exLastVideoTime = -1;
 let exRepPhase = 'up';       // 'up'(서있음) | 'down'(스쿼트 진행중) 2단계 히스테리시스 상태머신
 let exMinAngleThisRep = null;
-let exTorsoStandingAngle = null; // 이번 렙이 'up'이었을 때 마지막으로 측정된 허리(상체) 각도 — 사람마다 다른 기준 자세를 보정하기 위한 개인 기준선
-let exMinTorsoAngleThisRep = null; // 이번 렙 동안 허리가 가장 많이 숙여졌을 때의 각도
 let exMediaRecorder = null;
 let exRecordedChunks = [];
 let exRecordedMimeType = 'video/webm'; // 실제로 녹화된 포맷(브라우저마다 다름) — Blob 만들 때 이거랑 맞춰야 함
@@ -867,23 +868,16 @@ function exCheckAlignment(landmarks) {
   return { ok: true, msg: '좋아요! 이 자세를 유지해주세요', torsoAngle };
 }
 const GRADE_VOICE_LINES = { PERFECT: '퍼펙트!', GREAT: '그레이트!', GOOD: '굿!' };
-// 무릎 각도(깊이)와 허리(상체) 각도를 함께 본다. 허리가 기준보다 많이 숙여졌으면(부상 위험)
-// 무릎 각도가 아무리 좋아도 안전을 우선해 MISS로 처리하고 교정 멘트를 준다.
-function exGradeRep(bottomAngle, torsoDrop) {
-  if (torsoDrop != null && torsoDrop > TORSO_LEAN_WARN_DEG) {
-    return {
-      grade: 'MISS', angle: Math.round(bottomAngle),
-      reason: `허리가 서있을 때보다 ${Math.round(torsoDrop)}° 더 숙여짐(부상 위험, ${TORSO_LEAN_WARN_DEG}° 이내로 유지 필요)`,
-      failedJoint: 'torso', voice: '허리가 너무 숙여졌어요, 가슴을 펴주세요',
-    };
-  }
+// 무릎 각도(깊이)만 보고 판정한다 — 허리 숙임은 정확도 측정에 반영하지 않는다.
+function exGradeRep(bottomAngle) {
   const ref = SQUAT_REFERENCE;
+  const tol = SQUAT_GRADE_TOLERANCE[state.exercise.mode] || SQUAT_GRADE_TOLERANCE.free;
   // 90~100도 범위 안이면 오차 0(그대로 PERFECT), 범위를 벗어난 만큼만 오차로 계산한다.
   const diff = bottomAngle < ref.bottomKneeAngleMin ? ref.bottomKneeAngleMin - bottomAngle
     : bottomAngle > ref.bottomKneeAngleMax ? bottomAngle - ref.bottomKneeAngleMax
     : 0;
   const angle = Math.round(bottomAngle);
-  let grade = diff <= ref.perfectTol ? 'PERFECT' : diff <= ref.greatTol ? 'GREAT' : diff <= ref.goodTol ? 'GOOD' : 'MISS';
+  let grade = diff <= tol.perfectTol ? 'PERFECT' : diff <= tol.greatTol ? 'GREAT' : diff <= tol.goodTol ? 'GOOD' : 'MISS';
   if (grade !== 'MISS') return { grade, angle, voice: GRADE_VOICE_LINES[grade] };
   const tooShallow = bottomAngle > ref.bottomKneeAngleMax; // 무릎이 목표보다 덜 굽혀짐(각도가 큼)
   const reason = tooShallow
@@ -914,8 +908,8 @@ function exFlashGrade(grade) {
 }
 // 한 렙(스쿼트 1회)이 끝났을 때: 판정하고 실시간 통계·플래시를 갱신한 뒤, 목표 횟수에
 // 도달하면 촬영을 자동 종료한다.
-function exRegisterRep(bottomAngle, torsoDrop) {
-  const result = exGradeRep(bottomAngle, torsoDrop);
+function exRegisterRep(bottomAngle) {
+  const result = exGradeRep(bottomAngle);
   exLastRepGrade = result.grade; // 실루엣 색을 방금 끝난 렙의 등급에 맞춘다
   result.atSeconds = state.exercise.seconds; // 리플레이 화면에서 이 렙 순간의 촬영 영상 프레임을 다시 찾기 위한 타임스탬프
   state.exercise.liveReps.push(result);
@@ -953,7 +947,6 @@ async function exStartPoseLoop() {
     });
   }
   exRepPhase = 'up'; exMinAngleThisRep = null; exLastVideoTime = -1;
-  exTorsoStandingAngle = null; exMinTorsoAngleThisRep = null;
   const ctx = canvas.getContext('2d');
   function loop() {
     if (!document.getElementById('cam-canvas')) return; // 화면 이동 시 자연 종료
@@ -983,24 +976,18 @@ async function exStartPoseLoop() {
 
       if (state.exercise.camPhase === 'recording') {
         const angle = exKneeAngle(landmarks);
-        const torsoAngle = exTorsoAngle(landmarks);
         if (angle != null) {
           const standing = SQUAT_REFERENCE.standingKneeAngle;
           if (exRepPhase === 'up') {
-            if (torsoAngle != null) exTorsoStandingAngle = torsoAngle; // 서있는 동안 계속 갱신 → 렙 시작 직전 값이 개인 기준선이 됨
             if (angle < standing - 20) {
               exRepPhase = 'down';
               exMinAngleThisRep = angle;
-              exMinTorsoAngleThisRep = torsoAngle;
             }
           } else {
             if (angle < exMinAngleThisRep) exMinAngleThisRep = angle;
-            if (torsoAngle != null && (exMinTorsoAngleThisRep == null || torsoAngle < exMinTorsoAngleThisRep)) exMinTorsoAngleThisRep = torsoAngle;
             if (angle > standing - 10) {
-              const torsoDrop = (exTorsoStandingAngle != null && exMinTorsoAngleThisRep != null)
-                ? exTorsoStandingAngle - exMinTorsoAngleThisRep : null;
-              exRegisterRep(exMinAngleThisRep, torsoDrop);
-              exRepPhase = 'up'; exMinAngleThisRep = null; exMinTorsoAngleThisRep = null;
+              exRegisterRep(exMinAngleThisRep);
+              exRepPhase = 'up'; exMinAngleThisRep = null;
             }
           }
         }
@@ -1136,7 +1123,7 @@ function beginRecording() {
   state.exercise.camPhase = 'recording';
   state.exercise.seconds = 0;
   state.exercise.liveReps = [];
-  exRepPhase = 'up'; exMinAngleThisRep = null; exTorsoStandingAngle = null; exMinTorsoAngleThisRep = null; // 준비 시간 동안 잘못 쌓였을 수 있는 렙 상태 초기화
+  exRepPhase = 'up'; exMinAngleThisRep = null; // 준비 시간 동안 잘못 쌓였을 수 있는 렙 상태 초기화
   if (btn) btn.textContent = '촬영 종료';
   if (statusEl) statusEl.textContent = '촬영중';
   let reps = 0, accBase = 82;

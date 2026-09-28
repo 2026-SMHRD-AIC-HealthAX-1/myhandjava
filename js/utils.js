@@ -122,12 +122,22 @@ const USER_GRADE_NAMES = {
   IRON: '아이언', BRONZE: '브론즈', SILVER: '실버', GOLD: '골드', PLATINUM: '플래티넘',
   EMERALD: '에메랄드', DIAMOND: '다이아몬드', MASTER: '마스터', GRANDMASTER: '그랜드마스터', CHALLENGER: '챌린저',
 };
-// 등급별 레벨 구간(백엔드 UserGrade.forLevel과 동일한 10레벨 단위 규칙) — 고객센터 FAQ의
-// 등급 목록에 "Lv.1~10"처럼 함께 보여줄 때 쓴다.
-const USER_GRADE_LEVEL_RANGE = {
-  IRON: '1~10', BRONZE: '11~20', SILVER: '21~30', GOLD: '31~40', PLATINUM: '41~50',
-  EMERALD: '51~60', DIAMOND: '61~70', MASTER: '71~80', GRANDMASTER: '81~90', CHALLENGER: '91~100',
+// 등급별 승급에 필요한 순위 도전 누적 점수(백엔드 UserGrade.minRankedScore와 동일한 값) —
+// 고객센터 FAQ의 등급 목록에 누적 점수 구간으로 함께 보여줄 때 쓴다.
+const USER_GRADE_MIN_SCORE = {
+  IRON: 0, BRONZE: 150000, SILVER: 350000, GOLD: 650000, PLATINUM: 1100000,
+  EMERALD: 1800000, DIAMOND: 2900000, MASTER: 4600000, GRANDMASTER: 7300000, CHALLENGER: 11500000,
 };
+// 위 최소 점수를 "150,000 ~ 349,999점"처럼 다음 등급 직전까지의 구간 문자열로 바꾼다.
+// 마지막 등급(챌린저)은 상한이 없으므로 "이상"으로 표시한다.
+function userGradeScoreRangeText(code){
+  const codes = Object.keys(USER_GRADE_MIN_SCORE);
+  const i = codes.indexOf(code);
+  const min = USER_GRADE_MIN_SCORE[code];
+  const next = codes[i + 1];
+  if (next == null) return `${min.toLocaleString()}점 이상`;
+  return `${min.toLocaleString()} ~ ${(USER_GRADE_MIN_SCORE[next] - 1).toLocaleString()}점`;
+}
 // 등급별 완성된 배지 아트(헥사곤+보석+월계관/왕관까지 그려진 이미지) — assets/ranks/*.png.
 // CSS로 직접 그리기엔 디테일이 많아 시안 이미지를 그대로 쓴다.
 const RANK_ICONS = {
