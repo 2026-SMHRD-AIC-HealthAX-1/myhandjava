@@ -918,8 +918,13 @@ public class CrewBattleService {
             );
         }
 
+        /*
+         * exercise_records/mission_definitions는 항상 대문자(예: "SQUAT")로
+         * 저장되므로, 크루 주간 미션 진행도 계산이 문자열 비교로 정확히 맞물리도록
+         * 크루대전 운동 종류도 같은 규칙(대문자)으로 맞춘다.
+         */
         String normalized =
-                exerciseType.trim();
+                exerciseType.trim().toUpperCase();
 
         if (normalized.length() > 20) {
             throw new BusinessException(

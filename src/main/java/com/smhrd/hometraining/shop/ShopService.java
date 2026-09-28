@@ -166,15 +166,15 @@ public class ShopService {
                         item.getId()
                 );
             }
-            case "운동 추가권" -> {
-                int before = user.getRetakeTickets();
-                user.setRetakeTickets(before + 1);
+            case "순위 도전 티켓" -> {
+                int before = user.getRankChallengeTickets();
+                user.setRankChallengeTickets(before + 1);
                 recordTicketChange(
                         user,
-                        ResourceType.RETAKE_TICKET,
+                        ResourceType.RANK_CHALLENGE_TICKET,
                         1,
                         before,
-                        user.getRetakeTickets(),
+                        user.getRankChallengeTickets(),
                         item.getId()
                 );
             }

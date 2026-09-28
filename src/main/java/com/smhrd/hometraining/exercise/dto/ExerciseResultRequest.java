@@ -3,6 +3,7 @@ package com.smhrd.hometraining.exercise.dto;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
@@ -116,9 +117,26 @@ public record ExerciseResultRequest(
                 value = 15,
                 message = "MISS 횟수는 15회를 초과할 수 없습니다."
         )
-        int missCount
+        int missCount,
+
+        /**
+         * 이 세션의 보상 등급입니다.
+         *
+         * FREE: 정상 지급. REDUCED: 포인트 미지급, 경험치는 1/3만 지급
+         * (하루 6번째 운동부터). RANKED: 포인트·경험치 모두 미지급(순위 도전 모드).
+         */
+        @NotNull(
+                message = "세션 보상 등급은 필수입니다."
+        )
+        SessionType sessionType
 
 ) {
+
+    public enum SessionType {
+        FREE,
+        REDUCED,
+        RANKED
+    }
 
     /**
      * 기존 테스트 코드의 컴파일 오류를 방지하기 위한
@@ -148,7 +166,8 @@ public record ExerciseResultRequest(
                 perfectCount,
                 greatCount,
                 goodCount,
-                missCount
+                missCount,
+                SessionType.FREE
         );
     }
 
@@ -173,7 +192,8 @@ public record ExerciseResultRequest(
                 perfectCount,
                 greatCount,
                 goodCount,
-                missCount
+                missCount,
+                SessionType.FREE
         );
     }
 }

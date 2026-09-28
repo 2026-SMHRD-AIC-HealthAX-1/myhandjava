@@ -53,6 +53,18 @@ public class ExerciseRecord {
         MISS
     }
 
+    /**
+     * 이 운동 기록의 보상 등급입니다.
+     *
+     * 랭킹 점수 집계는 RANKED 기록만 대상으로 합니다
+     * (FREE/REDUCED는 자유 운동이라 랭킹에서 제외).
+     */
+    public enum SessionType {
+        FREE,
+        REDUCED,
+        RANKED
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -153,6 +165,19 @@ public class ExerciseRecord {
     )
     private int pointsAwarded;
 
+    /**
+     * 이 기록을 만든 세션의 보상 등급(FREE/REDUCED/RANKED)입니다.
+     *
+     * 랭킹 집계 쿼리가 RANKED 기록만 골라내는 데 사용합니다.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(
+            name = "session_type",
+            nullable = false,
+            length = 10
+    )
+    private SessionType sessionType;
+
     @Column(
             name = "recorded_at",
             nullable = false
@@ -197,7 +222,8 @@ public class ExerciseRecord {
             int goodCount,
             int missCount,
             int expAwarded,
-            int pointsAwarded
+            int pointsAwarded,
+            SessionType sessionType
     ) {
 
         ExerciseRecord record =
@@ -221,6 +247,7 @@ public class ExerciseRecord {
 
         record.expAwarded = expAwarded;
         record.pointsAwarded = pointsAwarded;
+        record.sessionType = sessionType;
 
         record.recordedAt = LocalDateTime.now();
 

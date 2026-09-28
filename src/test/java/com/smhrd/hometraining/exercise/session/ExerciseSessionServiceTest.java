@@ -21,7 +21,6 @@ import com.smhrd.hometraining.exercise.session.entity.ExerciseSession;
 import com.smhrd.hometraining.exercise.session.entity.ExerciseSessionStatus;
 import com.smhrd.hometraining.exercise.session.repository.ExerciseSessionRepository;
 import com.smhrd.hometraining.user.UserService;
-import com.smhrd.hometraining.user.UserResourceHistoryService;
 import com.smhrd.hometraining.user.entity.User;
 import com.smhrd.hometraining.user.entity.UserGrade;
 
@@ -32,7 +31,6 @@ class ExerciseSessionServiceTest {
 
     private ExerciseSessionRepository exerciseSessionRepository;
     private UserService userService;
-    private UserResourceHistoryService resourceHistoryService;
     private EntityManager entityManager;
     private ExerciseSessionService exerciseSessionService;
 
@@ -45,9 +43,6 @@ class ExerciseSessionServiceTest {
         userService =
                 mock(UserService.class);
 
-        resourceHistoryService =
-                mock(UserResourceHistoryService.class);
-
         entityManager =
                 mock(EntityManager.class);
 
@@ -55,7 +50,6 @@ class ExerciseSessionServiceTest {
                 new ExerciseSessionService(
                         exerciseSessionRepository,
                         userService,
-                        resourceHistoryService,
                         entityManager
                 );
     }
@@ -92,11 +86,6 @@ class ExerciseSessionServiceTest {
         assertEquals(
                 0,
                 user.getSetsUsedToday()
-        );
-
-        assertEquals(
-                1,
-                user.getRetakeTickets()
         );
 
         assertFalse(
@@ -143,11 +132,6 @@ class ExerciseSessionServiceTest {
                 user.getSetsUsedToday()
         );
 
-        assertEquals(
-                1,
-                user.getRetakeTickets()
-        );
-
         assertTrue(
                 response.usageCharged()
         );
@@ -191,11 +175,6 @@ class ExerciseSessionServiceTest {
                 user.getSetsUsedToday()
         );
 
-        assertEquals(
-                1,
-                user.getRetakeTickets()
-        );
-
         /*
          * 같은 세션으로 두 번째 시작 요청을 보내면
          * BusinessException이 발생해야 합니다.
@@ -220,11 +199,6 @@ class ExerciseSessionServiceTest {
          * 무료 운동이므로 티켓은 그대로 유지돼야 합니다.
          */
         assertEquals(
-                1,
-                user.getRetakeTickets()
-        );
-
-        assertEquals(
                 ExerciseSessionStatus.STARTED,
                 session.getStatus()
         );
@@ -243,22 +217,22 @@ class ExerciseSessionServiceTest {
     }
 
     @Test
-    void startingSessionUsesTicketWhenFreeUsageIsExhausted() {
+    void startingSessionHasNoDailyLimitAndDoesNotTouchTickets() {
 
         Long userId = 1L;
         User user = createUser();
 
-        user.setSetsUsedToday(
-                user.getDailySetLimit()
-        );
+        /*
+         * 예전 하루 3세트 고정 한도를 이미 넘긴 상태를 가정해도
+         * 세션 시작이 차단되지 않아야 합니다.
+         */
+        user.setSetsUsedToday(10);
 
         ExerciseSession session =
                 ExerciseSession.create(
                         user,
                         "스쿼트"
                 );
-
-        session.configureRetakeTicket();
 
         prepareLockedSession(
                 userId,
@@ -277,24 +251,19 @@ class ExerciseSessionServiceTest {
         );
 
         assertEquals(
-                user.getDailySetLimit(),
+                11,
                 user.getSetsUsedToday()
-        );
-
-        assertEquals(
-                0,
-                user.getRetakeTickets()
         );
 
         assertTrue(
                 response.usageCharged()
         );
 
-        assertFalse(
+        assertTrue(
                 response.rewardEligible()
         );
 
-        assertTrue(
+        assertFalse(
                 response.ticketUsed()
         );
     }
@@ -331,11 +300,6 @@ class ExerciseSessionServiceTest {
         assertEquals(
                 0,
                 user.getSetsUsedToday()
-        );
-
-        assertEquals(
-                1,
-                user.getRetakeTickets()
         );
 
         assertFalse(
@@ -431,8 +395,6 @@ class ExerciseSessionServiceTest {
 
         user.setSetsUsedToday(0);
         user.setSetsResetDate(LocalDate.now());
-
-        user.setRetakeTickets(1);
 
         return user;
     }

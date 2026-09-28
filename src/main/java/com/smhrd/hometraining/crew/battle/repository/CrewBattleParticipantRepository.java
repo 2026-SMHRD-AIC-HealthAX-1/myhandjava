@@ -1,5 +1,6 @@
 package com.smhrd.hometraining.crew.battle.repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -132,6 +133,74 @@ public interface CrewBattleParticipantRepository
 
             @Param("crewId")
             Long crewId
+    );
+
+    /**
+     * 특정 사용자가 소속 크루 대표로 지정한 기간 동안 크루대전에서
+     * 기록한 GOOD 등급 이상 횟수를 합산합니다.
+     *
+     * 크루 주간 미션 진행도 계산에, 개인 운동 기록과 함께 더해집니다.
+     */
+    @Query("""
+            SELECT COALESCE(SUM(
+                participant.perfectCount
+                + participant.greatCount
+                + participant.goodCount
+            ), 0)
+            FROM CrewBattleParticipant participant
+            WHERE participant.user.id = :userId
+              AND participant.crew.id = :crewId
+              AND participant.battle.exerciseType = :exerciseType
+              AND participant.battle.finishedAt >= :from
+              AND participant.battle.finishedAt < :to
+            """)
+    long sumGoodOrBetterCountsByUserIdAndCrewIdAndExerciseTypeAndPeriod(
+            @Param("userId")
+            Long userId,
+
+            @Param("crewId")
+            Long crewId,
+
+            @Param("exerciseType")
+            String exerciseType,
+
+            @Param("from")
+            LocalDateTime from,
+
+            @Param("to")
+            LocalDateTime to
+    );
+
+    /**
+     * 크루 전체가 지정한 기간 동안 크루대전에서 기록한
+     * GOOD 등급 이상 횟수를 합산합니다.
+     *
+     * 크루의 "자유 운동 미션" 진행도 계산에, 개인 운동 기록과 함께 더해집니다.
+     */
+    @Query("""
+            SELECT COALESCE(SUM(
+                participant.perfectCount
+                + participant.greatCount
+                + participant.goodCount
+            ), 0)
+            FROM CrewBattleParticipant participant
+            WHERE participant.crew.id = :crewId
+              AND participant.battle.exerciseType = :exerciseType
+              AND participant.battle.finishedAt >= :from
+              AND participant.battle.finishedAt < :to
+            """)
+    long sumGoodOrBetterCountsByCrewIdAndExerciseTypeAndPeriod(
+            @Param("crewId")
+            Long crewId,
+
+            @Param("exerciseType")
+            String exerciseType,
+
+            @Param("from")
+            LocalDateTime from,
+
+            @Param("to")
+            LocalDateTime to
     );
 
     void deleteByUser_Id(Long userId);

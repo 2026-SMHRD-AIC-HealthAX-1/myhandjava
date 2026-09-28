@@ -17,7 +17,6 @@ import com.smhrd.hometraining.user.dto.UpdateProfileRequest;
 import com.smhrd.hometraining.user.dto.UserResponse;
 import com.smhrd.hometraining.user.entity.CalibrationProfile;
 import com.smhrd.hometraining.user.entity.User;
-import com.smhrd.hometraining.user.entity.UserGrade;
 import com.smhrd.hometraining.user.entity.UserResourceHistory.Reason;
 import com.smhrd.hometraining.user.entity.UserResourceHistory.ResourceType;
 import com.smhrd.hometraining.user.policy.UserLevelPolicy;
@@ -494,10 +493,10 @@ public class UserService {
         }
 
         /*
-         * 등급은 더 이상 별도로 승급시키지 않고, 매번 현재 레벨에서 바로 계산합니다
-         * (10레벨 단위로 아이언~챌린저, UserGrade.forLevel 참고).
+         * 등급은 더 이상 레벨과 무관합니다 — 순위 도전 누적 점수로만 정해지므로
+         * (User.recordRankedChallengeScore/UserGrade.forRankedScore 참고),
+         * 여기서는 레벨만 갱신합니다.
          */
-        user.setGrade(UserGrade.forLevel(currentLevel));
         user.setLevel(currentLevel);
         user.setExp(currentExp);
 

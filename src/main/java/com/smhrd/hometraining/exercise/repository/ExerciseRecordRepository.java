@@ -67,30 +67,40 @@ public interface ExerciseRecordRepository
 
     /**
      * 여러 사용자의 운동 점수 총합을 조회합니다.
+     *
+     * 랭킹 집계용이므로 sessionType이 RANKED인 기록만 더합니다.
      */
     @Query("""
             SELECT COALESCE(SUM(record.score), 0)
             FROM ExerciseRecord record
             WHERE record.user.id IN :userIds
+              AND record.sessionType = :sessionType
             """)
     long sumScoreByUserIds(
             @Param("userIds")
-            Collection<Long> userIds
+            Collection<Long> userIds,
+
+            @Param("sessionType")
+            ExerciseRecord.SessionType sessionType
     );
 
     /**
      * 지정한 기간 동안 여러 사용자가 수행한
-     * 특정 운동의 횟수 합계를 조회합니다.
+     * 특정 운동의 GOOD 등급 이상 횟수 합계를 조회합니다.
      */
     @Query("""
-            SELECT COALESCE(SUM(record.reps), 0)
+            SELECT COALESCE(SUM(
+                record.perfectCount
+                + record.greatCount
+                + record.goodCount
+            ), 0)
             FROM ExerciseRecord record
             WHERE record.user.id IN :userIds
               AND record.exerciseType = :exerciseType
               AND record.recordedAt >= :from
               AND record.recordedAt < :to
             """)
-    long sumRepsByUserIdsAndExerciseTypeAndPeriod(
+    long sumGoodOrBetterRepsByUserIdsAndExerciseTypeAndPeriod(
             @Param("userIds")
             Collection<Long> userIds,
 
@@ -106,7 +116,10 @@ public interface ExerciseRecordRepository
     
     /**
      * 특정 사용자가 지정한 기간 동안 수행한
-     * 특정 운동의 전체 횟수를 조회합니다.
+     * 특정 운동의 GOOD 등급 이상 횟수를 조회합니다.
+     *
+     * 크루 주간 미션 진행도는 MISS를 제외한
+     * GOOD 이상 횟수만 인정합니다.
      *
      * includeRetakeTicket이 true이면
      * 다시찍기 티켓 운동도 포함합니다.
@@ -114,7 +127,11 @@ public interface ExerciseRecordRepository
      * false이면 무료 운동 기록만 포함합니다.
      */
     @Query("""
-            SELECT COALESCE(SUM(record.reps), 0)
+            SELECT COALESCE(SUM(
+                    record.perfectCount
+                    + record.greatCount
+                    + record.goodCount
+            ), 0)
             FROM ExerciseRecord record
             WHERE record.user.id = :userId
               AND record.exerciseType = :exerciseType
@@ -125,7 +142,7 @@ public interface ExerciseRecordRepository
                     OR record.session.rewardEligible = true
               )
             """)
-    long sumRepsByUserIdAndExerciseTypeAndPeriod(
+    long sumGoodOrBetterRepsByUserIdAndExerciseTypeAndPeriod(
             @Param("userId")
             Long userId,
 

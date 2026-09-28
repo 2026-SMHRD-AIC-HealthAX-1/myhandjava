@@ -73,7 +73,7 @@ public class CrewWeeklyContribution {
     private int totalReps = 0;
 
     /**
-     * 최소·최대 기준을 적용한
+     * 최대 기준을 적용한
      * 크루 미션 인정 횟수입니다.
      */
     @Column(
@@ -81,15 +81,6 @@ public class CrewWeeklyContribution {
             nullable = false
     )
     private int recognizedReps = 0;
-
-    /**
-     * 최소 인정 기준인 40회를 달성했는지 나타냅니다.
-     */
-    @Column(
-            name = "minimum_reached",
-            nullable = false
-    )
-    private boolean minimumReached = false;
 
     @Column(
             name = "created_at",
@@ -135,14 +126,13 @@ public class CrewWeeklyContribution {
 
         contribution.totalReps = 0;
         contribution.recognizedReps = 0;
-        contribution.minimumReached = false;
 
         return contribution;
     }
 
     /**
-     * 사용자의 실제 주간 운동 횟수를 저장하고
-     * 최소·최대 인정 기준을 적용합니다.
+     * 사용자의 실제 주간 운동 횟수(GOOD 이상)를 저장하고
+     * 한 명당 최대 80회까지만 인정합니다.
      */
     public void updateTotalReps(
             int totalReps
@@ -151,25 +141,6 @@ public class CrewWeeklyContribution {
         this.totalReps =
                 Math.max(totalReps, 0);
 
-        this.minimumReached =
-                CrewWeeklyMissionPolicy
-                        .meetsMinimumMemberReps(
-                                this.totalReps
-                        );
-
-        /*
-         * 최소 40회를 달성하기 전에는
-         * 크루 전체 진행도에 반영하지 않습니다.
-         */
-        if (!minimumReached) {
-            this.recognizedReps = 0;
-            return;
-        }
-
-        /*
-         * 최소 기준을 달성하면 실제 횟수를 인정하되,
-         * 한 명당 최대 80회까지만 반영합니다.
-         */
         this.recognizedReps =
                 CrewWeeklyMissionPolicy
                         .capMemberReps(

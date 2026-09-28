@@ -29,6 +29,7 @@ public class UserResourceHistory {
         EXPERIENCE,
         RETAKE_TICKET,
         NICKNAME_TICKET,
+        RANK_CHALLENGE_TICKET,
         EXTRA_SET
     }
 

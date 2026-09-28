@@ -81,9 +81,7 @@ public record CrewWeeklyMissionResponse(
             String nickname,
 
             int totalReps,
-            int recognizedReps,
-
-            boolean minimumReached
+            int recognizedReps
 
     ) {
 
@@ -96,9 +94,7 @@ public record CrewWeeklyMissionResponse(
                     contribution.getUser().getNickname(),
 
                     contribution.getTotalReps(),
-                    contribution.getRecognizedReps(),
-
-                    contribution.isMinimumReached()
+                    contribution.getRecognizedReps()
             );
         }
     }

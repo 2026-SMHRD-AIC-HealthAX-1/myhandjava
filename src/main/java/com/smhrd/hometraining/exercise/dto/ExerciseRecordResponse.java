@@ -52,12 +52,13 @@ public record ExerciseRecordResponse(
                         : session.getSessionId();
 
         /*
-         * 세션 기능 적용 전 기존 기록은
-         * 일반 보상 운동으로 처리합니다.
+         * 이제 보상 여부는 세션 생성 시점이 아니라 sessionType(FREE/REDUCED/
+         * RANKED)에 따라 결정되므로, 실제로 지급된 경험치·포인트가 있었는지로
+         * 판단합니다.
          */
         boolean rewardEligible =
-                session == null
-                        || session.isRewardEligible();
+                record.getExpAwarded() > 0
+                        || record.getPointsAwarded() > 0;
 
         boolean ticketUsed =
                 session != null

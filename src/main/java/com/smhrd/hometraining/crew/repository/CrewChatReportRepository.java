@@ -10,4 +10,5 @@ public interface CrewChatReportRepository extends JpaRepository<CrewChatReport, 
     List<CrewChatReport> findAllByOrderByReportedAtDesc();
     List<CrewChatReport> findTop3ByOrderByReportedAtDesc();
     long countByStatus(CrewChatReport.Status status);
+    void deleteByCrewId(Long crewId);
 }
