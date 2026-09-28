@@ -87,6 +87,10 @@ function renderGradeDonut(segments, centerLabel) {
 //   아이템 착용/해제(toggleEquip) > Java 프로필 API > DB 연결 > SQL UPDATE(보유 아이템 테이블 equipped 여부)
 function renderCosmeticCard(it) {
   const idx = state.shopItems.indexOf(it);
+  // 상점에서 "준비중"으로 막아둔 아이템(SHOP_ENABLED_ITEM_NAMES 밖)은 과거에 이미 구매해
+  // owned:true인 계정이 있어도 여기서 착용/해제를 막는다 — 실제 캐릭터 렌더링 로직이
+  // 아직 연결 안 된 아이템이라 착용해도 정상적으로 보이지 않는다.
+  const notReady = !SHOP_ENABLED_ITEM_NAMES.has(it.name);
   return `
   <div class="cosmetic-item-card">
     <img src="${itemIconDataURL(it.name)}" alt="${it.name}" style="width:64px;height:64px;object-fit:contain;border-radius:6px;display:block;margin:0 auto 8px;flex:none;">
@@ -95,7 +99,9 @@ function renderCosmeticCard(it) {
     </div>
     <span class="pill ${it.name==='닉네임 컬러 이펙트' ? 'pill-accent' : (it.effect.startsWith('능력치 없음') ? 'pill-muted' : 'pill-accent')}" style="margin-top:6px;flex:none;">효과 · ${it.name==='닉네임 컬러 이펙트' ? '닉네임 컬러 변경' : it.effect}</span>
     <p class="desc" style="margin-top:6px;font-size:11.5px;">${it.effectDesc}</p>
-    <button class="btn btn-sm ${it.owned ? 'btn-ghost' : 'btn-secondary'}" style="width:100%;" onclick="${it.owned ? `toggleEquip(${idx})` : `goToShopFor(${idx})`}">${it.owned ? (it.equipped ? '착용 해제' : '착용하기') : '상점에서 구매'}</button>
+    ${notReady
+      ? `<button class="btn btn-sm btn-ghost" style="width:100%;" disabled>준비중</button>`
+      : `<button class="btn btn-sm ${it.owned ? 'btn-ghost' : 'btn-secondary'}" style="width:100%;" onclick="${it.owned ? `toggleEquip(${idx})` : `goToShopFor(${idx})`}">${it.owned ? (it.equipped ? '착용 해제' : '착용하기') : '상점에서 구매'}</button>`}
   </div>`;
 }
 function goToShopFor(idx) {
