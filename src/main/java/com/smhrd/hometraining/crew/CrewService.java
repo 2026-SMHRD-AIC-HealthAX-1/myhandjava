@@ -54,10 +54,10 @@ import jakarta.persistence.LockModeType;
 import lombok.RequiredArgsConstructor;
 
 /**
- * [담당] 홈크루 카테고리의 거의 모든 비즈니스 로직(생성/가입/탈퇴/해체/공지/채팅/신고/주간미션/
+ * [담당] 홈크루 카테고리의 거의 모든 비즈니스 로직(생성/가입/탈퇴/해체/채팅/신고/주간미션/
  *        경험치/크루대전 매칭 보조) — CrewController, AdminCrewChatReportController,
  *        CrewChatController, CrewBattlePartyController가 전부 이 서비스를 공유한다.
- * [DB] crews, crew_members, crew_join_requests, crew_notices, crew_chat_messages,
+ * [DB] crews, crew_members, crew_join_requests, crew_chat_messages,
  *      crew_chat_reports, crew_weekly_missions, crew_battles 등 크루 관련 테이블 거의 전부.
  * [주의] ⚠️ 이 프로젝트에서 가장 큰 파일("갓 서비스") — 크루 해체/회원탈퇴 시 여러 테이블을
  *        순서대로 지워야 FK 오류가 안 난다(deleteCrewChildData 참고, 크루대전 이력 정리 빠뜨려서
