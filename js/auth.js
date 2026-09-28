@@ -62,7 +62,6 @@ async function loadMyProfile() {
     state.user.grade = u.grade; // 'IRON'~'CHALLENGER' — userLevelBadge()의 배지 색을 정하는 값
     state.user.gradeName = u.gradeName; // '아이언'~'챌린저' — 배지 title 툴팁용
     state.user.streak = u.streak;
-    state.user.retakeTickets = u.retakeTickets;
     state.user.nicknameTickets = u.nicknameTickets;
     state.user.setsUsedToday = u.setsUsedToday;
     state.user.freeWorkoutsUsed = u.freeWorkoutsUsed ?? u.setsUsedToday ?? state.user.freeWorkoutsUsed;

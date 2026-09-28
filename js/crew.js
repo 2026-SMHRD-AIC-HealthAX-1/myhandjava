@@ -1241,7 +1241,7 @@ async function cancelCrewBattleWaiting() {
 function onCrewBattleActive() {
   state.crewBattle.status = 'ACTIVE';
   connectCrewBattleSocket();
-  state.exercise = { step: 0, picked: 'squat', camPhase: 'idle', camStream: null, timerId: null, seconds: 0, result: null, retakesUsed: 0, liveReps: [], replayOpen: false, sessionId: null, idempotencyKey: null };
+  state.exercise = { step: 0, picked: 'squat', camPhase: 'idle', camStream: null, timerId: null, seconds: 0, result: null, liveReps: [], replayOpen: false, sessionId: null, idempotencyKey: null };
   exBattleCountdownStarted = false; // 새 대전마다 공용 카운트다운을 다시 탈 수 있게 초기화
   startCrewBattleCountdown();
 }
@@ -1393,7 +1393,7 @@ function exitCrewBattle() {
   if (state.exercise.camStream) { state.exercise.camStream.getTracks().forEach(t => t.stop()); }
   clearInterval(state.exercise.timerId);
   state.crewBattle = null;
-  state.exercise = { step: 0, picked: null, camPhase: 'idle', camStream: null, timerId: null, seconds: 0, result: null, retakesUsed: 0, liveReps: [], replayOpen: false };
+  state.exercise = { step: 0, picked: null, camPhase: 'idle', camStream: null, timerId: null, seconds: 0, result: null, liveReps: [], replayOpen: false };
   state.menu = 'crew';
   state.subtabs.crew = 0;
   connectCrewChat(); // 다시 홈크루 메뉴로 돌아왔으니 실시간 소켓을 재연결한다

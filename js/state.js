@@ -28,7 +28,7 @@ const state = {
     open:false, nickname:'', gender:'male',
     regionCity:'서울시', regionGu:'강남구', regionDong:'역삼동',
   },
-  user: {id: null, nickname:'', avatar:0, gender:'male', points:1240, exp:62, level:7, grade:'IRON', gradeName:'아이언', region:'서울시 강남구 역삼동', retakeTickets:0, nicknameTickets:0, rankTickets:0, bio:'',
+  user: {id: null, nickname:'', avatar:0, gender:'male', points:1240, exp:62, level:7, grade:'IRON', gradeName:'아이언', region:'서울시 강남구 역삼동', nicknameTickets:0, rankTickets:0, bio:'',
     streak:10, streakRewardClaimed:false, setsUsedToday:0, role:'USER',
     regionRank:null}, // 내 동네(동 단위) 실제 순위 — ranking.js loadMyRegionRank() 참고. 아직 못 불러왔으면 null.
   menu: 'main',
@@ -36,7 +36,7 @@ const state = {
   // 마이페이지 '보유 아이템' 카드 페이지 번호 — 아이템이 늘어나도 카드 높이가 안 늘어나게
   // 4개씩 끊어 보여준다(profile.js renderMissionAvatar 참고).
   profileItemsPage: 0,
-  exercise: {step:0, mode:'free', picked:'squat', camPhase:'idle', camStream:null, timerId:null, seconds:0, result:null, retakesUsed:0, liveReps:[], replayOpen:false},
+  exercise: {step:0, mode:'free', picked:'squat', camPhase:'idle', camStream:null, timerId:null, seconds:0, result:null, liveReps:[], replayOpen:false},
   crewBattle: null, // 5vs5 크루대전 진행 중 상태 — startCrewBattle() 참고
   crewParty: {open:false, statusOpen:false, selected:[], invites:null, incoming:[], ready:false, tickId:null, incomingTickId:null, battleSize:5}, // 크루대전 파티맺기 — openPartyInvite() 참고. invites=내가 보낸 초대(상태만 표시), incoming=내가 받은 초대(수락/거절 버튼)
   crewConceptEditor: {open:false, selected:[]}, // 크루 메인 카드에서 바로 태그 재선택하는 팝업 — openCrewConceptEditor() 참고

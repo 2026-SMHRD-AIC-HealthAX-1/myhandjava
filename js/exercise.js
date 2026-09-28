@@ -33,15 +33,6 @@ const SQUAT_REFERENCE = {
 };
 const EXERCISE_REP_TARGET = 15; // 1세트는 최대 15회
 const EXERCISE_TIME_LIMIT_SECONDS = 120;
-// 하루에 완료할 수 있는 운동세트(세션) 한도 — 기본 3세트, 5레벨마다 기본 한도 +1, 포인트 상점
-// "세트 추가권" 1개 구매마다 +3세트. state.user.setsUsedToday는 saveExerciseResult()에서
-// 세션을 저장할 때마다 늘어난다(재촬영은 이미 FREE_RETAKES/티켓으로 따로 제한되므로 여기 세지 않음).
-// 백엔드 User.getDailySetLimit()이 레벨/extraSets와 무관하게 항상 고정 3회를 반환하도록
-// 되어있어(extraSets 필드 자체가 늘 0이라 삭제됨), 프론트도 그대로 고정값만 쓴다 — 예전엔
-// 레벨 보너스를 더해 화면에 더 큰 숫자를 보여줬지만, 실제 서버는 그 보너스를 인정하지 않아
-// 레벨이 높은 사용자에게 잘못된(실제보다 큰) 한도를 표시하는 버그였다.
-const EXERCISE_DAILY_SETS_BASE = 3;
-function getDailySetLimit() { return EXERCISE_DAILY_SETS_BASE; }
 const CAM_FINAL_COUNTDOWN_SECONDS = 3; // 자세 보정이 끝난 뒤 실제 촬영 시작까지의 음성 카운트다운(3,2,1,스타트!)
 const CAM_ALIGN_HOLD_MS = 2000; // 정렬(자세 보정) 원형 게이지가 다 차기까지 유지해야 하는 시간
 const CAM_GUIDE_SPEAK_INTERVAL_MS = 2500; // 같은 안내 음성이 너무 자주 반복되지 않도록 하는 간격
@@ -158,7 +149,7 @@ function cycleExercisePick(dir) {
 // 운동 위저드의 초기 상태 — 랜딩 페이지 "지금 체험하기"(landing.js startGuestExercise)와
 // "나중에 할게요"(resetExerciseWizard) 둘 다 여기서 시작한다.
 function freshExerciseState() {
-  return { step: 0, mode: 'free', picked: 'squat', camPhase: 'idle', camStream: null, timerId: null, seconds: 0, result: null, retakesUsed: 0, liveReps: [], replayOpen: false, sessionId: null, idempotencyKey: null };
+  return { step: 0, mode: 'free', picked: 'squat', camPhase: 'idle', camStream: null, timerId: null, seconds: 0, result: null, liveReps: [], replayOpen: false, sessionId: null, idempotencyKey: null };
 }
 // 게스트 모드에서 "나중에 할게요"를 누르면 게스트 상태는 유지한 채(다른 카테고리도 계속
 // 둘러볼 수 있게) 운동 위저드만 종목 선택 화면으로 되돌린다.
@@ -199,11 +190,6 @@ function goToTutorial() {
   if (!state.user.calibration) {
     toast('운동을 시작하려면 체형 캘리브레이션이 먼저 필요해요');
     openCalibrationModal();
-    return;
-  }
-  // 게스트 모드는 회원 레벨·일일 세트 개념이 없는 맛보기라 한도를 적용하지 않는다.
-  if (!state.guestMode && (state.user.setsUsedToday || 0) >= getDailySetLimit()) {
-    toast(`오늘 가능한 운동세트를 모두 사용했어요 (${getDailySetLimit()}세트). 포인트 상점에서 세트 추가권을 구매하거나 내일 다시 시도해주세요.`);
     return;
   }
   goExStep(1);
@@ -379,7 +365,7 @@ function setupCamera() {
     }).catch(() => {
       state.exercise.cameraFailed = true;
       const ph = document.getElementById('cam-placeholder');
-      if (ph) ph.innerHTML = '카메라 연결에 실패했습니다.<br><b>무료 운동 횟수와 운동추가권은 차감되지 않았습니다.</b><br>모의 자세 인식으로 확인할 수 있습니다.';
+      if (ph) ph.innerHTML = '카메라 연결에 실패했습니다.<br>모의 자세 인식으로 확인할 수 있습니다.';
       startPoseFeedback();
     });
   } else {
@@ -1444,28 +1430,11 @@ function saveReplayResult() {
   state.exercise.replayOpen = false;
   goExStep(3);
 }
-const FREE_RETAKES = 2;
 function renderRetakeButton() {
-  const freeLeft = state.exercise.retakesUsed < FREE_RETAKES;
-  const freeRemain = FREE_RETAKES - state.exercise.retakesUsed;
-  const tickets = state.user.retakeTickets || 0;
-  const canRetake = freeLeft || tickets > 0;
-  const label = freeLeft ? `다시 촬영 (무료 ${freeRemain}회 남음)` : (tickets > 0 ? `다시 촬영 (티켓 사용 · 보유 ${tickets}장)` : '다시 촬영 (티켓 필요)');
-  return `<button class="btn btn-ghost" ${canRetake ? '' : 'disabled style="opacity:.5;cursor:not-allowed;"'} onclick="retakeExercise()">${label}</button>`;
+  return `<button class="btn btn-ghost" onclick="retakeExercise()">다시 촬영</button>`;
 }
 function retakeExercise() {
   const ex = state.exercise;
-  if (ex.retakesUsed < FREE_RETAKES) {
-    ex.retakesUsed++;
-    toast(`무료 재촬영을 사용합니다 (남은 무료 횟수 ${FREE_RETAKES - ex.retakesUsed}회)`);
-  } else if (state.user.retakeTickets > 0) {
-    state.user.retakeTickets--;
-    ex.retakesUsed++;
-    toast(`운동추가권을 사용합니다 (남은 운동추가권 ${state.user.retakeTickets}장)`);
-  } else {
-    toast('무료 재촬영을 모두 사용했습니다. 포인트 상점에서 운동추가권을 구매해주세요');
-    return;
-  }
   if (ex.result && ex.result.myVideoUrl) URL.revokeObjectURL(ex.result.myVideoUrl);
   ex.result = null;
   ex.liveReps = [];
@@ -1546,7 +1515,7 @@ async function saveExerciseResult() {
     }
     toast(`저장 완료! +${pts}P 획득`);
     if (r.myVideoUrl) URL.revokeObjectURL(r.myVideoUrl);
-    state.exercise = { step: 0, picked: null, camPhase: 'idle', camStream: null, timerId: null, seconds: 0, result: null, retakesUsed: 0, liveReps: [], replayOpen: false };
+    state.exercise = { step: 0, picked: null, camPhase: 'idle', camStream: null, timerId: null, seconds: 0, result: null, liveReps: [], replayOpen: false };
     render();
   } catch (err) {
     toast('서버에 연결할 수 없습니다 (백엔드가 켜져 있는지 확인해주세요)');
