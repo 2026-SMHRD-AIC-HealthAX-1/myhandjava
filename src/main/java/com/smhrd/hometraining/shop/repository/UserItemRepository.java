@@ -10,6 +10,6 @@ import java.util.Optional;
 public interface UserItemRepository extends JpaRepository<UserItem, Long> {
     List<UserItem> findByUserId(Long userId);
     Optional<UserItem> findByUserIdAndShopItemId(Long userId, Long shopItemId);
-    Optional<UserItem> findByUserIdAndShopItem_Slot(Long userId, String slot);
+    List<UserItem> findByUserIdAndShopItem_SlotAndEquippedTrue(Long userId, String slot);
     void deleteByUserId(Long userId);
 }

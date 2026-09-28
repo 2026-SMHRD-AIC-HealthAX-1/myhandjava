@@ -858,6 +858,9 @@ public class CrewService {
         crewChatMessageRepository.deleteByCrewId(crewId);
         crewJoinRequestRepository.deleteByCrewId(crewId);
         crewExperienceHistoryRepository.deleteByCrewId(crewId);
+        // crew_weekly_contributions.weekly_mission_id가 crew_weekly_missions를 참조하므로
+        // 미션 행을 지우기 전에 그 미션들의 기여도 행을 먼저 지워야 FK 위반이 안 난다.
+        crewWeeklyContributionRepository.deleteByWeeklyMission_CrewId(crewId);
         crewWeeklyMissionRepository.deleteByCrewId(crewId);
 
         /*

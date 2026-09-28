@@ -141,11 +141,11 @@ public class ShopService {
 
         if (equip && userItem.getShopItem().getSlot() != null) {
             userItemRepository
-                    .findByUserIdAndShopItem_Slot(
+                    .findByUserIdAndShopItem_SlotAndEquippedTrue(
                             userId,
                             userItem.getShopItem().getSlot()
                     )
-                    .ifPresent(existing -> existing.setEquipped(false));
+                    .forEach(existing -> existing.setEquipped(false));
         }
 
         userItem.setEquipped(equip);

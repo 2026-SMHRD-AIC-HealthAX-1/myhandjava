@@ -73,4 +73,10 @@ public interface CrewWeeklyContributionRepository
     );
 
     void deleteByUserId(Long userId);
+
+    /**
+     * 크루 해체/탈퇴 정리 시, 그 크루의 주간 미션(crew_weekly_missions)을 지우기 전에
+     * 먼저 지워야 하는 자식 행입니다(weekly_mission_id FK).
+     */
+    void deleteByWeeklyMission_CrewId(Long crewId);
 }
